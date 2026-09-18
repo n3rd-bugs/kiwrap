@@ -1,0 +1,146 @@
+{
+ "r0_mnone": {
+  "predicted_pin1": [
+   94.92,
+   100.0
+  ],
+  "predicted_pin2": [
+   94.92,
+   102.54
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r0_mx": {
+  "predicted_pin1": [
+   94.92,
+   100.0
+  ],
+  "predicted_pin2": [
+   94.92,
+   97.46
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r0_my": {
+  "predicted_pin1": [
+   105.08,
+   100.0
+  ],
+  "predicted_pin2": [
+   105.08,
+   102.54
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r90_mnone": {
+  "predicted_pin1": [
+   100.0,
+   105.08
+  ],
+  "predicted_pin2": [
+   102.54,
+   105.08
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r90_mx": {
+  "predicted_pin1": [
+   100.0,
+   94.92
+  ],
+  "predicted_pin2": [
+   102.54,
+   94.92
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r90_my": {
+  "predicted_pin1": [
+   100.0,
+   105.08
+  ],
+  "predicted_pin2": [
+   97.46,
+   105.08
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r180_mnone": {
+  "predicted_pin1": [
+   105.08,
+   100.0
+  ],
+  "predicted_pin2": [
+   105.08,
+   97.46
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r180_mx": {
+  "predicted_pin1": [
+   105.08,
+   100.0
+  ],
+  "predicted_pin2": [
+   105.08,
+   102.54
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r180_my": {
+  "predicted_pin1": [
+   94.92,
+   100.0
+  ],
+  "predicted_pin2": [
+   94.92,
+   97.46
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r270_mnone": {
+  "predicted_pin1": [
+   100.0,
+   94.92
+  ],
+  "predicted_pin2": [
+   97.46,
+   94.92
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r270_mx": {
+  "predicted_pin1": [
+   100.0,
+   105.08
+  ],
+  "predicted_pin2": [
+   97.46,
+   105.08
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ },
+ "r270_my": {
+  "predicted_pin1": [
+   100.0,
+   94.92
+  ],
+  "predicted_pin2": [
+   102.54,
+   94.92
+  ],
+  "pin1_connected": true,
+  "pin2_connected": true
+ }
+}

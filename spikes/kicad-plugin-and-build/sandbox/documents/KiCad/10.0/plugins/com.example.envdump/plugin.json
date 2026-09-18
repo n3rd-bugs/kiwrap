@@ -1,0 +1,32 @@
+{
+  "$schema": "https://go.kicad.org/api/schemas/v1",
+  "identifier": "com.example.envdump",
+  "name": "Env Dump (exec test)",
+  "description": "Test exec-runtime IPC plugin that dumps KICAD_API_* env vars to a file",
+  "runtime": {
+    "type": "exec"
+  },
+  "actions": [
+    {
+      "identifier": "dump",
+      "name": "Dump API env",
+      "description": "Writes KICAD_API_SOCKET/KICAD_API_TOKEN to envdump.txt",
+      "show-button": true,
+      "scopes": [
+        "pcb",
+        "schematic"
+      ],
+      "entrypoint": "cmd.exe",
+      "icons-light": [
+        "icon.png"
+      ],
+      "icons-dark": [
+        "icon.png"
+      ],
+      "args": [
+        "/c",
+        "envdump.bat"
+      ]
+    }
+  ]
+}

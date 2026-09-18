@@ -1,0 +1,11 @@
+Usage: upgrade [--help] [--output OUTPUT_FILE] [--force] INPUT_FILE
+
+Upgrades the symbol library to the current kicad version format
+
+Positional arguments:
+  INPUT_FILE    Input file 
+
+Optional arguments:
+  -h, --help    Shows help message and exits 
+  -o, --output  Output file [nargs=0..1] [default: ""]
+  --force       Forces the symbol library to be resaved regardless of versioning 

@@ -1,0 +1,52 @@
+(session tiny
+  (base_design tiny)
+  (placement
+    (resolution um 10)
+    (component "R_0805_2012Metric"
+      (place R2 150000 -75000 front 0)
+      (place R1 50000 -75000 front 0)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution um 10)
+    (parser
+      (host_cad "KiCad's Pcbnew")
+      (host_version "10.0.0")
+    )
+    (library_out 
+      (padstack "Via[0-1]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net NET1
+        (wire
+          (path F.Cu 2000
+            140875 -75000
+            130714 -85161
+            51036 -85161
+            40875 -75000
+          )
+        )
+      )
+      (net NET2
+        (wire
+          (path F.Cu 2000
+            59125 -75000
+            69369 -64756
+            148881 -64756
+            159125 -75000
+          )
+        )
+      )
+    )
+  )
+)

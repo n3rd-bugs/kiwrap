@@ -1,0 +1,3 @@
+Found 0 violations
+Found 0 unconnected items
+Saved DRC Report to C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/freerouting-verify/runs/med_both/drc.json

@@ -1,0 +1,63 @@
+** Drc report for C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/samples/ecc83_8.0/ecc83-pp.kicad_pcb **
+** Created on 2026-09-18 20:49:49 **
+
+** Found 17 DRC violations **
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; warning
+    @(121.2850 mm, 136.5250 mm): Segment on Edge.Cuts
+    @(142.9220 mm, 125.0710 mm): Segment on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; warning
+    @(121.2850 mm, 136.5250 mm): Segment on Edge.Cuts
+    @(153.1620 mm, 125.0710 mm): Segment on F.Silkscreen
+[lib_footprint_issues]: Footprint 'CP_Radial_D10.0mm_P5.00mm' not found in library 'Capacitor_THT'.
+    Local override; warning
+    @(141.6050 mm, 99.6950 mm): Footprint C1
+[lib_footprint_issues]: Footprint 'C_Disc_D4.7mm_W2.5mm_P5.00mm' not found in library 'Capacitor_THT'.
+    Local override; warning
+    @(137.1600 mm, 125.0950 mm): Footprint C2
+[lib_footprint_issues]: Footprint 'MountingHole_3.2mm_M3_DIN965_Pad' not found in library 'Footprints'.
+    Local override; warning
+    @(125.0950 mm, 93.9800 mm): Footprint P5
+[lib_footprint_issues]: Footprint 'MountingHole_3.2mm_M3_DIN965_Pad' not found in library 'Footprints'.
+    Local override; warning
+    @(169.5450 mm, 93.9800 mm): Footprint P6
+[lib_footprint_issues]: Footprint 'MountingHole_3.2mm_M3_DIN965_Pad' not found in library 'Footprints'.
+    Local override; warning
+    @(169.5450 mm, 132.7150 mm): Footprint P7
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; warning
+    @(136.2710 mm, 107.9500 mm): Footprint R1
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; warning
+    @(156.2100 mm, 95.8850 mm): Footprint R2
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; warning
+    @(164.4650 mm, 117.4750 mm): Footprint R4
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'Footprints'.
+    Local override; warning
+    @(128.2700 mm, 112.7760 mm): Footprint P2
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'Footprints'.
+    Local override; warning
+    @(128.2700 mm, 100.7110 mm): Footprint P3
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'Footprints'.
+    Local override; warning
+    @(145.5420 mm, 131.1910 mm): Footprint P4
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; warning
+    @(133.9850 mm, 125.0950 mm): Footprint R3
+[lib_footprint_issues]: Footprint 'Valve_ECC-83-1' not found in library 'Footprints'.
+    Local override; warning
+    @(149.2250 mm, 113.6650 mm): Footprint U1
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'Footprints'.
+    Local override; warning
+    @(166.3700 mm, 105.4100 mm): Footprint P1
+[lib_footprint_issues]: Footprint 'MountingHole_3.2mm_M3_DIN965_Pad' not found in library 'Footprints'.
+    Local override; warning
+    @(125.0950 mm, 132.7150 mm): Footprint P8
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

@@ -1,0 +1,25 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: gerber [--help] [--output OUTPUT_FILE] [--layers LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--exclude-refdes] [--exclude-value] [--include-border-title] [--no-x2] [--no-netlist] [--subtract-soldermask] [--disable-aperture-macros] [--use-drill-file-origin] [--precision PRECISION] [--no-protel-ext] INPUT_FILE
+
+Plot given layers to a single Gerber file
+
+Positional arguments:
+  INPUT_FILE                     Input file 
+
+Optional arguments:
+  -h, --help                     Shows help message and exits 
+  -o, --output                   Output file [nargs=0..1] [default: ""]
+  -l, --layers                   Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --drawing-sheet                Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var               Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                                 Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  --erd, --exclude-refdes        Exclude the reference designator text 
+  --ev, --exclude-value          Exclude the value text 
+  --ibt, --include-border-title  Include the border and title block 
+  --no-x2                        Do not use the extended X2 format 
+  --no-netlist                   Do not generate netlist attributes 
+  --subtract-soldermask          Subtract soldermask from silkscreen 
+  --disable-aperture-macros      Disable aperture macros 
+  --use-drill-file-origin        Use drill/place file origin 
+  --precision                    Precision of Gerber coordinates, valid options: 5 or 6 [nargs=0..1] [default: 6]
+  --no-protel-ext                Use KiCad Gerber file extension 

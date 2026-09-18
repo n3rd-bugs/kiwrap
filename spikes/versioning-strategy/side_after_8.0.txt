@@ -1,0 +1,12 @@
+3d_shapes
+ecc83-pp.kicad_pcb
+ecc83-pp.kicad_prl
+ecc83-pp.kicad_pro
+ecc83-pp.kicad_sch
+ecc83-pp_v2.kicad_pcb
+ecc83-pp_v2.kicad_pro
+ecc83-pp_v2.kicad_sch
+ecc83_schlib.kicad_sym
+footprints.pretty
+fp-lib-table
+sym-lib-table

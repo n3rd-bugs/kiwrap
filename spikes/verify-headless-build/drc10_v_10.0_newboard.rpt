@@ -1,0 +1,21 @@
+** Drc report for v_10.0_newboard.kicad_pcb **
+** Created on 2026-09-18T22:07:26 **
+** Report includes: Errors, Warnings **
+
+** Found 1 DRC violations **
+[isolated_copper]: Isolated copper fill
+    Local override; warning
+    @(1.0000 mm, 1.0000 mm): Zone [GND] on B.Cu, priority 0
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **

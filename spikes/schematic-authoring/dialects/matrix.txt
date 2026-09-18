@@ -1,0 +1,32 @@
+=== dialect 7 read by kicad-cli 7.0
+  erc: N/A(no erc cmd) | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 7 read by kicad-cli 8.0
+  erc: [['warning', 'lib_symbol_issues', "Symbol 'GND' has been modified in library 'power'"], ['warning', 'lib_symbol_issues', "Symbol 'GND' has been modified in library 'power'"], ['warning', 'lib_symbol_issues', "Symbol 'PWR_FLAG' has been modified in library 'power'"]] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 7 read by kicad-cli 9.0
+  erc: [['warning', 'lib_symbol_mismatch', "Symbol 'LED' doesn't match copy in library 'Device'"], ['warning', 'lib_symbol_mismatch', "Symbol 'GND' doesn't match copy in library 'power'"], ['warning', 'lib_symbol_mismatch', "Symbol 'GND' doesn't match copy in library 'power'"]] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 7 read by kicad-cli 10.0
+  erc: [['warning', 'lib_symbol_mismatch', "Symbol 'LED' doesn't match copy in library 'Device'"]] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 8 read by kicad-cli 7.0
+  erc: N/A(no erc cmd) | netlist_rc 3 nets_correct False | svg_rc 3
+=== dialect 8 read by kicad-cli 8.0
+  erc: [] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 8 read by kicad-cli 9.0
+  erc: [['warning', 'lib_symbol_mismatch', "Symbol 'LED' doesn't match copy in library 'Device'"]] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 8 read by kicad-cli 10.0
+  erc: [['warning', 'lib_symbol_mismatch', "Symbol 'LED' doesn't match copy in library 'Device'"]] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 9 read by kicad-cli 7.0
+  erc: N/A(no erc cmd) | netlist_rc 3 nets_correct False | svg_rc 3
+=== dialect 9 read by kicad-cli 8.0
+  erc: LOAD FAIL | netlist_rc 3 nets_correct False | svg_rc 3
+=== dialect 9 read by kicad-cli 9.0
+  erc: [] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 9 read by kicad-cli 10.0
+  erc: [] | netlist_rc 0 nets_correct True | svg_rc 0
+=== dialect 10 read by kicad-cli 7.0
+  erc: N/A(no erc cmd) | netlist_rc 3 nets_correct False | svg_rc 3
+=== dialect 10 read by kicad-cli 8.0
+  erc: LOAD FAIL | netlist_rc 3 nets_correct False | svg_rc 3
+=== dialect 10 read by kicad-cli 9.0
+  erc: LOAD FAIL | netlist_rc 3 nets_correct False | svg_rc 3
+=== dialect 10 read by kicad-cli 10.0
+  erc: [] | netlist_rc 0 nets_correct True | svg_rc 0

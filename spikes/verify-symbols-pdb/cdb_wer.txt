@@ -1,0 +1,8 @@
+.sympath srv*C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\verify-symbols-pdb\symcache2*https://symbols.kicad.org/kicad-stable
+.lines
+.reload
+.ecxr
+k 12
+lm m _eeschema
+lm m eeschema
+q

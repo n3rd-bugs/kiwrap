@@ -1,0 +1,22 @@
+Usage: export dxf [--help] [--output OUTPUT_DIR] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--variant VAR]... [--theme THEME_NAME] [--black-and-white] [--exclude-drawing-sheet] [--default-font VAR] [--draw-hop-over] [--pages PAGE_LIST] INPUT_FILE
+
+Export DXF
+
+Positional arguments:
+  INPUT_FILE                   Input file 
+
+Optional arguments:
+  -h, --help                   Shows help message and exits 
+  -o, --output                 Output directory [nargs=0..1] [default: ""]
+  --drawing-sheet              Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var             Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                               Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]
+  --variant                    The variant name(s) to output, can be used multiple times to specify multiple variants.
+                               When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.
+                               When no --variant argument is provided the default variant is output. [nargs=0..1] [default: {}] [may be repeated]
+  -t, --theme                  Color theme to use (will default to schematic settings) [nargs=0..1] [default: ""]
+  -b, --black-and-white        Black and white only 
+  -e, --exclude-drawing-sheet  No drawing sheet 
+  --default-font               Default font name [nargs=0..1] [default: ""]
+  --draw-hop-over              Draw hop over at wire crossings 
+  --pages                      List of page numbers separated by comma to print, blank or unspecified is equivalent to all pages [nargs=0..1] [default: ""]

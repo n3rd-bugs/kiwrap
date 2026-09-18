@@ -1,0 +1,26 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:06:10+0500",
+    "kicad_version": "9.0.5",
+    "schematic_parity": [],
+    "source": "from7.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Footprint 'PinHeader_1x02_P2.54mm_Vertical' does not match copy in library 'Connector_PinHeader_2.54mm'.",
+            "items": [
+                {
+                    "description": "Footprint J1",
+                    "pos": {
+                        "x": 26.0,
+                        "y": 15.0
+                    },
+                    "uuid": "74a7098a-4854-435e-83eb-622e2d5664c1"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        }
+    ]
+}

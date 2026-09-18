@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "filename": "rt_d10.kicad_pro",
+    "version": 1
+  },
+  "sheets": [
+    [
+      "b73f77c0-32ed-4ff7-b667-8fcc03d272fe",
+      "Root"
+    ]
+  ],
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "text_variables": {}
+}

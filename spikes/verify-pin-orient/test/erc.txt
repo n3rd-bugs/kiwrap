@@ -1,0 +1,75 @@
+ERC report (2026-09-18T22:04:41, Encoding UTF8)
+Report includes: Errors, Warnings, Exclusions
+
+***** Sheet /
+[pin_not_connected]: Pin not connected
+    ; error
+    @(53.34 mm, 45.72 mm): Symbol P1 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(45.72 mm, 78.74 mm): Symbol P5 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(78.74 mm, 55.88 mm): Symbol P2 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(99.06 mm, 45.72 mm): Symbol P3 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(81.28 mm, 73.66 mm): Symbol P6 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(53.34 mm, 106.68 mm): Symbol P9 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(99.06 mm, 81.28 mm): Symbol P7 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(121.92 mm, 48.26 mm): Symbol P4 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(81.28 mm, 104.14 mm): Symbol P10 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(124.46 mm, 71.12 mm): Symbol P8 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(106.68 mm, 99.06 mm): Symbol P11 Pin 1 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(121.92 mm, 104.14 mm): Symbol P12 Pin 1 [A, Passive, Line]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(50.80 mm, 50.80 mm): Symbol P1 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(76.20 mm, 50.80 mm): Symbol P2 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(76.20 mm, 76.20 mm): Symbol P6 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(50.80 mm, 101.60 mm): Symbol P9 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(101.60 mm, 76.20 mm): Symbol P7 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(127.00 mm, 50.80 mm): Symbol P4 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(101.60 mm, 101.60 mm): Symbol P11 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(127.00 mm, 76.20 mm): Symbol P8 [P]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'Test'
+    ; warning
+    @(127.00 mm, 101.60 mm): Symbol P12 [P]
+
+ ** ERC messages: 21  Errors 12  Warnings 9
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters

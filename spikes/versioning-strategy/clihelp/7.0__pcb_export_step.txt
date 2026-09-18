@@ -1,0 +1,17 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: step [-h] [--drill-origin] [--grid-origin] [--no-virtual] [--subst-models] [--force] [--board-only] [--min-distance VAR] [--user-origin VAR] [--output VAR] input
+
+Positional arguments:
+  input         	Input file 
+
+Optional arguments:
+  -h, --help    	shows help message and exits 
+  --drill-origin	Use Drill Origin for output origin 
+  --grid-origin 	Use Grid Origin for output origin 
+  --no-virtual  	Exclude 3D models for components with 'virtual' attribute 
+  --subst-models	Substitute STEP or IGS models with the same name in place of VRML models 
+  -f, --force   	Overwrite output file 
+  --board-only  	Only generate a board with no components 
+  --min-distance	Minimum distance between points to treat them as separate ones [default: "0.01mm"]
+  --user-origin 	User-specified output origin ex. 1x1in, 1x1inch, 25.4x25.4mm (default unit mm) [default: ""]
+  -o, --output  	Output file name [default: ""]

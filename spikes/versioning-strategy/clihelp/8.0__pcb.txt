@@ -1,0 +1,10 @@
+Usage: pcb [--help] {drc,export}
+
+PCB
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  drc        Runs the Design Rules Check (DRC) on the PCB and creates a report
+  export     Export utilities (Gerbers, drill, position files, etc)

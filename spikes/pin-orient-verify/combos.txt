@@ -1,0 +1,12 @@
+U1 rot=0 mirror=None X=81.28 Y=50.8
+U2 rot=0 mirror=x X=111.75999999999999 Y=50.8
+U3 rot=0 mirror=y X=142.24 Y=50.8
+U4 rot=90 mirror=None X=50.8 Y=81.28
+U5 rot=90 mirror=x X=81.28 Y=81.28
+U6 rot=90 mirror=y X=111.75999999999999 Y=81.28
+U7 rot=180 mirror=None X=142.24 Y=81.28
+U8 rot=180 mirror=x X=50.8 Y=111.75999999999999
+U9 rot=180 mirror=y X=81.28 Y=111.75999999999999
+U10 rot=270 mirror=None X=111.75999999999999 Y=111.75999999999999
+U11 rot=270 mirror=x X=142.24 Y=111.75999999999999
+U12 rot=270 mirror=y X=50.8 Y=142.24

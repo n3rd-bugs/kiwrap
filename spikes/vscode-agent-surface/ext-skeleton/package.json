@@ -1,0 +1,37 @@
+{
+  "name": "kicad-agent",
+  "displayName": "KiCad Agent Tools",
+  "version": "0.0.1",
+  "publisher": "example",
+  "engines": { "vscode": "^1.101.0" },
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      { "id": "kicadAgent.mcp", "label": "KiCad Agent MCP server" }
+    ],
+    "languageModelTools": [
+      {
+        "name": "kicad_render_board",
+        "displayName": "Render KiCad board",
+        "toolReferenceName": "kicadRender",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(circuit-board)",
+        "modelDescription": "Render a .kicad_pcb to a PNG image so you can visually inspect placement and routing.",
+        "userDescription": "Renders the board with kicad-cli and shows it to the model",
+        "inputSchema": { "type": "object", "properties": { "pcbPath": { "type": "string" } }, "required": ["pcbPath"] }
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "kicadAgent.pcbPreview",
+        "displayName": "KiCad Board Preview",
+        "priority": "option",
+        "selector": [ { "filenamePattern": "*.kicad_pcb" }, { "filenamePattern": "*.kicad_sch" } ]
+      }
+    ],
+    "taskDefinitions": [
+      { "type": "kicad", "required": ["job"], "properties": { "job": { "type": "string" } } }
+    ]
+  }
+}

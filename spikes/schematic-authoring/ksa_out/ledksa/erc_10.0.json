@@ -1,0 +1,84 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:46:44",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/60683ec5-baf3-42e0-977d-708938c6550d",
+            "violations": [
+                {
+                    "description": "Label connects more than one wire at 635000, 609600",
+                    "items": [
+                        {
+                            "description": "Label 'LED_A'",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.6096
+                            },
+                            "uuid": "2d13692e-dfa4-4c95-88a6-f8d68d8b5dc0"
+                        },
+                        {
+                            "description": "Vertical Wire, length 0.1397 mm",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.5969
+                            },
+                            "uuid": "1c8fdb67-0fe2-4dee-88c4-12d141b81d11"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "label_multiple_wires"
+                },
+                {
+                    "description": "Both GND and LED_A are attached to the same items; GND will be used in the netlist",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR01 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.7366
+                            },
+                            "uuid": "6230892e-bfb7-49a1-a77c-0cfbad4c5dfa"
+                        },
+                        {
+                            "description": "Label 'LED_A'",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.6096
+                            },
+                            "uuid": "2d13692e-dfa4-4c95-88a6-f8d68d8b5dc0"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "multiple_net_names"
+                }
+            ]
+        }
+    ],
+    "source": "ledksa.kicad_sch"
+}

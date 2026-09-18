@@ -1,0 +1,12 @@
+Usage: run [--help] [--stop-on-error] [--file JOB_FILE] [--output OUTPUT] INPUT_FILE
+
+Runs a jobset file
+
+Positional arguments:
+  INPUT_FILE       Input file 
+
+Optional arguments:
+  -h, --help       Shows help message and exits 
+  --stop-on-error  Stops processing jobs as they are executed sequentially on the first failure of a job 
+  -f, --file       Jobset file to be run [nargs=0..1] [default: ""]
+  --output         Jobset file output to generate, leave blank for all outputs defined in the jobset [nargs=0..1] [default: ""]

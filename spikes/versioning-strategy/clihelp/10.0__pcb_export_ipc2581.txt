@@ -1,0 +1,26 @@
+Usage: export ipc2581 [--help] [--output OUTPUT_FILE] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--precision PRECISION] [--compress] [--version VAR] [--units VAR] [--bom-col-int-id FIELD_NAME] [--bom-col-mfg-pn FIELD_NAME] [--bom-col-mfg FIELD_NAME] [--bom-col-dist-pn FIELD_NAME] [--bom-col-dist FIELD_NAME] [--bom-rev REVISION] [--variant VAR]... INPUT_FILE
+
+Export the PCB in IPC-2581 format
+
+Positional arguments:
+  INPUT_FILE         Input file 
+
+Optional arguments:
+  -h, --help         Shows help message and exits 
+  -o, --output       Output file [nargs=0..1] [default: ""]
+  --drawing-sheet    Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var   Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                     Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]
+  --precision        Precision [nargs=0..1] [default: 6]
+  --compress         Compress the output 
+  --version          IPC-2581 standard version [nargs=0..1] [default: "C"]
+  --units            Units [nargs=0..1] [default: "mm"]
+  --bom-col-int-id   Name of the part field to use for the Bill of Material Internal Id Column [nargs=0..1] [default: ""]
+  --bom-col-mfg-pn   Name of the part field to use for the Bill of Material Manufacturer Part Number Column [nargs=0..1] [default: ""]
+  --bom-col-mfg      Name of the part field to use for the Bill of Material Manufacturer Column [nargs=0..1] [default: ""]
+  --bom-col-dist-pn  Name of the part field to use for the Bill of Material Distributor Part Number Column [nargs=0..1] [default: ""]
+  --bom-col-dist     Name to insert into Bill of Material Distributor Column [nargs=0..1] [default: ""]
+  --bom-rev          BOM revision to use in the output file. Defaults to schematic revision from the project file [nargs=0..1] [default: ""]
+  --variant          The variant name(s) to output, can be used multiple times to specify multiple variants.
+                     When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.
+                     When no --variant argument is provided the default variant is output. [nargs=0..1] [default: {}] [may be repeated]

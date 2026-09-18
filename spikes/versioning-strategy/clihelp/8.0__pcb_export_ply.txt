@@ -1,0 +1,20 @@
+Failed to parse 'ply', did you mean 'glb'
+Usage: export [--help] {drill,dxf,gerber,gerbers,glb,ipc2581,pdf,pos,step,svg,vrml}
+
+Export utilities (Gerbers, drill, position files, etc)
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  drill      Generate Drill Files
+  dxf        Generate a DXF from a list of layers
+  gerber     Plot given layers to a single Gerber file
+  gerbers    Plot multiple Gerbers for a PCB, including the ability to use stored board plot settings
+  glb        Export GLB (binary GLTF)
+  ipc2581    Export the PCB in IPC2581 format
+  pdf        Generate PDF from a list of layers
+  pos        Generate Position File
+  step       Export STEP
+  svg        Generate SVG outputs of a given layer list
+  vrml       Export VRML

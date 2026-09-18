@@ -1,0 +1,22 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: svg [--help] [--output OUTPUT_FILE] [--layers LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--mirror] [--theme THEME_NAME] [--negative] [--black-and-white] [--page-size-mode MODE] [--exclude-drawing-sheet] [--drill-shape-opt SHAPE_OPTION] INPUT_FILE
+
+Generate SVG outputs of a given layer list
+
+Positional arguments:
+  INPUT_FILE               Input file 
+
+Optional arguments:
+  -h, --help               Shows help message and exits 
+  -o, --output             Output file [nargs=0..1] [default: ""]
+  -l, --layers             Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --drawing-sheet          Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var         Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                           Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -m, --mirror             Mirror the board (useful for trying to show bottom layers) 
+  -t, --theme              Color theme to use (will default to PCB editor settings) [nargs=0..1] [default: ""]
+  -n, --negative           Plot as negative (useful for directly etching from the export) 
+  --black-and-white        Black and white only 
+  --page-size-mode         Set page sizing mode (0 = page with frame and title block, 1 = current page size, 2 = board area only) [nargs=0..1] [default: 0]
+  --exclude-drawing-sheet  No drawing sheet 
+  --drill-shape-opt        Set pad/via drill shape option (0 = no shape, 1 = small shape, 2 = actual shape) [nargs=0..1] [default: 2]

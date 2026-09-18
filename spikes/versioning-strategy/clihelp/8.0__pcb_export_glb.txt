@@ -1,0 +1,24 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: glb [--help] [--output OUTPUT_FILE] [--define-var KEY=VALUE] [--force] [--grid-origin] [--drill-origin] [--no-unspecified] [--no-dnp] [--subst-models] [--board-only] [--include-tracks] [--include-zones] [--min-distance MIN_DIST] [--user-origin VAR] INPUT_FILE
+
+Export GLB (binary GLTF)
+
+Positional arguments:
+  INPUT_FILE        Input file 
+
+Optional arguments:
+  -h, --help        Shows help message and exits 
+  -o, --output      Output file [nargs=0..1] [default: ""]
+  -D, --define-var  Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                    Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -f, --force       Overwrite output file 
+  --grid-origin     Use Grid Origin for output origin 
+  --drill-origin    Use Drill Origin for output origin 
+  --no-unspecified  Exclude 3D models for components with 'Unspecified' footprint type 
+  --no-dnp          Exclude 3D models for components with 'Do not populate' attribute 
+  --subst-models    Substitute STEP or IGS models with the same name in place of VRML models 
+  --board-only      Only generate a board with no components 
+  --include-tracks  Export tracks 
+  --include-zones   Export zones 
+  --min-distance    Minimum distance between points to treat them as separate ones [nargs=0..1] [default: "0.01mm"]
+  --user-origin     User-specified output origin ex. 1x1in, 1x1inch, 25.4x25.4mm (default unit mm) [nargs=0..1] [default: ""]

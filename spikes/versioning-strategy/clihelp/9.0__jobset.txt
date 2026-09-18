@@ -1,0 +1,9 @@
+Usage: jobset [--help] {run}
+
+Jobset
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  run        Runs a jobset file

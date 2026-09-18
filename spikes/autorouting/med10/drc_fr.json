@@ -1,0 +1,428 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:44:55",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [],
+    "source": "medium_fr_routed.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG17] on F.Cu, length 1.0272 mm",
+                    "pos": {
+                        "x": 24.3836,
+                        "y": 17.5789
+                    },
+                    "uuid": "565d35c9-9581-49fd-8cc9-a3a2b54f5ab1"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG17] on F.Cu, length 0.3127 mm",
+                    "pos": {
+                        "x": 24.1625,
+                        "y": 17.8
+                    },
+                    "uuid": "e0c7eb10-9932-4543-8af0-fcbe438c4f69"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG19] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 24.3868,
+                        "y": 15.9757
+                    },
+                    "uuid": "112c5c5b-9194-46e0-8e24-423352fd35fb"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG19] on F.Cu, length 1.0362 mm",
+                    "pos": {
+                        "x": 25.423,
+                        "y": 15.9757
+                    },
+                    "uuid": "3fa028a5-7d26-4bca-ac5d-073d528e84db"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [RSIG25] on F.Cu, length 0.3807 mm",
+                    "pos": {
+                        "x": 22.5308,
+                        "y": 11.6447
+                    },
+                    "uuid": "be2d964d-9449-41e9-b5a0-f05a70295bad"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [RSIG25] on F.Cu, length 0.0564 mm",
+                    "pos": {
+                        "x": 22.5308,
+                        "y": 11.7011
+                    },
+                    "uuid": "d260f00b-926e-4c55-8aea-acde255778f8"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 2.7995 mm",
+                    "pos": {
+                        "x": 14.475,
+                        "y": 6.7239
+                    },
+                    "uuid": "3661b0f4-d053-4096-b796-a0ea721eb09c"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 1.5654 mm",
+                    "pos": {
+                        "x": 23.2678,
+                        "y": 6.3208
+                    },
+                    "uuid": "5f1306a6-b315-4c51-9336-ca655c5256de"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 0.5623 mm",
+                    "pos": {
+                        "x": 11.4739,
+                        "y": 7.8757
+                    },
+                    "uuid": "7b07190c-898d-4f9a-9e36-42025cd11a58"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 0.0020 mm",
+                    "pos": {
+                        "x": 17.2745,
+                        "y": 6.7239
+                    },
+                    "uuid": "8d7c5d1d-b7d6-4108-a1a2-8b9fa1135042"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 3.3491 mm",
+                    "pos": {
+                        "x": 19.9187,
+                        "y": 6.3208
+                    },
+                    "uuid": "92cd68ad-b214-4acf-bd50-f3cc9c27f191"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 0.2002 mm",
+                    "pos": {
+                        "x": 11.4739,
+                        "y": 8.0759
+                    },
+                    "uuid": "ca5cd993-a292-4456-95ef-3f86db10c306"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [VCC] on F.Cu, length 0.2831 mm",
+                    "pos": {
+                        "x": 14.5261,
+                        "y": 8.0759
+                    },
+                    "uuid": "4cc9dbf4-27d7-48f6-872a-77b2ca09e4c4"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [VCC] on F.Cu, length 1.6230 mm",
+                    "pos": {
+                        "x": 14.7263,
+                        "y": 7.8757
+                    },
+                    "uuid": "72bae051-351e-44d4-8fc8-91252438e0a4"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [RSIG22] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 23.9382,
+                        "y": 14.0243
+                    },
+                    "uuid": "3e66c955-d477-4159-885c-44e99a67a5e6"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [RSIG22] on F.Cu, length 0.7500 mm",
+                    "pos": {
+                        "x": 23.1882,
+                        "y": 14.0243
+                    },
+                    "uuid": "a8f9f920-eb62-442f-9979-df1e084f23cf"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG2] on F.Cu, length 1.0263 mm",
+                    "pos": {
+                        "x": 14.5869,
+                        "y": 12.7757
+                    },
+                    "uuid": "57f77d7c-6b08-488f-ad0c-91d973c1fabf"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG2] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 15.6132,
+                        "y": 12.7757
+                    },
+                    "uuid": "7b360dd1-e6f7-4a65-be56-6de0c690dfc1"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG3] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 15.6132,
+                        "y": 13.5757
+                    },
+                    "uuid": "6806a343-306b-4997-b62a-18109aabc4df"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG3] on F.Cu, length 1.3908 mm",
+                    "pos": {
+                        "x": 14.2224,
+                        "y": 13.5757
+                    },
+                    "uuid": "9e9bb2ed-523f-45fd-a3d4-7b4b12178f73"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG4] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 15.6132,
+                        "y": 14.3757
+                    },
+                    "uuid": "6a027e62-b6ee-46d6-9d34-9d4e4212f054"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG4] on F.Cu, length 1.5906 mm",
+                    "pos": {
+                        "x": 14.0226,
+                        "y": 14.3757
+                    },
+                    "uuid": "9e244c8a-d579-4678-9e90-e48065a1ce0c"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG5] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 15.6132,
+                        "y": 15.1757
+                    },
+                    "uuid": "8e22c197-9380-4ef7-a4a7-41d4fd57f909"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG5] on F.Cu, length 1.0271 mm",
+                    "pos": {
+                        "x": 14.5861,
+                        "y": 15.1757
+                    },
+                    "uuid": "e57686de-24ae-423d-bfe2-e48d89728023"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG7] on F.Cu, length 0.3172 mm",
+                    "pos": {
+                        "x": 15.6132,
+                        "y": 17.2243
+                    },
+                    "uuid": "df822bbe-7e2e-4421-8e31-9a594ed9e104"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (board setup constraints min width 0.2000 mm; actual 0.1500 mm)",
+            "items": [
+                {
+                    "description": "Track [SIG7] on F.Cu, length 11.4630 mm",
+                    "pos": {
+                        "x": 4.1502,
+                        "y": 17.2243
+                    },
+                    "uuid": "e20210a8-8174-40d4-b1f5-e9b8496ffa27"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        }
+    ]
+}

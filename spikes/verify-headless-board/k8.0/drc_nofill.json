@@ -1,0 +1,50 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:06:31+0500",
+    "kicad_version": "8.0.1",
+    "schematic_parity": [],
+    "source": "nofill.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [GND] of R1 on F.Cu",
+                    "pos": {
+                        "x": 7.0875,
+                        "y": 10.0
+                    },
+                    "uuid": "396ea8cd-1004-4cc6-b5c7-89149cda847d"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of J1",
+                    "pos": {
+                        "x": 26.0,
+                        "y": 17.54
+                    },
+                    "uuid": "5c79b915-4a72-4fb2-9ed3-4a083bd11bfb"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 5.0,
+                        "y": 5.0
+                    },
+                    "uuid": "59d38478-8067-4b87-a562-3adc5b49d735"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        }
+    ]
+}

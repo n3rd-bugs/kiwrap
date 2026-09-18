@@ -1,0 +1,13 @@
+** Drc report for t.kicad_pcb **
+** Created on 2026-09-18T22:02:24+0500 **
+
+** Found 1 DRC violations **
+[track_dangling]: Track has unconnected end
+    Local override; warning
+    @(100.3300 mm, 50.8000 mm): Track [N1] on F.Cu, length 20.3200 mm
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

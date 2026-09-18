@@ -1,0 +1,68 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:05:17",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/23c156aa-effd-418f-b91b-b7353ba76894",
+            "violations": [
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol R1 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 1.0922,
+                                "y": 0.6731
+                            },
+                            "uuid": "71f0fdba-7f78-4b9f-a91f-57d2974684bd"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol R1 Pin 2 [Passive, Line]",
+                            "pos": {
+                                "x": 1.0922,
+                                "y": 0.7493
+                            },
+                            "uuid": "ef3ec994-9074-4cb5-9f3e-479f833629f4"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                }
+            ]
+        }
+    ],
+    "source": "ldo_B.kicad_sch"
+}

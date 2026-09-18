@@ -1,0 +1,14 @@
+Usage: export netlist [--help] [--output OUTPUT_FILE] [--variant VAR]... [--format FORMAT] INPUT_FILE
+
+Export a netlist
+
+Positional arguments:
+  INPUT_FILE    Input file 
+
+Optional arguments:
+  -h, --help    Shows help message and exits 
+  -o, --output  Output file [nargs=0..1] [default: ""]
+  --variant     The variant name(s) to output, can be used multiple times to specify multiple variants.
+                When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.
+                When no --variant argument is provided the default variant is output. [nargs=0..1] [default: {}] [may be repeated]
+  --format      Netlist output format, valid options: kicadsexpr, kicadxml, cadstar, orcadpcb2, spice, spicemodel, pads, allegro [nargs=0..1] [default: "kicadsexpr"]

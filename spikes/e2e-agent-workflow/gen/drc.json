@@ -1,0 +1,153 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:42:26",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [
+        {
+            "description": "C_0603_1608Metric doesn't match footprint given by symbol (Capacitor_SMD:C_0603_1608Metric)",
+            "items": [
+                {
+                    "description": "Footprint C1",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "d4405bd5-1b5e-45d6-b5cd-f31d7e3f0223"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_mismatch"
+        },
+        {
+            "description": "R_0603_1608Metric doesn't match footprint given by symbol (Resistor_SMD:R_0603_1608Metric)",
+            "items": [
+                {
+                    "description": "Footprint R1",
+                    "pos": {
+                        "x": 110.0,
+                        "y": 100.0
+                    },
+                    "uuid": "a0989eae-7d10-4d69-81bb-31327b9693e8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_mismatch"
+        },
+        {
+            "description": "SOT-223-3_TabPin2 doesn't match footprint given by symbol (Package_TO_SOT_SMD:SOT-223-3_TabPin2)",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 120.0,
+                        "y": 100.0
+                    },
+                    "uuid": "801193f3-2fc3-429a-ae8f-4bb1c8af8f14"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_mismatch"
+        }
+    ],
+    "source": "agent_test.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/VCC_3V3] of C1 on F.Cu",
+                    "pos": {
+                        "x": 100.775,
+                        "y": 100.0
+                    },
+                    "uuid": "e625b430-dca0-4817-bd89-a81605711358"
+                },
+                {
+                    "description": "Pad 2 [/VCC_3V3] of R1 on F.Cu",
+                    "pos": {
+                        "x": 110.825,
+                        "y": 100.0
+                    },
+                    "uuid": "65f1f9b9-3b0e-47ca-87c1-d5fb77e1bc07"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/VCC_3V3] of R1 on F.Cu",
+                    "pos": {
+                        "x": 110.825,
+                        "y": 100.0
+                    },
+                    "uuid": "65f1f9b9-3b0e-47ca-87c1-d5fb77e1bc07"
+                },
+                {
+                    "description": "Pad 2 [/VCC_3V3] of U1 on F.Cu",
+                    "pos": {
+                        "x": 116.85,
+                        "y": 100.0
+                    },
+                    "uuid": "d4159453-8fc4-488c-954f-22e15c9f222b"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/VCC_3V3] of U1 on F.Cu",
+                    "pos": {
+                        "x": 116.85,
+                        "y": 100.0
+                    },
+                    "uuid": "d4159453-8fc4-488c-954f-22e15c9f222b"
+                },
+                {
+                    "description": "Pad 2 [/VCC_3V3] of U1 on F.Cu",
+                    "pos": {
+                        "x": 123.15,
+                        "y": 100.0
+                    },
+                    "uuid": "ef3b265c-87c1-473f-b06d-42c63ba1b2f0"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": []
+}

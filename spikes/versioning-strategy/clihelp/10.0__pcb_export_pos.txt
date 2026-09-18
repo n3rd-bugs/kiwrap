@@ -1,0 +1,22 @@
+Usage: export pos [--help] [--output OUTPUT_FILE] [--side VAR] [--format FORMAT] [--units UNITS] [--bottom-negate-x] [--use-drill-file-origin] [--smd-only] [--exclude-fp-th] [--exclude-dnp] [--gerber-board-edge] [--variant VAR]... INPUT_FILE
+
+Generate Position File
+
+Positional arguments:
+  INPUT_FILE               Input file 
+
+Optional arguments:
+  -h, --help               Shows help message and exits 
+  -o, --output             Output file [nargs=0..1] [default: ""]
+  --side                   Valid options: front, back, both. Gerber format only supports "front" or "back". [nargs=0..1] [default: "both"]
+  --format                 Valid options: ascii, csv, gerber [nargs=0..1] [default: "ascii"]
+  --units                  Output units; ascii or csv format only; valid options: in, mm [nargs=0..1] [default: "in"]
+  --bottom-negate-x        Use negative X coordinates for footprints on bottom layer (ascii or csv formats only) 
+  --use-drill-file-origin  Use drill/place file origin (ascii or csv only) 
+  --smd-only               Include only SMD footprints (ascii or csv only) 
+  --exclude-fp-th          Exclude all footprints with through-hole pads (ascii or csv only) 
+  --exclude-dnp            Exclude all footprints with the Do Not Populate flag set 
+  --gerber-board-edge      Include board edge layer (Gerber only) 
+  --variant                The variant name(s) to output, can be used multiple times to specify multiple variants.
+                           When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.
+                           When no --variant argument is provided the default variant is output. [nargs=0..1] [default: {}] [may be repeated]

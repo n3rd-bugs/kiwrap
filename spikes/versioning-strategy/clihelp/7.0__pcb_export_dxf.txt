@@ -1,0 +1,14 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: dxf [-h] [--output VAR] [--layers VAR] [--exclude-refdes] [--exclude-value] [--use-contours] [--output-units VAR] input
+
+Positional arguments:
+  input                  	Input file 
+
+Optional arguments:
+  -h, --help             	shows help message and exits 
+  -o, --output           	Output file name [default: ""]
+  -l, --layers           	Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [default: ""]
+  --erd, --exclude-refdes	Exclude the reference designator text 
+  --ev, --exclude-value  	Exclude the value text 
+  --uc, --use-contours   	Plot graphic items using their contours 
+  --ou, --output-units   	Output units, valid options: mm, in [default: "in"]

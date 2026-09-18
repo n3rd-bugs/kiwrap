@@ -1,0 +1,1 @@
+{"query":"{ project(fullPath:\"kicad/code/kicad\") { issue(iid:\"24966\") { title state closedAt milestone{title} labels{nodes{title}} notes(first:100){nodes{system body createdAt author{username}}} } } }"}

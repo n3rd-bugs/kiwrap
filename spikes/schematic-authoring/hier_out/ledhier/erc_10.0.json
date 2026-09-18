@@ -1,0 +1,42 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:59:22",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/493c4830-ebea-43d6-9dbe-b176dec8d99d",
+            "violations": []
+        },
+        {
+            "path": "/led_sub/",
+            "uuid_path": "/493c4830-ebea-43d6-9dbe-b176dec8d99d/2047be3c-2da7-4f26-ad6b-167e52ea27c6",
+            "violations": []
+        }
+    ],
+    "source": "ledhier.kicad_sch"
+}

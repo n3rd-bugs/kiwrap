@@ -1,0 +1,14 @@
+ERC report (2026-09-18T22:02:06+0500, Encoding UTF8)
+
+***** Sheet /
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(100.33 mm, 50.80 mm): Horizontal Wire, length 20.32 mm
+[unconnected_wire_endpoint]: Unconnected wire endpoint
+    ; warning
+    @(100.33 mm, 50.80 mm): Horizontal Wire, length 20.32 mm
+[unconnected_wire_endpoint]: Unconnected wire endpoint
+    ; warning
+    @(100.33 mm, 50.80 mm): Horizontal Wire, length 20.32 mm
+
+ ** ERC messages: 3  Errors 1  Warnings 2

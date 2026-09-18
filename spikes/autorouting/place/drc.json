@@ -1,0 +1,107 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:46:56",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [],
+    "source": "seeded_routed.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 40.0,
+                        "y": 30.0
+                    },
+                    "uuid": "cf1bf7ef-5750-4d06-89ea-fe58b1a121ed"
+                },
+                {
+                    "description": "Reference field of R5",
+                    "pos": {
+                        "x": 22.137,
+                        "y": 29.538
+                    },
+                    "uuid": "d4ee1fe0-5fa0-4bf8-8ed8-2e1aa96a0fff"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of R3",
+                    "pos": {
+                        "x": 23.938,
+                        "y": 27.426
+                    },
+                    "uuid": "a9bd0c53-9bad-42d2-8136-af94097a4f55"
+                },
+                {
+                    "description": "Pad 1 [RSIG25] of R5 on F.Cu",
+                    "pos": {
+                        "x": 22.962,
+                        "y": 28.108
+                    },
+                    "uuid": "15b312bf-c4cb-414d-893b-7a18e6ee5b23"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of R4",
+                    "pos": {
+                        "x": 18.407,
+                        "y": 23.014
+                    },
+                    "uuid": "cf144e84-2256-46d4-aafd-538bc6c5401d"
+                },
+                {
+                    "description": "Pad 1 [RSIG27] of R7 on F.Cu",
+                    "pos": {
+                        "x": 19.29,
+                        "y": 22.249
+                    },
+                    "uuid": "16cb7977-a576-4dd5-a660-fc07e6af7294"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        }
+    ]
+}

@@ -1,0 +1,16 @@
+** Drc report for C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/out9/swig_test.kicad_pcb **
+** Created on 2026-09-18 T **
+
+** Found 2 DRC violations **
+[lib_footprint_issues]: The footprint library 'Resistor_SMD' was not found at '}/Resistor_SMD.pretty'.
+    Local override; warning
+    @(8.0000 mm, 10.0000 mm): Footprint R1
+[lib_footprint_issues]: The footprint library 'Resistor_SMD' was not found at '}/Resistor_SMD.pretty'.
+    Local override; warning
+    @(22.0000 mm, 10.0000 mm): Footprint R2
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

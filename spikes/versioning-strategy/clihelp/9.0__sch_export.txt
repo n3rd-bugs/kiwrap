@@ -1,0 +1,16 @@
+Usage: export [--help] {bom,dxf,hpgl,netlist,pdf,ps,python-bom,svg}
+
+Export utilities (netlist, pdf, bom, etc)
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  bom        Generate a Bill of Materials (BOM)
+  dxf        Export DXF
+  hpgl       Export HPGL
+  netlist    Export a netlist
+  pdf        Export PDF
+  ps         Export PS
+  python-bom Export the legacy BOM XML format used in the schematic editor with Python scripts
+  svg        Export SVG

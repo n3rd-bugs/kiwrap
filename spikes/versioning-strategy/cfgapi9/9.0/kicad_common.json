@@ -1,0 +1,1 @@
+{ "api": { "enable_server": true }, "do_not_show_again": { "data_collection_prompt": true, "update_check_prompt": true, "env_var_overwrite_warning": true, "zone_fill_warning": true, "scaled_3d_models_warning": true } }

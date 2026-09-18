@@ -1,0 +1,9 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: python-bom [-h] [--output VAR] input
+
+Positional arguments:
+  input       	Input file 
+
+Optional arguments:
+  -h, --help  	shows help message and exits 
+  -o, --output	Output file name [default: ""]

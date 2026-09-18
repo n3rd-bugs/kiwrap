@@ -1,0 +1,184 @@
+{
+  "metadata": {
+    "date": "2026-09-18T20:45:58",
+    "generator": "KiCad 10.0.0",
+    "project": "pic_routed",
+    "board_name": "pic_routed"
+  },
+  "board": {
+    "has_outline": true,
+    "width": "160.0200 mm",
+    "height": "99.0600 mm",
+    "area": "15851.581 mm²",
+    "front_component_density": "40.17",
+    "back_component_density": "7.88",
+    "front_copper_area": "1568.615 mm²",
+    "back_copper_area": "13176.042 mm²",
+    "min_track_clearance": "0.2517 mm",
+    "min_track_width": "0.3000 mm",
+    "min_drill_diameter": "0.7500 mm",
+    "board_thickness": "1.6000 mm",
+    "front_footprint_area": "6367.487 mm²",
+    "back_footprint_area": "1248.781 mm²",
+    "front_footprint_density": "40.17",
+    "back_footprint_density": "7.88"
+  },
+  "pads": {
+    "through_hole": 238,
+    "smd": 2,
+    "connector": 0,
+    "npth": 7,
+    "castellated": 0,
+    "press_fit": 0
+  },
+  "vias": {
+    "through": 0,
+    "blind": 0,
+    "buried": 0,
+    "micro": 0
+  },
+  "components": {
+    "tht": {
+      "front": 56,
+      "back": 0,
+      "total": 56
+    },
+    "smd": {
+      "front": 0,
+      "back": 0,
+      "total": 0
+    },
+    "unspecified": {
+      "front": 6,
+      "back": 1,
+      "total": 7
+    },
+    "total": {
+      "front": 62,
+      "back": 1,
+      "total": 63
+    }
+  },
+  "drill_holes": [
+    {
+      "count": 156,
+      "shape": "Round",
+      "x_size": "0.8000 mm",
+      "y_size": "0.8000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 49,
+      "shape": "Round",
+      "x_size": "1.0000 mm",
+      "y_size": "1.0000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 9,
+      "shape": "Round",
+      "x_size": "0.7500 mm",
+      "y_size": "0.7500 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 6,
+      "shape": "Round",
+      "x_size": "4.3000 mm",
+      "y_size": "4.3000 mm",
+      "plated": false,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 6,
+      "shape": "Round",
+      "x_size": "0.9000 mm",
+      "y_size": "0.9000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 4,
+      "shape": "Round",
+      "x_size": "1.2000 mm",
+      "y_size": "1.2000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 4,
+      "shape": "Round",
+      "x_size": "1.3000 mm",
+      "y_size": "1.3000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 3,
+      "shape": "Round",
+      "x_size": "1.2700 mm",
+      "y_size": "1.2700 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 3,
+      "shape": "Round",
+      "x_size": "1.1000 mm",
+      "y_size": "1.1000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 2,
+      "shape": "Round",
+      "x_size": "2.0000 mm",
+      "y_size": "2.0000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 2,
+      "shape": "Round",
+      "x_size": "3.2000 mm",
+      "y_size": "3.2000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    },
+    {
+      "count": 1,
+      "shape": "Round",
+      "x_size": "3.5000 mm",
+      "y_size": "3.5000 mm",
+      "plated": false,
+      "source": "Pad",
+      "start_layer": "top_layer",
+      "stop_layer": "bottom_layer"
+    }
+  ]
+}

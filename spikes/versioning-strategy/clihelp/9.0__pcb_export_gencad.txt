@@ -1,0 +1,17 @@
+Usage: gencad [--help] [--output OUTPUT_FILE] [--define-var KEY=VALUE] [--flip-bottom-pads] [--unique-pins] [--unique-footprints] [--use-drill-origin] [--store-origin-coord] INPUT_FILE
+
+Export the PCB in Gencad format
+
+Positional arguments:
+  INPUT_FILE              Input file 
+
+Optional arguments:
+  -h, --help              Shows help message and exits 
+  -o, --output            Output file [nargs=0..1] [default: ""]
+  -D, --define-var        Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                          Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -f, --flip-bottom-pads  Flip bottom footprint padstacks 
+   --unique-pins          Generate unique pin names 
+   --unique-footprints    Generate a new shape for each footprint instance (do not reuse shapes) 
+   --use-drill-origin     Use drill/place file origin as origin 
+   --store-origin-coord   Save the origin coordinates in the file 

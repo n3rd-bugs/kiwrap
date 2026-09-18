@@ -1,0 +1,37 @@
+connected to 10.0.0 (10.0.0) board pic_programmer.kicad_pcb
+
+### undo with correct action name (common.Interactive.undo)
+tracks before=371 after create=372 after undo=371; run_action -> 1
+
+### place a footprint from the library by definition id only
+created: FootprintInstance ref: R999 pads in definition: 0 def id: :
+footprint count: 64
+
+### clone an existing footprint (with full definition) and place it
+cloned: C998 pads: 0 count now: 65
+
+### move a footprint (update_items) and read back
+move failed: AttributeError 'FootprintInstance' object has no attribute 'orientation_degrees'
+
+### create a new net
+net create failed: NotImplementedError Missing type mapping for type.googleapis.com/kiapi.board.types.Net, can't unpack it
+
+### DRC markers before
+markers failed: ApiError KiCad returned error: none of the requested types are valid for a Board object
+
+### run DRC dialog action (pcbnew.DRCTool.runDRC)
+runDRC -> 1
+ping after runDRC: None
+markers query: ApiError KiCad returned error: none of the requested types are valid for a Board object
+
+### hit test / bounding box
+bbox: Box2(pos=Vector2(9500000, 9500000), size=Vector2(11000001, 1000001))
+hit: True
+
+### save_as (retry)
+save_as ok: True 666974
+
+### revert
+revert ok, footprints: 63
+
+DONE2

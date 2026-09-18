@@ -1,0 +1,20 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: pdf [--help] [--output OUTPUT_FILE] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--theme THEME_NAME] [--black-and-white] [--exclude-drawing-sheet] [--exclude-pdf-property-popups] [--no-background-color] [--pages PAGE_LIST] INPUT_FILE
+
+Export PDF
+
+Positional arguments:
+  INPUT_FILE                     Input file 
+
+Optional arguments:
+  -h, --help                     Shows help message and exits 
+  -o, --output                   Output file [nargs=0..1] [default: ""]
+  --drawing-sheet                Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var               Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                                 Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -t, --theme                    Color theme to use (will default to schematic settings) [nargs=0..1] [default: ""]
+  -b, --black-and-white          Black and white only 
+  -e, --exclude-drawing-sheet    No drawing sheet 
+  --exclude-pdf-property-popups  Do not generate property popups in PDF 
+  -n, --no-background-color      Avoid setting a background color (regardless of theme) 
+  -p, --pages                    List of page numbers separated by comma to print, blank or unspecified is equivalent to all pages [nargs=0..1] [default: ""]

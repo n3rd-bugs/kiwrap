@@ -1,0 +1,30 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T21:13:13+0500",
+    "kicad_version": "9.0.5",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/ed474af4-80ef-4710-9cd2-deb05c287384",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR01 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.7366
+                            },
+                            "uuid": "e47dbf9e-59c3-4254-b366-82c5fe8f0b38"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                }
+            ]
+        }
+    ],
+    "source": "v9.kicad_sch"
+}

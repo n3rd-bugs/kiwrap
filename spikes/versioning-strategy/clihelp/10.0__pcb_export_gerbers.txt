@@ -1,0 +1,34 @@
+Usage: export gerbers [--help] [--output OUTPUT_DIR] [--layers LAYER_LIST] [--common-layers COMMON_LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--exclude-refdes] [--exclude-value] [--include-border-title] [--sketch-pads-on-fab-layers] [--hide-DNP-footprints-on-fab-layers] [--sketch-DNP-footprints-on-fab-layers] [--crossout-DNP-footprints-on-fab-layers] [--no-x2] [--no-netlist] [--subtract-soldermask] [--disable-aperture-macros] [--use-drill-file-origin] [--precision PRECISION] [--no-protel-ext] [--check-zones] [--variant VAR]... [--board-plot-params] INPUT_FILE
+
+Plot multiple Gerbers for a PCB, including the ability to use stored board plot settings
+
+Positional arguments:
+  INPUT_FILE                                       Input file 
+
+Optional arguments:
+  -h, --help                                       Shows help message and exits 
+  -o, --output                                     Output directory [nargs=0..1] [default: ""]
+  -l, --layers                                     Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --cl, --common-layers                            Layers to include on each plot, comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --drawing-sheet                                  Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var                                 Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                                                   Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]
+  --erd, --exclude-refdes                          Exclude the reference designator text 
+  --ev, --exclude-value                            Exclude the value text 
+  --ibt, --include-border-title                    Include the border and title block 
+  --sp, --sketch-pads-on-fab-layers                Draw pad outlines and their numbers on front and back fab layers 
+  --hdnp, --hide-DNP-footprints-on-fab-layers      Don't plot text & graphics of DNP footprints on fab layers 
+  --sdnp, --sketch-DNP-footprints-on-fab-layers    Plot graphics of DNP footprints in sketch mode on fab layers 
+  --cdnp, --crossout-DNP-footprints-on-fab-layers  Plot an 'X' over the courtyard of DNP footprints on fab layers, and strikeout their reference designators 
+  --no-x2                                          Do not use the extended X2 format 
+  --no-netlist                                     Do not generate netlist attributes 
+  --subtract-soldermask                            Subtract soldermask from silkscreen 
+  --disable-aperture-macros                        Disable aperture macros 
+  --use-drill-file-origin                          Use drill/place file origin 
+  --precision                                      Precision of Gerber coordinates, valid options: 5 or 6 [nargs=0..1] [default: 6]
+  --no-protel-ext                                  Use KiCad Gerber file extension 
+  --check-zones                                    Check and refill zones if required 
+  --variant                                        The variant name(s) to output, can be used multiple times to specify multiple variants.
+                                                   When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.
+                                                   When no --variant argument is provided the default variant is output. [nargs=0..1] [default: {}] [may be repeated]
+  --board-plot-params                              Use the Gerber plot settings already configured in the board file 

@@ -1,0 +1,8 @@
+Usage: fp [-h] {export,upgrade}
+
+Optional arguments:
+  -h, --help	shows help message and exits 
+
+Subcommands:
+  export     
+  upgrade    

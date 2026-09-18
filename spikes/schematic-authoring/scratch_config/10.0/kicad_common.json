@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "version": 5
+  },
+  "api": {
+    "enable_server": true,
+    "interpreter_path": "C:\\Program Files\\KiCad\\10.0\\bin\\pythonw.exe"
+  },
+  "environment": {
+    "vars": null
+  },
+  "system": {
+    "first_run_shown": true
+  },
+  "do_not_show_again": {
+    "data_collection_prompt": true,
+    "update_check_prompt": true,
+    "migrate_wrl_prompt": true
+  }
+}

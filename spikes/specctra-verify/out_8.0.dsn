@@ -1,0 +1,89 @@
+(pcb out_8.0.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "KiCad's Pcbnew")
+    (host_version "8.0.1")
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu
+      (type signal)
+      (property
+        (index 0)
+      )
+    )
+    (layer B.Cu
+      (type signal)
+      (property
+        (index 1)
+      )
+    )
+    (boundary
+      (path pcb 0  60000 -50000  10000 -50000  10000 -10000  60000 -10000
+            60000 -50000)
+    )
+    (via "Via[0-1]_600:300_um" "Via[0-1]_800:400_um")
+    (rule
+      (width 200)
+      (clearance 200)
+      (clearance 200 (type default_smd))
+      (clearance 50 (type smd_smd))
+    )
+  )
+  (placement
+    (component Test:R2
+      (place R1 20000.000000 -20000.000000 front 0.000000 (PN 10k))
+      (place R2 40000.000000 -20000.000000 front 0.000000 (PN 10k))
+      (place R3 30000.000000 -40000.000000 front 0.000000 (PN 10k))
+    )
+  )
+  (library
+    (image Test:R2
+      (pin Rect[T]Pad_1200x1200_um 1 -1500 0)
+      (pin Rect[T]Pad_1200x1200_um 2 1500 0)
+    )
+    (padstack Rect[T]Pad_1200x1200_um
+      (shape (rect F.Cu -600 -600 600 600))
+      (attach off)
+    )
+    (padstack "Via[0-1]_600:300_um"
+      (shape (circle F.Cu 600))
+      (shape (circle B.Cu 600))
+      (attach off)
+    )
+    (padstack "Via[0-1]_800:400_um"
+      (shape (circle F.Cu 800))
+      (shape (circle B.Cu 800))
+      (attach off)
+    )
+  )
+  (network
+    (net NET1
+      (pins R1-1 R2-1)
+    )
+    (net NET2
+      (pins R1-2 R3-1)
+    )
+    (net NET3
+      (pins R2-2 R3-2)
+    )
+    (class kicad_default "" NET1 NET2 NET3
+      (circuit
+        (use_via Via[0-1]_600:300_um)
+      )
+      (rule
+        (width 200)
+        (clearance 200)
+      )
+    )
+  )
+  (wiring
+    (wire (path F.Cu 250  21500 -20000  38500 -20000)(net NET1)(type route))
+    (wire (path F.Cu 250  21500 -20000  21500 -30000)(net NET1)(type fix))
+    (wire (path B.Cu 250  21500 -30000  21500 -35000)(net NET2)(type route))
+    (via "Via[0-1]_800:400_um"  21500 -30000 (net NET2)(type route))
+    (via "Via[0-1]_800:400_um"  25000 -30000 (net NET3)(type fix))
+  )
+)

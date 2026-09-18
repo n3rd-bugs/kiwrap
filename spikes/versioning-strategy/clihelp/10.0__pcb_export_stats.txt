@@ -1,0 +1,15 @@
+Usage: export stats [--help] [--output OUTPUT_FILE] [--format FORMAT] [--units UNITS] [--exclude-footprints-without-pads] [--subtract-holes-from-board] [--subtract-holes-from-copper] INPUT_FILE
+
+Generate a board statistics report
+
+Positional arguments:
+  INPUT_FILE                         Input file 
+
+Optional arguments:
+  -h, --help                         Shows help message and exits 
+  -o, --output                       Output file [nargs=0..1] [default: ""]
+  --format                           Output file format, options: json, report [nargs=0..1] [default: "report"]
+  --units                            Report units; valid options: in, mm [nargs=0..1] [default: "mm"]
+  --exclude-footprints-without-pads  Exclude footprints without pads 
+  --subtract-holes-from-board        Subtract holes from the board area 
+  --subtract-holes-from-copper       Subtract holes from copper areas 

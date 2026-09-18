@@ -1,0 +1,139 @@
+{
+ "kicad": "10.0",
+ "sch": "ledplain.kicad_sch",
+ "erc_rc": 0,
+ "erc_violations": [],
+ "netlist_rc": 0,
+ "nets": {
+  "/LED_A": [
+   [
+    "D1",
+    "2"
+   ],
+   [
+    "R1",
+    "2"
+   ]
+  ],
+  "GND": [
+   [
+    "D1",
+    "1"
+   ],
+   [
+    "J1",
+    "2"
+   ]
+  ],
+  "VIN": [
+   [
+    "J1",
+    "1"
+   ],
+   [
+    "R1",
+    "1"
+   ]
+  ]
+ },
+ "components": [
+  "D1",
+  "J1",
+  "R1"
+ ],
+ "footprints": [
+  "LED_SMD:LED_0603_1608Metric",
+  "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "Resistor_SMD:R_0603_1608Metric"
+ ],
+ "svg_rc": 0,
+ "svg_files": [
+  "ledplain.svg"
+ ],
+ "upgrade_rc": 0,
+ "upgrade_log": "Successfully saved schematic file using the latest format",
+ "upgrade_changed": true,
+ "upgrade_diff_lines": 2338,
+ "upgrade_diff_head": [
+  "--- ",
+  "+++ ",
+  "@@ -2 +2 @@",
+  "-\t(version 20260101)",
+  "+\t(version 20260306)",
+  "@@ -8,695 +8,382 @@",
+  "-(symbol \"Device:R\"",
+  "-\t\t(pin_numbers",
+  "-\t\t\t(hide yes)",
+  "-\t\t)",
+  "-\t\t(pin_names",
+  "-\t\t\t(offset 0)",
+  "-\t\t)",
+  "-\t\t(exclude_from_sim no)",
+  "-\t\t(in_bom yes)",
+  "-\t\t(on_board yes)",
+  "-\t\t(in_pos_files yes)",
+  "-\t\t(duplicate_pin_numbers_are_jumpers no)",
+  "-\t\t(property \"Reference\" \"R\"",
+  "-\t\t\t(at 2.032 0 90)",
+  "-\t\t\t(show_name no)",
+  "-\t\t\t(do_not_autoplace no)",
+  "-\t\t\t(effects",
+  "-\t\t\t\t(font",
+  "-\t\t\t\t\t(size 1.27 1.27)",
+  "-\t\t\t\t)",
+  "-\t\t\t)",
+  "-\t\t)",
+  "-\t\t(property \"Value\" \"R\"",
+  "-\t\t\t(at 0 0 90)",
+  "-\t\t\t(show_name no)",
+  "-\t\t\t(do_not_autoplace no)",
+  "-\t\t\t(effects",
+  "-\t\t\t\t(font",
+  "-\t\t\t\t\t(size 1.27 1.27)",
+  "-\t\t\t\t)",
+  "-\t\t\t)",
+  "-\t\t)",
+  "-\t\t(property \"Footprint\" \"\"",
+  "-\t\t\t(at -1.778 0 90)",
+  "-\t\t\t(show_name no)",
+  "-\t\t\t(do_not_autoplace no)",
+  "-\t\t\t(hide yes)",
+  "-\t\t\t(effects",
+  "-\t\t\t\t(font",
+  "-\t\t\t\t\t(size 1.27 1.27)",
+  "-\t\t\t\t)",
+  "-\t\t\t)",
+  "-\t\t)",
+  "-\t\t(property \"Datasheet\" \"\"",
+  "-\t\t\t(at 0 0 0)",
+  "-\t\t\t(show_name no)",
+  "-\t\t\t(do_not_autoplace no)",
+  "-\t\t\t(hide yes)",
+  "-\t\t\t(effects",
+  "-\t\t\t\t(font",
+  "-\t\t\t\t\t(size 1.27 1.27)",
+  "-\t\t\t\t)",
+  "-\t\t\t)",
+  "-\t\t)",
+  "-\t\t(property \"Description\" \"Resistor\"",
+  "-\t\t\t(at 0 0 0)",
+  "-\t\t\t(show_name no)",
+  "-\t\t\t(do_not_autoplace no)",
+  "-\t\t\t(hide yes)",
+  "-\t\t\t(effects",
+  "-\t\t\t\t(font",
+  "-\t\t\t\t\t(size 1.27 1.27)",
+  "-\t\t\t\t)",
+  "-\t\t\t)",
+  "-\t\t)",
+  "-\t\t(property \"ki_keywords\" \"R res resistor\"",
+  "-\t\t\t(at 0 0 0)",
+  "-\t\t\t(show_name no)",
+  "-\t\t\t(do_not_autoplace no)",
+  "-\t\t\t(hide yes)",
+  "-\t\t\t(effects",
+  "-\t\t\t\t(font",
+  "-\t\t\t\t\t(size 1.27 1.27)",
+  "-\t\t\t\t)"
+ ]
+}

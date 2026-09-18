@@ -1,0 +1,18 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: vrml [--help] [--output OUTPUT_FILE] [--define-var KEY=VALUE] [--force] [--user-origin VAR] [--units VAR] [--models-dir VAR] [--models-relative] INPUT_FILE
+
+Export VRML
+
+Positional arguments:
+  INPUT_FILE         Input file 
+
+Optional arguments:
+  -h, --help         Shows help message and exits 
+  -o, --output       Output file [nargs=0..1] [default: ""]
+  -D, --define-var   Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                     Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -f, --force        Overwrite output file 
+  --user-origin      User-specified output origin ex. 1x1in, 1x1inch, 25.4x25.4mm (default unit mm) [nargs=0..1] [default: ""]
+  --units            Output units; valid options: mm, m, in, tenths [nargs=0..1] [default: "in"]
+  --models-dir       Name of folder to create and store 3d models in, if not specified or empty, the models will be embedded in main exported VRML file [nargs=0..1] [default: ""]
+  --models-relative  Used with --models-dir to output relative paths in the resulting file 

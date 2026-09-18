@@ -1,0 +1,199 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:52:55",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "key": "silk_edge_clearance"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [],
+    "source": "ecc83-pp.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Footprint 'CP_Radial_D10.0mm_P5.00mm' does not match copy in library 'Capacitor_THT'",
+            "items": [
+                {
+                    "description": "Footprint C1",
+                    "pos": {
+                        "x": 141.605,
+                        "y": 99.695
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a581e5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'C_Disc_D4.7mm_W2.5mm_P5.00mm' does not match copy in library 'Capacitor_THT'",
+            "items": [
+                {
+                    "description": "Footprint C2",
+                    "pos": {
+                        "x": 137.16,
+                        "y": 125.095
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a581ea"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'",
+            "items": [
+                {
+                    "description": "Footprint R1",
+                    "pos": {
+                        "x": 136.271,
+                        "y": 107.95
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58213"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'",
+            "items": [
+                {
+                    "description": "Footprint R2",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 95.885
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58218"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'",
+            "items": [
+                {
+                    "description": "Footprint R4",
+                    "pos": {
+                        "x": 164.465,
+                        "y": 117.475
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58222"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'",
+            "items": [
+                {
+                    "description": "Footprint P2",
+                    "pos": {
+                        "x": 128.27,
+                        "y": 112.776
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a332ee4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'",
+            "items": [
+                {
+                    "description": "Footprint P3",
+                    "pos": {
+                        "x": 128.27,
+                        "y": 100.711
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a332f0f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'",
+            "items": [
+                {
+                    "description": "Footprint P4",
+                    "pos": {
+                        "x": 145.542,
+                        "y": 131.191
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a332f3a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'",
+            "items": [
+                {
+                    "description": "Footprint R3",
+                    "pos": {
+                        "x": 133.985,
+                        "y": 125.095
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a33370f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'",
+            "items": [
+                {
+                    "description": "Footprint P1",
+                    "pos": {
+                        "x": 166.37,
+                        "y": 105.41
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005d888bc3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        }
+    ]
+}

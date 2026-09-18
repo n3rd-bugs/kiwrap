@@ -1,0 +1,389 @@
+(export
+	(version "E")
+	(design
+		(source "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\verify-sch-20260306\\t3\\t3.kicad_sch")
+		(date "2026-09-18T22:08:55")
+		(tool "Eeschema 10.0.0")
+		(sheet
+			(number "1")
+			(name "/")
+			(tstamps "/")
+			(title_block
+				(title)
+				(company)
+				(rev)
+				(date)
+				(source "t3.kicad_sch")
+				(comment
+					(number "1")
+					(value "")
+				)
+				(comment
+					(number "2")
+					(value "")
+				)
+				(comment
+					(number "3")
+					(value "")
+				)
+				(comment
+					(number "4")
+					(value "")
+				)
+				(comment
+					(number "5")
+					(value "")
+				)
+				(comment
+					(number "6")
+					(value "")
+				)
+				(comment
+					(number "7")
+					(value "")
+				)
+				(comment
+					(number "8")
+					(value "")
+				)
+				(comment
+					(number "9")
+					(value "")
+				)
+			)
+		)
+	)
+	(components
+		(comp
+			(ref "R1")
+			(value "10k")
+			(footprint "Resistor_SMD:R_0603_1608Metric")
+			(fields
+				(field
+					(name "Footprint") "Resistor_SMD:R_0603_1608Metric")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "")
+			)
+			(property
+				(name "Sheetfile")
+				(value "t3.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "f2a4e516-fe55-44b0-b356-415f5784543a")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U1")
+			(value "LM1117LD-3.3")
+			(footprint "Package_SON:WSON-8-1EP_4x4mm_P0.8mm_EP2.2x3mm")
+			(fields
+				(field
+					(name "Footprint") "Package_SON:WSON-8-1EP_4x4mm_P0.8mm_EP2.2x3mm")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Regulator_Linear")
+				(part "LM1117LD-3.3")
+				(description "800mA Low-Dropout Linear Regulator, 3.3V fixed output, WSON-8")
+			)
+			(property
+				(name "Sheetname")
+				(value "")
+			)
+			(property
+				(name "Sheetfile")
+				(value "t3.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "linear regulator ldo fixed positive")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "WSON?8*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "a8c3f9d3-abc5-4ff6-a103-16287fa31eab")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "4")
+						)
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "8")
+						)
+						(pin
+							(num "5")
+						)
+						(pin
+							(num "6")
+						)
+						(pin
+							(num "7")
+						)
+						(pin
+							(num "9")
+						)
+					)
+				)
+			)
+		)
+	)
+	(groups)
+	(variants)
+	(libparts
+		(libpart
+			(lib "Device")
+			(part "R")
+			(description "Resistor")
+			(footprints
+				(fp "R_*")
+			)
+			(fields
+				(field
+					(name "Reference") "R")
+				(field
+					(name "Value") "R")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "Resistor")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "Regulator_Linear")
+			(part "LM1117LD-3.3")
+			(description "800mA Low-Dropout Linear Regulator, 3.3V fixed output, WSON-8")
+			(docs "http://www.ti.com/lit/ds/symlink/lm1117.pdf")
+			(footprints
+				(fp "WSON?8*")
+			)
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "LM1117LD-3.3")
+				(field
+					(name "Footprint") "Package_SON:WSON-8-1EP_4x4mm_P0.8mm_EP2.2x3mm")
+				(field
+					(name "Datasheet") "http://www.ti.com/lit/ds/symlink/lm1117.pdf")
+				(field
+					(name "Description") "800mA Low-Dropout Linear Regulator, 3.3V fixed output, WSON-8")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "GND")
+					(type "power_in")
+				)
+				(pin
+					(num "2")
+					(name "VI")
+					(type "power_in")
+				)
+				(pin
+					(num "3")
+					(name "VI")
+					(type "passive")
+				)
+				(pin
+					(num "4")
+					(name "VI")
+					(type "passive")
+				)
+				(pin
+					(num "5")
+					(name "VO")
+					(type "power_out")
+				)
+				(pin
+					(num "6")
+					(name "VO")
+					(type "passive")
+				)
+				(pin
+					(num "7")
+					(name "VO")
+					(type "passive")
+				)
+				(pin
+					(num "8")
+					(name "NC")
+					(type "no_connect")
+				)
+				(pin
+					(num "9")
+					(name "VO")
+					(type "passive")
+				)
+			)
+		)
+	)
+	(libraries
+		(library
+			(logical "Device")
+			(uri "${KICAD10_SYMBOL_DIR}/Device.kicad_sym")
+		)
+		(library
+			(logical "Regulator_Linear")
+			(uri "${KICAD10_SYMBOL_DIR}/Regulator_Linear.kicad_sym")
+		)
+	)
+	(nets
+		(net
+			(code "1")
+			(name "+3V3")
+			(class "Default")
+			(node
+				(ref "R1")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "5")
+				(pinfunction "VO_5")
+				(pintype "power_out")
+			)
+			(node
+				(ref "U1")
+				(pin "6")
+				(pinfunction "VO_6")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "7")
+				(pinfunction "VO_7")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "9")
+				(pinfunction "VO_9")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "2")
+			(name "+5V")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "2")
+				(pinfunction "VI_2")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U1")
+				(pin "3")
+				(pinfunction "VI_3")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "4")
+				(pinfunction "VI_4")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "3")
+			(name "GND")
+			(class "Default")
+			(node
+				(ref "R1")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "1")
+				(pinfunction "GND_1")
+				(pintype "power_in")
+			)
+		)
+		(net
+			(code "4")
+			(name "unconnected-(U1-NC-Pad8)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "8")
+				(pinfunction "NC_8")
+				(pintype "no_connect")
+			)
+		)
+	)
+)

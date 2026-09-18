@@ -1,0 +1,7 @@
+.sympath srv*C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\verify-symbols-pdb\symcache*https://symbols.kicad.org/kicad-stable
+!sym noisy
+bu _pcbnew!DRC_ENGINE::RunTests
+g
+k 5
+.dump /m C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\verify-symbols-pdb\kicad10_mini.dmp
+q

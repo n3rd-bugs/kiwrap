@@ -1,0 +1,375 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:04:50+0500",
+    "kicad_version": "8.0.1",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/c1ae510e-56f1-4553-9771-969d6825b533",
+            "violations": [
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P8 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 1.2446,
+                                "y": 0.7112
+                            },
+                            "uuid": "4d49464a-04e2-4093-a2b4-08464249f60a"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P8 [P]",
+                            "pos": {
+                                "x": 1.27,
+                                "y": 0.762
+                            },
+                            "uuid": "81a0f597-e9ff-47e5-a79a-a492942cfcfa"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P4 [P]",
+                            "pos": {
+                                "x": 1.27,
+                                "y": 0.508
+                            },
+                            "uuid": "64e4f5df-310d-4f04-bb43-a2779d22478a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P6 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.8128,
+                                "y": 0.7366
+                            },
+                            "uuid": "a31f5da3-6d36-4529-99d5-dce3632c90a7"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P2 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.7874,
+                                "y": 0.5588
+                            },
+                            "uuid": "1901d64b-0e0d-4a0d-9b8d-00fbc72322b0"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P6 [P]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.762
+                            },
+                            "uuid": "31b1f532-4495-457a-8bfa-4f231e3cffde"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P2 [P]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.508
+                            },
+                            "uuid": "88c72ce4-7c6a-4238-b40a-32212119e8bf"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P7 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.9906,
+                                "y": 0.8128
+                            },
+                            "uuid": "ef40b247-f355-4532-9ecb-a26c9cbe2a70"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P11 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 1.0668,
+                                "y": 0.9906
+                            },
+                            "uuid": "31d327cd-96df-4826-9625-f142453ea75a"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P7 [P]",
+                            "pos": {
+                                "x": 1.016,
+                                "y": 0.762
+                            },
+                            "uuid": "6373c8df-6258-490a-81e6-a2b1efc61a05"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P5 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.4572,
+                                "y": 0.7874
+                            },
+                            "uuid": "fd94120f-3ec0-4754-9c6a-2a2c653c1497"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P9 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.5334,
+                                "y": 1.0668
+                            },
+                            "uuid": "7124e6fd-8cb8-4fc6-a893-cd0c6c0bc570"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P10 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.8128,
+                                "y": 1.0414
+                            },
+                            "uuid": "27beb0d3-8dc8-4149-bfb9-2f732806486f"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P9 [P]",
+                            "pos": {
+                                "x": 0.508,
+                                "y": 1.016
+                            },
+                            "uuid": "767882d0-0bf2-461f-8782-16b35d6ba391"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P10 [P]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 1.016
+                            },
+                            "uuid": "2710df46-9c4c-479e-a6fe-d40fecf98c79"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P3 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.9906,
+                                "y": 0.4572
+                            },
+                            "uuid": "96866dec-a426-4221-b363-66fb85451ed5"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P4 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 1.2192,
+                                "y": 0.4826
+                            },
+                            "uuid": "ffd3720a-560d-4d95-b480-a80f73dd39ce"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P3 [P]",
+                            "pos": {
+                                "x": 1.016,
+                                "y": 0.508
+                            },
+                            "uuid": "c1e7e21e-72fc-4b95-a8c4-016121906ccb"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P1 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 0.5334,
+                                "y": 0.4572
+                            },
+                            "uuid": "ce17caec-e70c-438b-8dd5-169c882e3d79"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P5 [P]",
+                            "pos": {
+                                "x": 0.508,
+                                "y": 0.762
+                            },
+                            "uuid": "a2a6916f-b579-4cec-bf89-2e4fd8943112"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P1 [P]",
+                            "pos": {
+                                "x": 0.508,
+                                "y": 0.508
+                            },
+                            "uuid": "be54947a-6eb5-4aea-a04d-2bf58afbef4e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol P12 Pin 1 [A, Passive, Line]",
+                            "pos": {
+                                "x": 1.2192,
+                                "y": 1.0414
+                            },
+                            "uuid": "a79547d0-bc46-464b-abb9-5d535a248009"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P11 [P]",
+                            "pos": {
+                                "x": 1.016,
+                                "y": 1.016
+                            },
+                            "uuid": "e973efa8-e535-4d7c-8c0c-44cc4daa7881"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the library 'Test'",
+                    "items": [
+                        {
+                            "description": "Symbol P12 [P]",
+                            "pos": {
+                                "x": 1.27,
+                                "y": 1.016
+                            },
+                            "uuid": "e4c64e39-5e7f-4615-8b1d-1f790af32ace"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                }
+            ]
+        }
+    ],
+    "source": "t.kicad_sch"
+}

@@ -1,0 +1,113 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:05:42",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/9d8fdb2c-b3d7-4ba3-bf08-b0d3b339d821",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR02 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.9652,
+                                "y": 0.5842
+                            },
+                            "uuid": "09f2c2e8-c7aa-4b28-b04a-1acff6b3609a"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.1270 mm",
+                            "pos": {
+                                "x": 0.5588,
+                                "y": 0.635
+                            },
+                            "uuid": "262aa78f-8b78-4c86-8ebe-0f6ad9512a84"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Symbol 'AMS1117-3.3' doesn't match copy in library 'Regulator_Linear'",
+                    "items": [
+                        {
+                            "description": "Symbol U1 [AMS1117-3.3]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.635
+                            },
+                            "uuid": "3214586d-f36d-4a23-9e6c-ede3dd7123d7"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Vertical Wire, length 0.1778 mm",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.889
+                            },
+                            "uuid": "d02a43be-bc83-4de2-9c85-bcf37e6495ae"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.1270 mm",
+                            "pos": {
+                                "x": 0.8382,
+                                "y": 0.635
+                            },
+                            "uuid": "3aede7b0-9c58-4d2f-9ffa-f5bb251a99dd"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                }
+            ]
+        }
+    ],
+    "source": "ldo_C.kicad_sch"
+}

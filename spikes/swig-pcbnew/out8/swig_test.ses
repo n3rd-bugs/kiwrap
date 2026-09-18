@@ -1,0 +1,44 @@
+(session "swig_test.ses"
+  (base_design "swig_test.dsn")
+  (placement
+    (resolution um 10)
+    (component "Resistor_SMD:R_0603_1608Metric"
+      (place R1 8000 -10000 front 0)
+      (place R2 22000 -10000 front 90)
+    )
+  )
+  (was_is
+  )
+  (routes
+    (resolution um 10)
+    (parser
+      (host_cad "KiCad's Pcbnew")
+      (host_version "10.0.0")
+    )
+    (library_out
+      (padstack "Via[0-1]_600:300_um"
+        (shape
+          (circle F.Cu 600 0 0)
+        )
+        (shape
+          (circle B.Cu 600 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out
+      (net SIG
+        (wire
+          (path F.Cu 250
+            8825 -10000
+            15000 -12000
+            22000 -10825
+          )
+        )
+      )
+      (net GND
+        (via "Via[0-1]_600:300_um" 15000 -5000)
+      )
+    )
+  )
+)

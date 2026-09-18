@@ -1,0 +1,12 @@
+(session "t.ses"
+  (base_design "t.dsn")
+  (placement (resolution um 10)
+    (component "Resistor_SMD:R_0603_1608Metric" (place R1 700000 -800000 back 90)))
+  (was_is)
+  (routes (resolution um 10) (parser (host_cad "KiCad's Pcbnew"))
+    (library_out
+      (padstack "Via[0-1]_600:300_um" (shape (circle F.Cu 6000 0 0)) (shape (circle B.Cu 6000 0 0)) (attach off)))
+    (network_out
+      (net GND
+        (wire (path F.Cu 2500 100000 -100000 300000 -100000))
+        (via "Via[0-1]_600:300_um" 300000 -100000)))))

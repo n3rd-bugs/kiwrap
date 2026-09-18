@@ -1,0 +1,11 @@
+Usage: fp upgrade [--help] [--output OUTPUT_DIR] [--force] INPUT_FILE_OR_DIR
+
+Upgrades the footprint library to the current kicad version format
+
+Positional arguments:
+  INPUT_FILE_OR_DIR  Input file or directory 
+
+Optional arguments:
+  -h, --help         Shows help message and exits 
+  -o, --output       Output directory [nargs=0..1] [default: ""]
+  --force            Forces the footprint library to be resaved regardless of versioning 

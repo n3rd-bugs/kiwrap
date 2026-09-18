@@ -1,0 +1,81 @@
+KICAD_API_SOCKET env: None
+KICAD_API_TOKEN env: None
+
+### connect
+socket path used: ipc://C:\Users\usama\AppData\Local\Temp\kicad\api.sock
+KiCad version: 10.0.0 (10.0.0)
+kicad-python API version: 10.0.6 (10.0.6-0-gcaf7377e9c)
+check_version: True
+ping ok
+kicad-cli path via API: C:/Program Files/KiCad/10.0/bin/kicad-cli.exe
+token now: '58efb71e-45f8-4064-a2ae-71f70b120a9a'
+
+### open documents
+DOCTYPE_PCB -> ['pic_programmer.kicad_pcb']
+DOCTYPE_SCHEMATIC ERROR: ApiError KiCad returned error: no handler available for request of type kiapi.common.commands.GetOpenDocuments
+DOCTYPE_PROJECT ERROR: ApiError KiCad returned error: no handler available for request of type kiapi.common.commands.GetOpenDocuments
+DOCTYPE_FOOTPRINT ERROR: ApiError KiCad returned error: no handler available for request of type kiapi.common.commands.GetOpenDocuments
+DOCTYPE_SYMBOL ERROR: ApiError KiCad returned error: no handler available for request of type kiapi.common.commands.GetOpenDocuments
+
+### board info
+board name: pic_programmer.kicad_pcb
+document: type: DOCTYPE_PCB
+board_filename: "pic_programmer.kicad_pcb"
+project {
+  name: "pic_programmer"
+  path: "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\ipc-api\\proj"
+}
+
+project name/path: pic_programmer C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\proj
+nets: 112 ['', '/CLOCK-RB6', '/DATA-RB7', '/PC-CLOCK-OUT', '/PC-DATA-IN', '/PC-DATA-OUT', '/VPP_ON', '/VPP{slash}MCLR']
+footprints: 63 [('C1', 'Capacitor_THT:CP_Axial_L18.0mm_D6.5mm_P25.00mm_Horizontal'), ('C2', 'Capacitor_THT:CP_Axial_L18.0mm_D6.5mm_P25.00mm_Horizontal'), ('P101', 'MountingHole:MountingHole_4.3mm_M4'), ('P102', 'MountingHole:MountingHole_4.3mm_M4'), ('P103', 'MountingHole:MountingHole_4.3mm_M4')]
+tracks: 370
+vias: 6
+zones: 1
+pads: 247
+enabled layers: 20 copper count: 2
+active layer: BL_F_Cu
+origin (grid): Vector2(0, 0)
+stackup layers: 9
+netclasses: ['Default', 'POWER']
+title block: <kipy.common_types.TitleBlockInfo object at 0x000001E55CDA4A90>
+selection: 0
+text variables: TextVariables({})
+
+### add a track + via inside a commit
+using net: GND
+created: [('Track', 'value: "daa21b07-69aa-4628-ba2f-590ad11ff08d"\n'), ('Via', 'value: "7930dd3c-1e34-4e9b-aad4-08d0230e0783"\n')]
+tracks now: 371 vias now: 7
+
+### update the track
+update result: [('Track', 1000000)]
+
+### undo via run_action (unstable API)
+run_action undo -> status: RAS_INVALID
+
+tracks after undo: 371
+
+### selection ops
+selection after add: 2
+
+### DRC via API?
+board_commands with 'Drc' in name: ['InjectDrcError', 'InjectDrcErrorResponse']
+run_action showDRCDialog -> status: RAS_INVALID
+
+
+### refill zones
+refill ok
+
+### save_as copy
+save_as failed: ApiError KiCad returned error: KiCad is busy and cannot respond to API requests right now
+
+### save (in place)
+save ok
+
+### get_as_string
+board as string length: 634213 starts: (kicad_pcb 	(version 20260206) 	(generator "pcbnew") 	(gener
+
+### schematic doc via raw proto (expect unhandled in 10.0)
+schematic query: ApiError KiCad returned error: no handler available for request of type kiapi.common.commands.GetOpenDocuments
+
+DONE

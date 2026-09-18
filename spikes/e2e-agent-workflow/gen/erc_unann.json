@@ -1,0 +1,111 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:47:59",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/2f61c6e2-e6bf-4b75-8d10-01b3b29df5fd",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol U1 Pin 3 [VI, Power input, Line]",
+                            "pos": {
+                                "x": 0.7239,
+                                "y": 0.5969
+                            },
+                            "uuid": "52c75d86-48b9-44e7-956c-06f7339669b6"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Label not connected",
+                    "items": [
+                        {
+                            "description": "Label 'GND'",
+                            "pos": {
+                                "x": 0.8001,
+                                "y": 0.5207
+                            },
+                            "uuid": "bbba7159-a11a-4581-88a5-76dd23b6c430"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "label_dangling"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol U1 Pin 1 [GND, Power input, Line]",
+                            "pos": {
+                                "x": 0.8001,
+                                "y": 0.6731
+                            },
+                            "uuid": "323b065c-3b09-47eb-8f5e-81e80b9279ce"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol U1 Pin 1 [GND, Power input, Line]",
+                            "pos": {
+                                "x": 0.8001,
+                                "y": 0.6731
+                            },
+                            "uuid": "323b065c-3b09-47eb-8f5e-81e80b9279ce"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Wires not connected to anything",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.1000 mm",
+                            "pos": {
+                                "x": 1.5,
+                                "y": 1.0
+                            },
+                            "uuid": "95285d05-0609-4122-b6b6-b6e2c2f0f663"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "wire_dangling"
+                }
+            ]
+        }
+    ],
+    "source": "unannotated.kicad_sch"
+}

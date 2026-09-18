@@ -1,0 +1,16 @@
+** Drc report for  **
+** Created on 2026-09-18 21:01:33 **
+
+** Found 2 DRC violations **
+[lib_footprint_issues]: Footprint 'R_0603_1608Metric' not found in library 'Resistor_SMD'.
+    Local override; warning
+    @(22.0000 mm, 10.0000 mm): Footprint R2
+[lib_footprint_issues]: Footprint 'R_0603_1608Metric' not found in library 'Resistor_SMD'.
+    Local override; warning
+    @(8.0000 mm, 10.0000 mm): Footprint R1
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

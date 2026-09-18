@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "filename": "ledhier.kicad_pro",
+    "version": 1
+  },
+  "sheets": [
+    [
+      "493c4830-ebea-43d6-9dbe-b176dec8d99d",
+      "Root"
+    ],
+    [
+      "2047be3c-2da7-4f26-ad6b-167e52ea27c6",
+      "led_sub"
+    ]
+  ]
+}

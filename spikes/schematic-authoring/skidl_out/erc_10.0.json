@@ -1,0 +1,128 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:52:04",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/66b0b843-7904-4da5-b97c-5135fb9ab6e6",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR001 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 1.397,
+                                "y": 1.0287
+                            },
+                            "uuid": "686df6a3-3eb2-50a4-8783-f11b328ab99e"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol J1 Pin 1 [Pin_1, Passive, Line]",
+                            "pos": {
+                                "x": 1.5748,
+                                "y": 1.0033
+                            },
+                            "uuid": "69581a74-4246-578a-9342-a89ce0f682ea"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Global Label 'VIN'",
+                            "pos": {
+                                "x": 1.5113,
+                                "y": 0.9271
+                            },
+                            "uuid": "d9896efe-ea92-50a7-b539-19a7badfdaf9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Symbol 'LED' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol D1 [LED]",
+                            "pos": {
+                                "x": 1.4224,
+                                "y": 1.0922
+                            },
+                            "uuid": "479d1140-acc4-51b1-8f6e-b00b18d44d4c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'R' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R1 [R]",
+                            "pos": {
+                                "x": 1.5113,
+                                "y": 1.0414
+                            },
+                            "uuid": "b56a58f1-d607-5b94-9e64-89c6789ba2da"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'Conn_01x02' doesn't match copy in library 'Connector_Generic'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x02]",
+                            "pos": {
+                                "x": 1.6256,
+                                "y": 1.0033
+                            },
+                            "uuid": "3e0d1a62-9281-5ac9-826a-884cdacff2ed"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                }
+            ]
+        }
+    ],
+    "source": "skidl.kicad_sch"
+}

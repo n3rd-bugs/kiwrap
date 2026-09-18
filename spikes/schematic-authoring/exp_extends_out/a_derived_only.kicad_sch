@@ -1,0 +1,243 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "36422f6a-bf8c-4a50-9721-eb979d5fa269")
+	(paper "A4")
+	(lib_symbols
+(symbol "Transistor_BJT:2N2219"
+		(extends "Q_NPN_EBC")
+		(property "Reference" "Q"
+			(at 5.08 1.905 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "2N2219"
+			(at 5.08 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-39-3"
+			(at 5.08 -1.905 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" "http://www.onsemi.com/pub_link/Collateral/2N2219-D.PDF"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" "800mA Ic, 50V Vce, NPN Transistor, TO-39"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "NPN Transistor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "TO?39*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	)
+	(wire
+		(pts
+			(xy 102.54 105.08) (xy 102.54 125.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d80cdf13-ecdb-46e5-811c-a0ddd2a26578")
+	)
+	(label "N1"
+		(at 102.54 125.08 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "92b5aae1-c031-4545-9ae4-469cb7f446a3")
+	)
+	(wire
+		(pts
+			(xy 94.92 100) (xy 74.92 100)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5a41b85e-1489-4bb2-8734-a9c96f4191f2")
+	)
+	(label "N2"
+		(at 74.92 100 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "09a9f560-fe93-4795-99b4-2d4cbac484b6")
+	)
+	(wire
+		(pts
+			(xy 102.54 94.92) (xy 102.54 74.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a8e52007-fe29-44f5-9c8a-a776ea611454")
+	)
+	(label "N3"
+		(at 102.54 74.92 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "d71414da-476f-478f-b13d-f41d52729200")
+	)
+	(symbol
+		(lib_id "Transistor_BJT:2N2219")
+		(at 100 100 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "be8a3df6-b32c-4ff0-98d6-5ff8f7a6f5d8")
+		(property "Reference" "Q1"
+			(at 102.54 98.73 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "2N2219"
+			(at 102.54 101.27 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-39-3"
+			(at 100 100 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 100 100 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 100 100 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a3d75945-2fbc-461a-9279-75cf6e336086")
+		)
+		(pin "2"
+			(uuid "dd210b64-e033-4be3-95ea-4ededfe68131")
+		)
+		(pin "3"
+			(uuid "b6fea8ee-bbf4-4e9d-af57-19c16a19f457")
+		)
+		(instances
+			(project "t"
+				(path "/36422f6a-bf8c-4a50-9721-eb979d5fa269"
+					(reference "Q1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

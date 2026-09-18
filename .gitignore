@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+# Node / VS Code extension
+node_modules/
+out/
+dist/
+*.vsix
+# KiCad
+*.kicad_prl
+*-backups/
+fp-info-cache
+~*.lck
+# Runtime artifacts
+storage/
+*.log
+.DS_Store
+Thumbs.db

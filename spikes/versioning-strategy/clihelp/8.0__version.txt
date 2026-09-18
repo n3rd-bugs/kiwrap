@@ -1,0 +1,7 @@
+Usage: version [--help] [--format VAR]
+
+Reports the version info in various formats
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+  --format    version info format (plain, commit, about) [nargs=0..1] [default: "plain"]

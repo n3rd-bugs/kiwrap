@@ -1,0 +1,113 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:51:22",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/b73f77c0-32ed-4ff7-b667-8fcc03d272fe",
+            "violations": [
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Pin 1 [???, ?]",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.508
+                            },
+                            "uuid": "01fc2534-1f34-4943-86f1-c49db0885d68"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.1270 mm",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.4699
+                            },
+                            "uuid": "5588e16d-03b1-437b-b2c4-f3113d0bd48a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Vertical Wire, length 0.0508 mm",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.5461
+                            },
+                            "uuid": "aec6064b-bf5b-4c71-b597-fcf762293353"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Global Label 'VIN'",
+                            "pos": {
+                                "x": 0.6985,
+                                "y": 0.4699
+                            },
+                            "uuid": "e45585b8-8dbf-4e15-815b-06e106e82a70"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'LED_A'",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.5715
+                            },
+                            "uuid": "e01c738e-5d37-436a-88b7-4ed36b156b71"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                }
+            ]
+        }
+    ],
+    "source": "missing_one_lib_symbol.kicad_sch"
+}

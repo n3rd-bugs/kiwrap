@@ -1,0 +1,14 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: svg [-h] [--output VAR] [--theme VAR] [--symbol VAR] [--black-and-white] [--include-hidden-pins] [--include-hidden-fields] input
+
+Positional arguments:
+  input                  	Input file 
+
+Optional arguments:
+  -h, --help             	shows help message and exits 
+  -o, --output           	Output file name [default: ""]
+  -t, --theme            	Color theme to use (will default to pcbnew settings) [default: ""]
+  -s, --symbol           	Specific symbol to export within the library [default: ""]
+  --black-and-white      	Black and white only 
+  --include-hidden-pins  	Include hidden pins 
+  --include-hidden-fields	Include hidden fields 

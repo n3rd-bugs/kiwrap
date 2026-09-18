@@ -1,0 +1,35 @@
+Usage: step [--help] [--output OUTPUT_FILE] [--define-var KEY=VALUE] [--force] [--no-unspecified] [--no-dnp] [--grid-origin] [--drill-origin] [--subst-models] [--board-only] [--cut-vias-in-body] [--no-board-body] [--no-components] [--component-filter VAR] [--include-tracks] [--include-pads] [--include-zones] [--include-inner-copper] [--include-silkscreen] [--include-soldermask] [--fuse-shapes] [--fill-all-vias] [--min-distance MIN_DIST] [--net-filter VAR] [--no-optimize-step] [--user-origin VAR] INPUT_FILE
+
+Export STEP
+
+Positional arguments:
+  INPUT_FILE              Input file 
+
+Optional arguments:
+  -h, --help              Shows help message and exits 
+  -o, --output            Output file [nargs=0..1] [default: ""]
+  -D, --define-var        Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                          Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -f, --force             Overwrite output file 
+  --no-unspecified        Exclude 3D models for components with 'Unspecified' footprint type 
+  --no-dnp                Exclude 3D models for components with 'Do not populate' attribute 
+  --grid-origin           Use Grid Origin for output origin 
+  --drill-origin          Use Drill Origin for output origin 
+  --subst-models          Substitute STEP or IGS models with the same name in place of VRML models 
+  --board-only            Only generate a board with no components 
+  --cut-vias-in-body      Cut via holes in board body even if conductor layers are not exported. 
+  --no-board-body         Exclude board body 
+  --no-components         Exclude 3D models for components 
+  --component-filter      Only include component 3D models matching this list of reference designators (comma-separated, wildcards supported) [nargs=0..1] [default: ""]
+  --include-tracks        Export tracks and vias 
+  --include-pads          Export pads 
+  --include-zones         Export zones 
+  --include-inner-copper  Export elements on inner copper layers 
+  --include-silkscreen    Export silkscreen graphics as a set of flat faces 
+  --include-soldermask    Export soldermask layers as a set of flat faces 
+  --fuse-shapes           Fuse overlapping geometry together 
+  --fill-all-vias         Don't cut via holes in conductor layers. 
+  --min-distance          Minimum distance between points to treat them as separate ones [nargs=0..1] [default: "0.01mm"]
+  --net-filter            Only include copper items belonging to nets matching this wildcard [nargs=0..1] [default: ""]
+  --no-optimize-step      Do not optimize STEP file (enables writing parametric curves) 
+  --user-origin           User-specified output origin ex. 1x1in, 1x1inch, 25.4x25.4mm (default unit mm) [nargs=0..1] [default: ""]

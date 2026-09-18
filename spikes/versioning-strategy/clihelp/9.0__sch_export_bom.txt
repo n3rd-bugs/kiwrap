@@ -1,0 +1,26 @@
+Usage: bom [--help] [--output OUTPUT_FILE] [--preset PRESET] [--format-preset FMT_PRESET] [--fields FIELDS] [--labels LABELS] [--group-by GROUP_BY] [--sort-field SORT_BY] [--sort-asc] [--filter FILTER] [--exclude-dnp] [--include-excluded-from-bom] [--field-delimiter FIELD_DELIM] [--string-delimiter STR_DELIM] [--ref-delimiter REF_DELIM] [--ref-range-delimiter REF_RANGE_DELIM] [--keep-tabs] [--keep-line-breaks] INPUT_FILE
+
+Generate a Bill of Materials (BOM)
+
+Positional arguments:
+  INPUT_FILE                   Input file 
+
+Optional arguments:
+  -h, --help                   Shows help message and exits 
+  -o, --output                 Output file [nargs=0..1] [default: ""]
+  --preset                     Use a named BOM preset setting from the schematic, e.g. "Grouped By Value". [nargs=0..1] [default: ""]
+  --format-preset              Use a named BOM format preset setting from the schematic, e.g. CSV. [nargs=0..1] [default: ""]
+  --fields                     An ordered list of fields to export. See documentation for special substitutions. [nargs=0..1] [default: "Reference,Value,Footprint,${QUANTITY},${DNP}"]
+  --labels                     An ordered list of labels to apply the exported fields. [nargs=0..1] [default: "Refs,Value,Footprint,Qty,DNP"]
+  --group-by                   Fields to group references by when field values match. [nargs=0..1] [default: ""]
+  --sort-field                 Field name to sort by. [nargs=0..1] [default: "Reference"]
+  --sort-asc                   Sort ascending (true) or descending (false). 
+  --filter                     Filter string to remove output lines. [nargs=0..1] [default: ""]
+  --exclude-dnp                Exclude symbols marked Do-Not-Populate. 
+  --include-excluded-from-bom  Include symbols marked 'Exclude from BOM'. 
+  --field-delimiter            Separator between output fields/columns. [nargs=0..1] [default: ","]
+  --string-delimiter           Character to surround fields with. [nargs=0..1] [default: """]
+  --ref-delimiter              Character to place between individual references. [nargs=0..1] [default: ","]
+  --ref-range-delimiter        Character to place in ranges of references. Leave blank for no ranges. [nargs=0..1] [default: "-"]
+  --keep-tabs                  Keep tab characters from input fields. Stripped by default. 
+  --keep-line-breaks           Keep line break characters from input fields. Stripped by default. 

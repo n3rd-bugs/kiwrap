@@ -1,0 +1,108 @@
+ERC report (2026-09-18T22:01:57, Encoding UTF8)
+Report includes: Errors, Warnings, Exclusions
+
+***** Sheet /
+[pin_not_connected]: Pin not connected
+    ; error
+    @(45.72 mm, 78.74 mm): Symbol U4 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(45.72 mm, 78.74 mm): Symbol U4 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(83.82 mm, 45.72 mm): Symbol U1 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(83.82 mm, 45.72 mm): Symbol U1 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(76.20 mm, 83.82 mm): Symbol U5 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(76.20 mm, 83.82 mm): Symbol U5 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(48.26 mm, 106.68 mm): Symbol U8 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(48.26 mm, 106.68 mm): Symbol U8 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(114.30 mm, 55.88 mm): Symbol U2 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(114.30 mm, 55.88 mm): Symbol U2 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(116.84 mm, 78.74 mm): Symbol U6 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(116.84 mm, 78.74 mm): Symbol U6 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(83.82 mm, 116.84 mm): Symbol U9 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(83.82 mm, 116.84 mm): Symbol U9 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(139.70 mm, 45.72 mm): Symbol U3 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(139.70 mm, 45.72 mm): Symbol U3 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(45.72 mm, 144.78 mm): Symbol U12 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(45.72 mm, 144.78 mm): Symbol U12 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(116.84 mm, 114.30 mm): Symbol U10 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(116.84 mm, 114.30 mm): Symbol U10 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(139.70 mm, 86.36 mm): Symbol U7 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(139.70 mm, 86.36 mm): Symbol U7 Pin 1 [IN, Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(147.32 mm, 109.22 mm): Symbol U11 Pin 1 [IN, Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(147.32 mm, 109.22 mm): Symbol U11 Pin 1 [IN, Input, Line]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(50.80 mm, 81.28 mm): Symbol U4 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(81.28 mm, 81.28 mm): Symbol U5 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(50.80 mm, 111.76 mm): Symbol U8 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(111.76 mm, 81.28 mm): Symbol U6 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(50.80 mm, 142.24 mm): Symbol U12 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(111.76 mm, 111.76 mm): Symbol U10 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(142.24 mm, 81.28 mm): Symbol U7 [PINT]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'T'
+    ; warning
+    @(142.24 mm, 111.76 mm): Symbol U11 [PINT]
+
+ ** ERC messages: 32  Errors 24  Warnings 8
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters

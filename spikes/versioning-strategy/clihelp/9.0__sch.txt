@@ -1,0 +1,10 @@
+Usage: sch [--help] {erc,export}
+
+Schematics
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  erc        Runs the Electrical Rules Check (ERC) on the schematic and creates a report
+  export     Export utilities (netlist, pdf, bom, etc)

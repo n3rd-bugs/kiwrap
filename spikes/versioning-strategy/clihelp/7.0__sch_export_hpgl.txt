@@ -1,0 +1,16 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: hpgl [-h] [--output VAR] [--theme VAR] [--black-and-white] [--exclude-drawing-sheet] [--no-background-color] [--plot-one] [--pen-size VAR] [--origin VAR] input
+
+Positional arguments:
+  input                      	Input file 
+
+Optional arguments:
+  -h, --help                 	shows help message and exits 
+  -o, --output               	Output directory: [default: ""]
+  -t, --theme                	Color theme to use (will default to schematic settings) [default: ""]
+  -b, --black-and-white      	Black and white only 
+  -e, --exclude-drawing-sheet	No drawing sheet 
+  -n, --no-background-color  	Avoid setting a background color (regardless of theme) 
+  -O, --plot-one             	
+  -p, --pen-size             	[default: 0.5]
+  -r, --origin               	[default: 1]

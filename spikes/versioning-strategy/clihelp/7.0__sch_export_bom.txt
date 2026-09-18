@@ -1,0 +1,14 @@
+Maximum number of positional arguments exceeded
+Usage: export [-h] {dxf,hpgl,netlist,pdf,ps,python-bom,svg}
+
+Optional arguments:
+  -h, --help	shows help message and exits 
+
+Subcommands:
+  dxf        
+  hpgl       
+  netlist    
+  pdf        
+  ps         
+  python-bom 
+  svg        

@@ -1,0 +1,10 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: netlist [-h] [--output VAR] [--format VAR] input
+
+Positional arguments:
+  input       	Input file 
+
+Optional arguments:
+  -h, --help  	shows help message and exits 
+  -o, --output	Output file name [default: ""]
+  --format    	Netlist output format, valid options: kicadsexpr, kicadxml, cadstar, orcadpcb2, spice, spicemodel [default: "kicadsexpr"]

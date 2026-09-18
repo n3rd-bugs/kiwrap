@@ -1,0 +1,53 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:08:02",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/87bf4a50-a0e0-45ea-bcaa-2c6df0578cb1",
+            "violations": [
+                {
+                    "description": "Wires not connected to anything",
+                    "items": [
+                        {
+                            "description": "Vertical Wire, length 0.0889 mm",
+                            "pos": {
+                                "x": 1.0922,
+                                "y": 0.7493
+                            },
+                            "uuid": "0c91b894-ffa4-451b-911c-5fa41cc51183"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "wire_dangling"
+                }
+            ]
+        }
+    ],
+    "source": "ldo_Q.kicad_sch"
+}

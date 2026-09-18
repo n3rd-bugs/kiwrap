@@ -1,0 +1,91 @@
+{
+  "profile": {
+    "id": "6201526c-ad75-4048-a9ad-1bd02775ae4b",
+    "email": "",
+    "allow_telemetry": true,
+    "allow_contact": true
+  },
+  "gui": {
+    "enabled": true,
+    "input_directory": "",
+    "dialog_confirmation_timeout": 5,
+    "show_routing_summary": true
+  },
+  "router": {
+    "fanout": {},
+    "optimizer": {},
+    "scoring": {}
+  },
+  "drc": {
+    "include_warnings": true,
+    "include_errors": true
+  },
+  "usage_and_diagnostic_data": {
+    "disable_analytics": false,
+    "track_window_changed": false,
+    "track_button_clicked": false
+  },
+  "feature_flags": {
+    "multi_threading": false,
+    "inspection_mode": false,
+    "other_menu": false,
+    "save_jobs": false
+  },
+  "api_server": {
+    "enabled": false,
+    "http_allowed": true,
+    "endpoints": [
+      "http://127.0.0.1:37864"
+    ],
+    "authentication": {
+      "enabled": true,
+      "providers": "",
+      "google_sheets": {}
+    },
+    "cors_origins": "",
+    "rate_limit": {
+      "enabled": false,
+      "requests_per_window": 120,
+      "window_seconds": 60
+    }
+  },
+  "mcp_server": {
+    "enabled": false,
+    "stdio": false,
+    "http_allowed": true,
+    "endpoints": [
+      "http://127.0.0.1:37964"
+    ],
+    "authentication": {
+      "enabled": true,
+      "providers": "",
+      "google_sheets": {}
+    },
+    "cors_origins": "",
+    "rate_limit": {
+      "enabled": false,
+      "requests_per_window": 120,
+      "window_seconds": 60
+    },
+    "target_api_base_url": "http://127.0.0.1:37864"
+  },
+  "statistics": {
+    "start_time": "2026-09-18 22:05:35",
+    "sessions_total": 0,
+    "jobs_started": 0,
+    "jobs_completed": 0
+  },
+  "logging": {
+    "console": {
+      "enabled": true,
+      "level": "INFO"
+    },
+    "file": {
+      "enabled": true,
+      "level": "INFO",
+      "location": "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\freerouting-verify\\runs\\b30_default\\freerouting.log"
+    }
+  },
+  "network": {},
+  "version": "2.4.1"
+}

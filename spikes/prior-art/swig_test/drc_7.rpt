@@ -1,0 +1,40 @@
+** Drc report for C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/samples/ecc83_7.0/ecc83-pp.kicad_pcb **
+** Created on 2026-09-18 20:49:48 **
+
+** Found 10 DRC violations **
+[lib_footprint_issues]: Footprint 'CP_Radial_D10.0mm_P5.00mm' not found in library 'Capacitor_THT'.
+    Local override; Severity: warning
+    @(141.6050 mm, 99.6950 mm): Footprint C1
+[lib_footprint_issues]: Footprint 'C_Disc_D4.7mm_W2.5mm_P5.00mm' not found in library 'Capacitor_THT'.
+    Local override; Severity: warning
+    @(137.1600 mm, 125.0950 mm): Footprint C2
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; Severity: warning
+    @(136.2710 mm, 107.9500 mm): Footprint R1
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; Severity: warning
+    @(156.2100 mm, 95.8850 mm): Footprint R2
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; Severity: warning
+    @(164.4650 mm, 117.4750 mm): Footprint R4
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'TerminalBlock_Altech'.
+    Local override; Severity: warning
+    @(128.2700 mm, 112.7760 mm): Footprint P2
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'TerminalBlock_Altech'.
+    Local override; Severity: warning
+    @(128.2700 mm, 100.7110 mm): Footprint P3
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'TerminalBlock_Altech'.
+    Local override; Severity: warning
+    @(145.5420 mm, 131.1910 mm): Footprint P4
+[lib_footprint_issues]: Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' not found in library 'Resistor_THT'.
+    Local override; Severity: warning
+    @(133.9850 mm, 125.0950 mm): Footprint R3
+[lib_footprint_issues]: Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' not found in library 'TerminalBlock_Altech'.
+    Local override; Severity: warning
+    @(166.3700 mm, 105.4100 mm): Footprint P1
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

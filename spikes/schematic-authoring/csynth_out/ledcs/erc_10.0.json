@@ -1,0 +1,196 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:53:01",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/0b8e91f4-7a75-419f-acfd-caf870e9976d",
+            "violations": [
+                {
+                    "description": "Hierarchical label 'VIN' in root sheet cannot be connected to non-existent parent sheet",
+                    "items": [
+                        {
+                            "description": "Hierarchical Label 'VIN'",
+                            "pos": {
+                                "x": 0.381,
+                                "y": 0.4191
+                            },
+                            "uuid": "0e2bc469-2fee-4a36-9faa-f0f99a2c8f71"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol R1 Pin 2 [Passive, Line]",
+                            "pos": {
+                                "x": 0.381,
+                                "y": 0.4953
+                            },
+                            "uuid": "b3e574bf-dfea-47ad-9f58-83703faa7177"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Hierarchical label 'GND' in root sheet cannot be connected to non-existent parent sheet",
+                    "items": [
+                        {
+                            "description": "Hierarchical Label 'GND'",
+                            "pos": {
+                                "x": 0.5461,
+                                "y": 0.4572
+                            },
+                            "uuid": "88a74320-85b8-419c-976a-eb3e038e2ed1"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Hierarchical label 'LED_A' in root sheet cannot be connected to non-existent parent sheet",
+                    "items": [
+                        {
+                            "description": "Hierarchical Label 'LED_A'",
+                            "pos": {
+                                "x": 0.6223,
+                                "y": 0.4572
+                            },
+                            "uuid": "13b1f281-e882-4ea5-9614-b3016b07eaca"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Hierarchical label 'VIN' in root sheet cannot be connected to non-existent parent sheet",
+                    "items": [
+                        {
+                            "description": "Hierarchical Label 'VIN'",
+                            "pos": {
+                                "x": 0.8636,
+                                "y": 0.4572
+                            },
+                            "uuid": "f20863fa-789b-46fd-a8e9-d89e64854805"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Hierarchical label 'GND' in root sheet cannot be connected to non-existent parent sheet",
+                    "items": [
+                        {
+                            "description": "Hierarchical Label 'GND'",
+                            "pos": {
+                                "x": 0.8636,
+                                "y": 0.4826
+                            },
+                            "uuid": "2f512302-6ad3-4ed1-af25-3fdc04a58a1c"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Both LED_A and VIN are attached to the same items; LED_A will be used in the netlist",
+                    "items": [
+                        {
+                            "description": "Hierarchical Label 'LED_A'",
+                            "pos": {
+                                "x": 0.6223,
+                                "y": 0.4572
+                            },
+                            "uuid": "13b1f281-e882-4ea5-9614-b3016b07eaca"
+                        },
+                        {
+                            "description": "Hierarchical Label 'VIN'",
+                            "pos": {
+                                "x": 0.381,
+                                "y": 0.4191
+                            },
+                            "uuid": "0e2bc469-2fee-4a36-9faa-f0f99a2c8f71"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "multiple_net_names"
+                },
+                {
+                    "description": "Symbol 'R' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R1 [R]",
+                            "pos": {
+                                "x": 0.381,
+                                "y": 0.4572
+                            },
+                            "uuid": "46b43000-7015-4580-a6af-6df5e94b76f5"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'LED' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol D1 [LED]",
+                            "pos": {
+                                "x": 0.5842,
+                                "y": 0.4572
+                            },
+                            "uuid": "f383c30c-49b4-45c7-b2ad-59c85276a663"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'Conn_01x02' doesn't match copy in library 'Connector_Generic'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x02]",
+                            "pos": {
+                                "x": 0.9144,
+                                "y": 0.4572
+                            },
+                            "uuid": "3c7560a2-eb9a-4b93-b5b5-175866d4e9e4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                }
+            ]
+        }
+    ],
+    "source": "ledcs.kicad_sch"
+}

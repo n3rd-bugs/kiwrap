@@ -1,0 +1,93 @@
+(export
+	(version "E")
+	(design
+		(source "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\verify-sch-20260306\\t2\\t2.kicad_sch")
+		(date "2026-09-18T22:07:16")
+		(tool "Eeschema 10.0.0")
+		(sheet
+			(number "1")
+			(name "/")
+			(tstamps "/")
+			(title_block
+				(title)
+				(company)
+				(rev)
+				(date)
+				(source "t2.kicad_sch")
+				(comment
+					(number "1")
+					(value "")
+				)
+				(comment
+					(number "2")
+					(value "")
+				)
+				(comment
+					(number "3")
+					(value "")
+				)
+				(comment
+					(number "4")
+					(value "")
+				)
+				(comment
+					(number "5")
+					(value "")
+				)
+				(comment
+					(number "6")
+					(value "")
+				)
+				(comment
+					(number "7")
+					(value "")
+				)
+				(comment
+					(number "8")
+					(value "")
+				)
+				(comment
+					(number "9")
+					(value "")
+				)
+			)
+		)
+	)
+	(components)
+	(groups)
+	(variants)
+	(libparts)
+	(libraries)
+	(nets
+		(net
+			(code "3")
+			(name "Net-(R1-Pad??)")
+			(class "Default")
+			(node
+				(ref "R1")
+				(pin "1")
+				(pintype "unspecified")
+			)
+			(node
+				(ref "R1")
+				(pin "2")
+				(pintype "unspecified")
+			)
+		)
+		(net
+			(code "4")
+			(name "Net-(R2-Pad??)")
+			(class "Default")
+			(node
+				(ref "R2")
+				(pin "1")
+				(pintype "unspecified")
+			)
+			(node
+				(ref "R2")
+				(pin "2")
+				(pintype "unspecified")
+			)
+		)
+	)
+)

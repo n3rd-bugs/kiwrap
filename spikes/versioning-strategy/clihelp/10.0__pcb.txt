@@ -1,0 +1,13 @@
+Usage: kicad-cli pcb [--help] {drc,export,import,render,upgrade}
+
+PCB
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  drc        Runs the Design Rules Check (DRC) on the PCB and creates a report
+  export     Export utilities (Gerbers, drill, position files, etc)
+  import     Import a non-KiCad PCB file to KiCad format
+  render     Renders the PCB in 3D view to PNG or JPEG image
+  upgrade    Upgrade the board file's format to the latest one

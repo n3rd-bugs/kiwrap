@@ -1,0 +1,13 @@
+Usage: pcb import [--help] [--output OUTPUT_FILE] [--format FORMAT] [--report-format FORMAT] [--report-file FILE] INPUT_FILE
+
+Import a non-KiCad PCB file to KiCad format
+
+Positional arguments:
+  INPUT_FILE       Input file 
+
+Optional arguments:
+  -h, --help       Shows help message and exits 
+  -o, --output     Output file [nargs=0..1] [default: ""]
+  --format         Input format hint: auto, pads, altium, eagle, cadstar, fabmaster, pcad, solidworks (default: auto) [nargs=0..1] [default: "auto"]
+  --report-format  Import report format: none, json, text (default: none) [nargs=0..1] [default: "none"]
+  --report-file    File path for import report (default: stdout) [nargs=0..1] [default: ""]

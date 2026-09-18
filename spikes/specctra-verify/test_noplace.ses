@@ -1,0 +1,48 @@
+(session test.ses
+  (base_design test.dsn)
+    (was_is
+  )
+  (routes
+    (resolution um 10)
+    (parser
+      (host_cad "KiCad's Pcbnew")
+      (host_version "10.0.0")
+    )
+    (library_out
+      (padstack "Via[0-1]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out
+      (net NET1
+        (wire
+          (path F.Cu 2500
+            250000 -235000
+            435000 -235000
+          )
+        )
+      )
+      (net NET3
+        (wire
+          (path F.Cu 3000
+            465000 -250000
+            465000 -350000
+          )
+        )
+        (via "Via[0-1]_600:300_um" 465000 -350000)
+        (wire
+          (path B.Cu 3000
+            465000 -350000
+            335000 -450000
+          )
+        )
+      )
+    )
+  )
+)

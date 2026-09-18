@@ -1,0 +1,17 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: pdf [-h] [--output VAR] [--layers VAR] [--mirror] [--exclude-refdes] [--exclude-value] [--include-border-title] [--negative] [--black-and-white] [--theme VAR] input
+
+Positional arguments:
+  input                        	Input file 
+
+Optional arguments:
+  -h, --help                   	shows help message and exits 
+  -o, --output                 	Output file name [default: ""]
+  -l, --layers                 	Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [default: ""]
+  -m, --mirror                 	Mirror the board (useful for trying to show bottom layers) 
+  --erd, --exclude-refdes      	Exclude the reference designator text 
+  --ev, --exclude-value        	Exclude the value text 
+  --ibt, --include-border-title	Include the border and title block 
+  -n, --negative               	
+  --black-and-white            	Black and white only 
+  -t, --theme                  	Color theme to use (will default to pcbnew settings) [default: ""]

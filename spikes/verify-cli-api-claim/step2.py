@@ -1,0 +1,10 @@
+import pcbnew, os, sys
+sp = os.path.dirname(os.path.abspath(__file__))
+print("pcbnew", pcbnew.GetBuildVersion(), flush=True)
+b = pcbnew.LoadBoard(os.path.join(sp, "ecc83_10", "ecc83-pp.kicad_pcb"))
+rep = os.path.join(sp, "swig_drc_10.rpt")
+print("calling WriteDRCReport", flush=True)
+ok = pcbnew.WriteDRCReport(b, rep, pcbnew.EDA_UNITS_MM, True)
+print("WriteDRCReport ->", ok, os.path.exists(rep), os.path.getsize(rep) if os.path.exists(rep) else None, flush=True)
+txt = open(rep, errors='replace').read()
+print(txt[:800], flush=True)

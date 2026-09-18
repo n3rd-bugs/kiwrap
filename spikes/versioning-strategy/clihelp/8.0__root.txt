@@ -1,0 +1,12 @@
+Usage: kicad-cli [--version] [--help] {fp,pcb,sch,sym,version}
+
+Optional arguments:
+  -v, --version  prints version information and exits 
+  -h, --help     Shows help message and exits 
+
+Subcommands:
+  fp            Footprint and Footprint Libraries
+  pcb           PCB
+  sch           Schematics
+  sym           Symbol and Symbol Libraries
+  version       Reports the version info in various formats

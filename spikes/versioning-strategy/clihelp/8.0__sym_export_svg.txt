@@ -1,0 +1,16 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: svg [--help] [--output OUTPUT_DIR] [--theme THEME_NAME] [--symbol SYMBOL] [--black-and-white] [--include-hidden-pins] [--include-hidden-fields] INPUT_FILE
+
+Exports the symbol or entire symbol library to SVG
+
+Positional arguments:
+  INPUT_FILE               Input file 
+
+Optional arguments:
+  -h, --help               Shows help message and exits 
+  -o, --output             Output directory [nargs=0..1] [default: ""]
+  -t, --theme              Color theme to use (will default to symbol editor settings) [nargs=0..1] [default: ""]
+  -s, --symbol             Specific symbol to export within the library [nargs=0..1] [default: ""]
+  --black-and-white        Black and white only 
+  --include-hidden-pins    Include hidden pins 
+  --include-hidden-fields  Include hidden fields 

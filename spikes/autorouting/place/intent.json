@@ -1,0 +1,15 @@
+{
+  "schema": 1, "kind": "floorplan-intent", "units": "mm",
+  "envelope": { "rect": [0, 0, 40, 30], "tolerance_mm": 0.5 },
+  "defaults": { "zone_tolerance_mm": 0.5 },
+  "blocks": [
+    { "name": "mcu",   "refs": ["U1", "C?"], "zone": [10, 4, 30, 20], "side": "F", "note": "MCU with decaps close" },
+    { "name": "pulls", "refs": ["R?"],       "zone": [8, 22, 34, 29], "side": "F" }
+  ],
+  "edge_connectors": [
+    { "ref": "J1", "edge": "west", "along_edge_band": { "from": 0.1, "to": 0.9 } },
+    { "ref": "J2", "edge": "east", "along_edge_band": { "from": 0.1, "to": 0.9 } }
+  ],
+  "decaps": { "max_distance_mm": 4.0 },
+  "must_lock": []
+}

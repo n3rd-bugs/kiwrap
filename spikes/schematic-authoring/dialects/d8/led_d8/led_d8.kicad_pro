@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "filename": "led_d8.kicad_pro",
+    "version": 1
+  },
+  "sheets": [
+    [
+      "2523355c-90fc-4fdc-9b87-616684ddcb0b",
+      "Root"
+    ]
+  ],
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "text_variables": {}
+}

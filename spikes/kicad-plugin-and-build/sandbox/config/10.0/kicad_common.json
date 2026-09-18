@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "version": 5
+  },
+  "api": {
+    "enable_server": true,
+    "interpreter_path": "C:\\Program Files\\KiCad\\10.0\\bin\\pythonw.exe"
+  },
+  "do_not_show_again": {
+    "env_var_overwrite_warning": true,
+    "scaled_3d_models_warning": true,
+    "update_check_prompt": true,
+    "zone_fill_warning": true,
+    "data_collection_prompt": true
+  },
+  "system": {
+    "first_run_shown": true,
+    "settings_version": "10.0"
+  }
+}

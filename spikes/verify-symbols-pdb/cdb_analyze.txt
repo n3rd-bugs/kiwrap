@@ -1,0 +1,10 @@
+.sympath srv*C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\verify-symbols-pdb\symcache2*https://symbols.kicad.org/kicad-stable
+.lines
+.reload
+lm m _pcbnew
+lm m kicommon
+lm m kicad_cli
+kL 12
+ln _pcbnew!DRC_ENGINE::RunTests
+lsf pcbnew/drc/drc_engine.cpp
+q

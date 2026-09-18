@@ -1,0 +1,16 @@
+Usage: odb [--help] [--output OUTPUT_FILE] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--precision PRECISION] [--compression VAR] [--units VAR] INPUT_FILE
+
+Export the PCB in ODB++ format
+
+Positional arguments:
+  INPUT_FILE        Input file 
+
+Optional arguments:
+  -h, --help        Shows help message and exits 
+  -o, --output      Output file [nargs=0..1] [default: ""]
+  --drawing-sheet   Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var  Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                    Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  --precision       Precision [nargs=0..1] [default: 2]
+  --compression     Compression mode [nargs=0..1] [default: "zip"]
+  --units           Units [nargs=0..1] [default: "mm"]

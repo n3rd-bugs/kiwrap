@@ -1,0 +1,13 @@
+Maximum number of positional arguments exceeded
+Usage: kicad-cli [-h] {fp,pcb,sch,sym,version}
+
+Optional arguments:
+  -v, --version	prints version information and exits 
+  -h, --help   	shows help message and exits 
+
+Subcommands:
+  fp            
+  pcb           
+  sch           
+  sym           
+  version       

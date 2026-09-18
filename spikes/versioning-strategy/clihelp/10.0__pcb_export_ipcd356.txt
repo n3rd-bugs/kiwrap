@@ -1,0 +1,10 @@
+Usage: export ipcd356 [--help] [--output OUTPUT_FILE] INPUT_FILE
+
+Generate IPC-D-356 netlist file
+
+Positional arguments:
+  INPUT_FILE    Input file 
+
+Optional arguments:
+  -h, --help    Shows help message and exits 
+  -o, --output  Output file [nargs=0..1] [default: ""]

@@ -1,0 +1,32 @@
+
+### footprint definition detail of existing footprint C1
+C1 pads: 2 shapes: 29 texts: 1 id: Capacitor_THT:CP_Axial_L18.0mm_D6.5mm_P25.00mm_Horizontal
+C1 orientation: Angle(180.0) pos: Vector2(110490000, 78867000)
+pads via get_pads() belonging to C1: 0
+
+### clone C1 with definition and place; check pads survive
+created C998 pads (create response): 2 | pads (re-fetched): 2 | total board pads: 249
+
+### rotate via update_items (orientation)
+orientation after update: 90.0
+
+### place library footprint by id (definition.id only)
+R999 re-fetched: pads: 0 def id: : -> library NOT auto-loaded
+
+### new net by assigning unknown net name to a track
+track net after create: API_NEW_NET | API_NEW_NET in nets: True
+
+### zone creation
+zone created: API_ZONE zones: 2
+filled polygons after refill: {'BL_B_Cu': 4}
+
+### valid get_items types on Board (probe each KOT)
+OK: ['KOT_PCB_FOOTPRINT', 'KOT_PCB_PAD', 'KOT_PCB_SHAPE', 'KOT_PCB_TEXT', 'KOT_PCB_TEXTBOX', 'KOT_PCB_TRACE', 'KOT_PCB_VIA', 'KOT_PCB_ARC', 'KOT_PCB_ZONE', 'KOT_PCB_GROUP', 'KOT_PCB_BARCODE']
+REJECTED: ['KOT_UNKNOWN', 'KOT_PCB_REFERENCE_IMAGE', 'KOT_PCB_FIELD', 'KOT_PCB_GENERATOR', 'KOT_PCB_TABLE', 'KOT_PCB_TABLECELL', 'KOT_PCB_MARKER', 'KOT_PCB_DIMENSION', 'KOT_SCH_MARKER', 'KOT_SCH_JUNCTION', 'KOT_SCH_NO_CONNECT', 'KOT_SCH_BUS_WIRE_ENTRY', 'KOT_SCH_BUS_BUS_ENTRY', 'KOT_SCH_LINE', 'KOT_SCH_SHAPE', 'KOT_SCH_BITMAP', 'KOT_SCH_TEXTBOX', 'KOT_SCH_TEXT', 'KOT_SCH_TABLE', 'KOT_SCH_TABLECELL', 'KOT_SCH_LABEL', 'KOT_SCH_GLOBAL_LABEL', 'KOT_SCH_HIER_LABEL', 'KOT_SCH_DIRECTIVE_LABEL', 'KOT_SCH_FIELD', 'KOT_SCH_SYMBOL', 'KOT_SCH_SHEET_PIN', 'KOT_SCH_SHEET', 'KOT_SCH_PIN', 'KOT_LIB_SYMBOL', 'KOT_WSG_LINE', 'KOT_WSG_RECT', 'KOT_WSG_POLY', 'KOT_WSG_TEXT', 'KOT_WSG_BITMAP', 'KOT_WSG_PAGE', 'KOT_SCH_GROUP']
+
+### GetItems on schematic types via raw proto with board doc -> expect rejection (done above)
+
+### revert to clean
+footprints after revert: 63 zones: 1
+
+DONE3

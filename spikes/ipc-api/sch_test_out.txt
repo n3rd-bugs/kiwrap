@@ -1,0 +1,31 @@
+socket ipc://C:\Users\usama\AppData\Local\Temp\kicad\api.sock
+GetVersion ERR: KiCad returned error: no handler available for request of type kiapi.common.commands.GetVersion
+Ping ERR: KiCad returned error: no handler available for request of type kiapi.common.commands.Ping
+
+### GetOpenDocuments(SCHEMATIC) with eeschema running
+documents {
+  type: DOCTYPE_SCHEMATIC
+  board_filename: "pic_programmer.kicad_sch"
+}
+
+
+### GetOpenDocuments(PCB) with only eeschema running
+ERR KiCad returned error: no handler available for request of type kiapi.common.commands.GetOpenDocuments
+
+### GetItems(KOT_SCH_SYMBOL) on schematic doc
+ERR KiCad returned error: no handler available for request of type kiapi.common.commands.GetItems
+
+### GetItems(KOT_SCH_LINE)
+ERR KiCad returned error: no handler available for request of type kiapi.common.commands.GetItems
+
+### GetSelection on schematic
+ERR KiCad returned error: no handler available for request of type kiapi.common.commands.GetSelection
+
+### BeginCommit + CreateItems(schematic Line) + EndCommit
+Traceback (most recent call last):
+  File "C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\sch_test.py", line 56, in <module>
+    bc = ec.BeginCommit(); rb = c.send(bc, ec.BeginCommitResponse); print("commit id:", rb.id.value)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\.venv\Lib\site-packages\kipy\client.py", line 72, in send
+    raise ConnectionError(f"Error receiving reply from KiCad: {e}") from None
+kipy.errors.ConnectionError: Error receiving reply from KiCad: Timed out

@@ -1,0 +1,10 @@
+Usage: sym [--help] {export,upgrade}
+
+Symbol and Symbol Libraries
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  export     Export utilities (svg)
+  upgrade    Upgrades the symbol library to the current kicad version format

@@ -1,0 +1,60 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:43:15+0500",
+    "kicad_version": "9.0.5",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/ef291899-1dc7-46e0-9e9c-b9e181807d56",
+            "violations": [
+                {
+                    "description": "Symbol 'LED' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol D1 [LED]",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.635
+                            },
+                            "uuid": "f6e8786e-a9c2-4519-8cc9-15918c66b58b"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'GND' doesn't match copy in library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR01 [GND]",
+                            "pos": {
+                                "x": 0.635,
+                                "y": 0.7366
+                            },
+                            "uuid": "edde2b04-9510-482a-92b4-8dc40fca558a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'GND' doesn't match copy in library 'power'",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR02 [GND]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.7366
+                            },
+                            "uuid": "a74507be-9238-424f-865a-3dae55408f7a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                }
+            ]
+        }
+    ],
+    "source": "led_d7.kicad_sch"
+}

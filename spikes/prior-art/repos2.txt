@@ -1,0 +1,10 @@
+mixelpixx/Konnect
+obhox/kicad-mcp
+digailab/PCB-Bench
+LukasLang/kicad-viewer
+assalas/pcb-designer-ai-agent
+diodeinc/example
+diodeinc/kicad
+snhobbs/kicad-testpoints
+oaslananka/kicad-studio-kit
+sf-wdi-31/vscode-kicad

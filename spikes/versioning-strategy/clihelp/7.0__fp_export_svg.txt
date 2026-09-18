@@ -1,0 +1,13 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: svg [-h] [--output VAR] [--layers VAR] [--theme VAR] [--footprint VAR] [--black-and-white] input
+
+Positional arguments:
+  input            	Input file 
+
+Optional arguments:
+  -h, --help       	shows help message and exits 
+  -o, --output     	Output file name [default: ""]
+  -l, --layers     	Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [default: ""]
+  -t, --theme      	Color theme to use (will default to pcbnew settings) [default: ""]
+  --fp, --footprint	Specific symbol to export within the library [default: ""]
+  --black-and-white	Black and white only 

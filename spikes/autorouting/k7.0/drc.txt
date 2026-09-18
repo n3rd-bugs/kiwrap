@@ -1,0 +1,16 @@
+** Drc report for k7.0/tiny_routed.kicad_pcb **
+** Created on 2026-09-18 20:34:47 **
+
+** Found 2 DRC violations **
+[lib_footprint_issues]: The current configuration does not include the library ''.
+    Local override; Severity: warning
+    @(5.0000 mm, 7.5000 mm): Footprint R1
+[lib_footprint_issues]: The current configuration does not include the library ''.
+    Local override; Severity: warning
+    @(15.0000 mm, 7.5000 mm): Footprint R2
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

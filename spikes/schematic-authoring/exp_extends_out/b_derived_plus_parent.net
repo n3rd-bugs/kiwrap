@@ -1,0 +1,137 @@
+(export
+	(version "E")
+	(design
+		(source "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\schematic-authoring\\exp_extends_out\\b_derived_plus_parent.kicad_sch")
+		(date "2026-09-18T21:10:49")
+		(tool "Eeschema 10.0.0")
+		(sheet
+			(number "1")
+			(name "/")
+			(tstamps "/")
+			(title_block
+				(title)
+				(company)
+				(rev)
+				(date)
+				(source "b_derived_plus_parent.kicad_sch")
+				(comment
+					(number "1")
+					(value "")
+				)
+				(comment
+					(number "2")
+					(value "")
+				)
+				(comment
+					(number "3")
+					(value "")
+				)
+				(comment
+					(number "4")
+					(value "")
+				)
+				(comment
+					(number "5")
+					(value "")
+				)
+				(comment
+					(number "6")
+					(value "")
+				)
+				(comment
+					(number "7")
+					(value "")
+				)
+				(comment
+					(number "8")
+					(value "")
+				)
+				(comment
+					(number "9")
+					(value "")
+				)
+			)
+		)
+	)
+	(components
+		(comp
+			(ref "Q1")
+			(value "2N2219")
+			(footprint "Package_TO_SOT_THT:TO-39-3")
+			(datasheet "~")
+			(fields
+				(field
+					(name "Footprint") "Package_TO_SOT_THT:TO-39-3")
+				(field
+					(name "Datasheet") "~")
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Transistor_BJT")
+				(part "2N2219")
+				(description "800mA Ic, 50V Vce, NPN Transistor, TO-39")
+			)
+			(property
+				(name "Sheetname")
+				(value "")
+			)
+			(property
+				(name "Sheetfile")
+				(value "exp_extends_out/b_derived_plus_parent.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "NPN Transistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "TO?39*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "e4021c14-e7a6-47c2-b656-afe08c374639")
+			(units
+				(unit
+					(name "A")
+					(pins)
+				)
+			)
+		)
+	)
+	(groups)
+	(variants)
+	(libparts
+		(libpart
+			(lib "Transistor_BJT")
+			(part "2N2219")
+			(description "800mA Ic, 50V Vce, NPN Transistor, TO-39")
+			(docs "http://www.onsemi.com/pub_link/Collateral/2N2219-D.PDF")
+			(footprints
+				(fp "TO?39*")
+			)
+			(fields
+				(field
+					(name "Reference") "Q")
+				(field
+					(name "Value") "2N2219")
+				(field
+					(name "Footprint") "Package_TO_SOT_THT:TO-39-3")
+				(field
+					(name "Datasheet") "http://www.onsemi.com/pub_link/Collateral/2N2219-D.PDF")
+				(field
+					(name "Description") "800mA Ic, 50V Vce, NPN Transistor, TO-39")
+			)
+		)
+	)
+	(libraries
+		(library
+			(logical "Transistor_BJT")
+			(uri "${KICAD10_SYMBOL_DIR}/Transistor_BJT.kicad_sym")
+		)
+	)
+	(nets)
+)

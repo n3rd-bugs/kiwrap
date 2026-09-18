@@ -1,0 +1,19 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: drill [-h] [--output VAR] [--format VAR] [--drill-origin VAR] [--excellon-zeros-format VAR] [--excellon-units VAR] [--excellon-mirror-y] [--excellon-min-header] [--excellon-separate-th] [--generate-map] [--map-format VAR] [--gerber-precision VAR] input
+
+Positional arguments:
+  input                  	Input file 
+
+Optional arguments:
+  -h, --help             	shows help message and exits 
+  -o, --output           	Output file name [default: ""]
+  --format               	Valid options excellon, gerber. [default: "excellon"]
+  --drill-origin         	Valid options are: absolute,plot [default: "absolute"]
+  --excellon-zeros-format	Valid options are: decimal,suppressleading,suppresstrailing,keep. [default: "decimal"]
+  -u, --excellon-units   	Output units, valid options:in,mm [default: "mm"]
+  --excellon-mirror-y    	Mirror Y axis 
+  --excellon-min-header  	Minimal header 
+  --excellon-separate-th 	Generate independent files for NPTH and PTH holes 
+  --generate-map         	Generate map / summary of drill hits 
+  --map-format           	Valid options: pdf,gerberx2,ps,dxf,svg [default: "pdf"]
+  --gerber-precision     	Precision of gerber coordinates (5 or 6) [default: 6]

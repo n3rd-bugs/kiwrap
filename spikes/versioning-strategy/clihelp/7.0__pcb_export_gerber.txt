@@ -1,0 +1,20 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: gerber [-h] [--output VAR] [--layers VAR] [--exclude-refdes] [--exclude-value] [--include-border-title] [--no-x2] [--no-netlist] [--subtract-soldermask] [--disable-aperture-macros] [--use-drill-file-origin] [--precision VAR] [--no-protel-ext] input
+
+Positional arguments:
+  input                        	Input file 
+
+Optional arguments:
+  -h, --help                   	shows help message and exits 
+  -o, --output                 	Output file name [default: ""]
+  -l, --layers                 	Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [default: ""]
+  --erd, --exclude-refdes      	Exclude the reference designator text 
+  --ev, --exclude-value        	Exclude the value text 
+  --ibt, --include-border-title	Include the border and title block 
+  --no-x2                      	Do not use the extended X2 format 
+  --no-netlist                 	Do not generate netlist attributes 
+  --subtract-soldermask        	Subtract soldermask from silkscreen 
+  --disable-aperture-macros    	Disable aperature macros 
+  --use-drill-file-origin      	Use drill/place file origin 
+  --precision                  	Precision of gerber coordinates, valid options: 5 or 6 [default: 6]
+  --no-protel-ext              	Use KiCad gerber file extension 

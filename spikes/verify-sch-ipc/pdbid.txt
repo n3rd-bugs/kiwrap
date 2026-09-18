@@ -1,0 +1,3 @@
+_eeschema.pdb BCDE735CB4DA4973B0158155E57740C06
+https://symbols.kicad.org/kicad-stable/_eeschema.pdb/BCDE735CB4DA4973B0158155E57740C06/_eeschema.pdb
+https://symbols.kicad.org/kicad-stable/_eeschema.pdb/BCDE735CB4DA4973B0158155E57740C06/_eeschema.pd_

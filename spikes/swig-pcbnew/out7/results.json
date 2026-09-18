@@ -1,0 +1,111 @@
+{
+  "python": "3.9.16 (main, May 18 2023, 07:48:16) [MSC v.1936 64 bit (AMD64)]",
+  "kicad": "7.0.6",
+  "results": {
+    "01_new_board": {
+      "ok": true,
+      "detail": "pcbnew.NewBoard(path); type=BOARD; copper layers=2; file=",
+      "secs": 0.008
+    },
+    "01b_CreateEmptyBoard": {
+      "ok": true,
+      "detail": "skipped (set EXTRA_BOARD=1 to reproduce the one-BOARD-per-process hazard)",
+      "secs": 0.0
+    },
+    "02_outline_edge_cuts": {
+      "ok": true,
+      "detail": "added 4 Edge.Cuts segments; SHAPE_T_RECT/RECTANGLE available=True",
+      "secs": 0.0
+    },
+    "03_footprint_load": {
+      "ok": true,
+      "detail": "lib has 62 footprints; loaded R_0603_1608Metric pads=2; libid nick=''",
+      "secs": 0.015
+    },
+    "04_place_footprints": {
+      "ok": true,
+      "detail": "placed R1@(8.0, 10.0) R2@(22.0, 10.0) rot=SetOrientationDegrees(90); board footprints=2",
+      "secs": 0.0
+    },
+    "05_create_nets": {
+      "ok": true,
+      "detail": "netcodes={'VCC': 1, 'GND': 2, 'SIG': 3}; FindNet('GND').GetNetCode()=2; GetNetCount=4",
+      "secs": 0.0
+    },
+    "06_assign_pads_to_nets": {
+      "ok": true,
+      "detail": "R2.1->SIG(3); R2.2->GND(2); R1.1->VCC(1); R1.2->SIG(3)",
+      "secs": 0.001
+    },
+    "07_add_track": {
+      "ok": true,
+      "detail": "track (8.825, 10.0) -> (22.0, 10.825) w=0.25mm net=SIG; tracks=1",
+      "secs": 0.0
+    },
+    "08_add_via": {
+      "ok": true,
+      "detail": "via at (15,5) drill 0.3 dia 0.6 net GND; tracks now=3",
+      "secs": 0.0
+    },
+    "09_add_zone": {
+      "ok": true,
+      "detail": "zone on B_Cu net GND corners=4; zones=1",
+      "secs": 0.0
+    },
+    "10_fill_zones": {
+      "ok": true,
+      "detail": "Fill returned True; zone IsFilled=True; filled area mm2=503.989897070304",
+      "secs": 0.32
+    },
+    "11_build_connectivity": {
+      "ok": true,
+      "detail": "connectivity built; unconnected count=0",
+      "secs": 0.001
+    },
+    "12_save_board": {
+      "ok": true,
+      "detail": "SaveBoard -> True; C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/out7\\swig_test.kicad_pcb 10185 bytes",
+      "secs": 0.001
+    },
+    "13_reload_board": {
+      "ok": true,
+      "detail": "LoadBoard OK: footprints=2 tracks=3 zones=1 nets=4 drawings=4",
+      "secs": 0.008
+    },
+    "14_WriteDRCReport": {
+      "ok": true,
+      "detail": "WriteDRCReport -> True; report 519 chars; head: \"** Drc report for  **\\n** Created on 2026-09-18 21:01:33 **\\n\\n** Found 2 DRC violations **\\n[lib_footprint_issues]: Footprint 'R_0603_1608Metric' not found in library 'Resistor_SMD'.\\n    Local override; Severity: warning\\n    @(22.0000 mm, 10.0000 mm): Footprint R2\\n[lib_footprint_issues]: Footprint 'R_0603_1608Metric' not found in library 'Resistor_SMD'.\\n    Local override; Severity: warning\\n    @(8.0\"",
+      "secs": 0.01
+    },
+    "15_ExportSpecctraDSN": {
+      "ok": true,
+      "detail": "ExportSpecctraDSN -> True; 3111 bytes",
+      "secs": 0.001
+    },
+    "16_ImportSpecctraSES": {
+      "ok": false,
+      "detail": "TypeError: ImportSpecctraSES() takes 1 positional argument but 2 were given",
+      "secs": 0.001
+    },
+    "17_netlist_api_check": {
+      "ok": true,
+      "detail": "symbols containing 'netlist': []",
+      "secs": 0.0
+    },
+    "18_plot_svg_from_python": {
+      "ok": true,
+      "detail": "PLOT_CONTROLLER svg -> C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\swig-pcbnew\\out7\\-swig_py_plot_FCu.svg exists=True",
+      "secs": 0.001
+    },
+    "19_gerber_drill_from_python": {
+      "ok": true,
+      "detail": "5 gerber layers + drill: ['-B_Cu.gbr', '-B_Mask.gbr', '-Edge_Cuts.gbr', '-F_Cu.gbr', '-F_Mask.gbr', '-NPTH.drl', '-PTH.drl']",
+      "secs": 0.034
+    },
+    "20_step_export_check": {
+      "ok": true,
+      "detail": "STEP-related symbols: []",
+      "secs": 0.0
+    }
+  }
+}

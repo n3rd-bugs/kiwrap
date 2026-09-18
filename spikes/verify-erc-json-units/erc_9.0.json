@@ -1,0 +1,60 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:02:06+0500",
+    "kicad_version": "9.0.5",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/0a2f7c1e-1111-4a55-9c1b-000000000001",
+            "violations": [
+                {
+                    "description": "Wires not connected to anything",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.2032 mm",
+                            "pos": {
+                                "x": 1.0033,
+                                "y": 0.508
+                            },
+                            "uuid": "0a2f7c1e-1111-4a55-9c1b-000000000002"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "wire_dangling"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.2032 mm",
+                            "pos": {
+                                "x": 1.0033,
+                                "y": 0.508
+                            },
+                            "uuid": "0a2f7c1e-1111-4a55-9c1b-000000000002"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.2032 mm",
+                            "pos": {
+                                "x": 1.0033,
+                                "y": 0.508
+                            },
+                            "uuid": "0a2f7c1e-1111-4a55-9c1b-000000000002"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                }
+            ]
+        }
+    ],
+    "source": "t.kicad_sch"
+}

@@ -1,0 +1,11 @@
+Usage: kicad-cli sch [--help] {erc,export,upgrade}
+
+Schematics
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  erc        Runs the Electrical Rules Check (ERC) on the schematic and creates a report
+  export     Export utilities (netlist, pdf, bom, etc)
+  upgrade    Upgrade the schematic file's format to the latest one

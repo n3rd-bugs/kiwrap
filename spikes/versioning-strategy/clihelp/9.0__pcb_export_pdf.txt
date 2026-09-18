@@ -1,0 +1,32 @@
+Usage: pdf [--help] [--output OUTPUT_FILE] [--layers LAYER_LIST] [--common-layers COMMON_LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--mirror] [--exclude-refdes] [--exclude-value] [--include-border-title] [--subtract-soldermask] [--sketch-pads-on-fab-layers] [--hide-DNP-footprints-on-fab-layers] [--sketch-DNP-footprints-on-fab-layers] [--crossout-DNP-footprints-on-fab-layers] [--negative] [--black-and-white] [--theme THEME_NAME] [--drill-shape-opt VAR] [--plot-invisible-text] [--mode-single] [--mode-separate] [--mode-multipage] INPUT_FILE
+
+Generate PDF from a list of layers
+
+Positional arguments:
+  INPUT_FILE                                       Input file 
+
+Optional arguments:
+  -h, --help                                       Shows help message and exits 
+  -o, --output                                     Output file [nargs=0..1] [default: ""]
+  -l, --layers                                     Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --cl, --common-layers                            Layers to include on each plot, comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --drawing-sheet                                  Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var                                 Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                                                   Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -m, --mirror                                     Mirror the board (useful for trying to show bottom layers) 
+  --erd, --exclude-refdes                          Exclude the reference designator text 
+  --ev, --exclude-value                            Exclude the value text 
+  --ibt, --include-border-title                    Include the border and title block 
+  --subtract-soldermask                            Subtract soldermask from silkscreen 
+  --sp, --sketch-pads-on-fab-layers                Draw pad outlines and their numbers on front and back fab layers 
+  --hdnp, --hide-DNP-footprints-on-fab-layers      Don't plot text & graphics of DNP footprints on fab layers 
+  --sdnp, --sketch-DNP-footprints-on-fab-layers    Plot graphics of DNP footprints in sketch mode on fab layers 
+  --cdnp, --crossout-DNP-footprints-on-fab-layers  Plot an 'X' over the courtyard of DNP footprints on fab layers, and strikeout their reference designators 
+  -n, --negative                                   Plot as negative (useful for directly etching from the export) 
+  --black-and-white                                Black and white only 
+  -t, --theme                                      Color theme to use (will default to PCB Editor settings) [nargs=0..1] [default: ""]
+  --drill-shape-opt                                Set pad/via drill shape option (0 = no shape, 1 = small shape, 2 = actual shape) [nargs=0..1] [default: 2]
+  --plot-invisible-text                            Deprecated.  Has no effect. 
+  --mode-single                                    Generates a single file with the output arg path acting as the complete directory and filename path. COMMON_LAYER_LIST does not function in this mode. Instead LAYER_LIST controls all layers plotted. 
+  --mode-separate                                  Plot the layers to individual PDF files 
+  --mode-multipage                                 Plot the layers to a single PDF file with multiple pages 

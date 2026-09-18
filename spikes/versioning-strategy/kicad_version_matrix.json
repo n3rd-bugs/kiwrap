@@ -1,0 +1,37 @@
+{
+  "_note": "Verified locally on 2026-09-18 against installed 7.0.6, 8.0.1, 9.0.5, 10.0.0 (Windows). 'writes' = format version each release stamps when saving.",
+  "installs": {
+    "7.0": {"exact": "7.0.6", "python": "3.9.16", "pyd_abi": "cp39-win_amd64", "config_subdir": "7.0", "registry": "HKLM/SOFTWARE/WOW6432Node/Microsoft/Windows/CurrentVersion/Uninstall/KiCad 7.0", "uninstaller": "uninstaller.exe"},
+    "8.0": {"exact": "8.0.1", "python": "3.11.5", "pyd_abi": "cp311-win_amd64", "config_subdir": "8.0", "registry": "HKLM/SOFTWARE/Microsoft/Windows/CurrentVersion/Uninstall/KiCad 8.0"},
+    "9.0": {"exact": "9.0.5", "python": "3.11.5", "pyd_abi": "cp311-win_amd64", "config_subdir": "9.0", "registry": "HKLM/SOFTWARE/Microsoft/Windows/CurrentVersion/Uninstall/KiCad 9.0"},
+    "10.0": {"exact": "10.0.0", "python": "3.11.5", "pyd_abi": "cp311-win_amd64", "config_subdir": "10.0", "registry": "HKLM/SOFTWARE/Microsoft/Windows/CurrentVersion/Uninstall/KiCad 10.0"}
+  },
+  "file_format_versions_written": {
+    "kicad_sch":  {"7.0": 20230121, "8.0": 20231120, "9.0": 20250114, "10.0": 20260306},
+    "kicad_pcb":  {"7.0": 20221018, "8.0": 20240108, "9.0": 20241229, "10.0": 20260206},
+    "kicad_sym":  {"7.0": 20220914, "8.0": 20231120, "9.0": 20241209, "10.0": 20251024},
+    "kicad_mod":  {"7.0": 20221018, "8.0": 20240108, "9.0": 20241229, "10.0": 20260206},
+    "kicad_pro_meta_version": {"7.0": 1, "8.0": 1, "9.0": 3, "10.0": 3, "master(11-dev)": 4},
+    "kicad_prl_meta_version": {"7.0": 3, "8.0": 3, "9.0": 5, "10.0": 5},
+    "kicad_jobset_meta_version": {"9.0": 1, "10.0": 1},
+    "lib_table_version": {"7.0": 7, "8.0": 7, "9.0": 7, "10.0": 7},
+    "generator_version_token_present": {"7.0": false, "8.0": true, "9.0": true, "10.0": true}
+  },
+  "env_vars": {
+    "versioned_builtins": ["KICAD{N}_SYMBOL_DIR", "KICAD{N}_FOOTPRINT_DIR", "KICAD{N}_3DMODEL_DIR", "KICAD{N}_TEMPLATE_DIR", "KICAD{N}_3RD_PARTY", "KICAD{N}_SCRIPTING_DIR", "KICAD{N}_USER_SCRIPTING_DIR"],
+    "unversioned": ["KIPRJMOD", "KICAD_USER_TEMPLATE_DIR", "KICAD_CONFIG_HOME", "KICAD_DOCUMENTS_HOME", "KICAD_STOCK_DATA_HOME", "KICAD_RUN_FROM_BUILD_DIR", "KICAD_API_SOCKET", "KICAD_API_TOKEN"],
+    "legacy_fallback_regex": {"7.0": ["KISYS3DMOD", "KICAD*_3DMODEL_DIR"], "8.0": ["+KICAD*_SYMBOL_DIR", "+KICAD*_FOOTPRINT_DIR"], "9.0": ["+KICAD*_3RD_PARTY"], "10.0": ["+KICAD_SYMBOL_DIR (unversioned legacy)"]}
+  },
+  "cli": {
+    "subcommands_added": {"8.0": ["sch erc", "pcb drc", "sch export bom", "pcb export glb", "pcb export ipc2581", "pcb export vrml"], "9.0": ["jobset run", "pcb render", "pcb export brep/gencad/ipcd356/odb/ply/stl/xao"], "10.0": ["sch upgrade", "pcb upgrade", "pcb import", "pcb export 3dpdf/ps/stats/stpz/u3d"]},
+    "subcommands_removed": {"10.0": ["pcb export gerber (singular)", "pcb export hpgl (stub, non-functional)"]},
+    "exit_codes": {"OK": 0, "ERR_ARGS": 1, "ERR_UNKNOWN": 2, "ERR_INVALID_INPUT_FILE": 3, "ERR_INVALID_OUTPUT_CONFLICT": 4, "ERR_RC_VIOLATIONS": 5, "ERR_JOBS_RUN_FAILED": 6, "observed_127_on_7_8_for_newer_file": true},
+    "leaf_help_exit_code": {"7.0": 1, "8.0": 1, "9.0": 0, "10.0": 0},
+    "gerbers_creates_output_dir": {"7.0": false, "8.0": false, "9.0": true, "10.0": true},
+    "writes_kicad_prl_side_file": {"7.0": false, "8.0": false, "9.0": false, "10.0": true}
+  },
+  "python": {
+    "swig_pcbnew": {"7.0": "IO_MGR/PLUGIN", "8.0+": "PCB_IO_MGR", "deprecation_warning_on_import": ["9.0", "10.0"]},
+    "kipy": {"pypi": "kicad-python", "tested": "0.8.0", "api_version_built": "10.0.6", "works_with": ["9.0.5", "10.0.0"], "schematic_commands": 0, "headless": "KiCad 11+ only (per dev-docs)"}
+  }
+}

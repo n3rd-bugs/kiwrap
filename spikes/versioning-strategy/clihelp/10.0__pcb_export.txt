@@ -1,0 +1,31 @@
+Usage: pcb export [--help] {3dpdf,brep,drill,dxf,gencad,gerbers,glb,hpgl,ipc2581,ipcd356,odb,pdf,ply,pos,ps,stats,step,stl,stpz,svg,u3d,vrml,xao}
+
+Export utilities (Gerbers, drill, position files, etc)
+
+Optional arguments:
+  -h, --help  Shows help message and exits 
+
+Subcommands:
+  3dpdf      Export PDF
+  brep       Export BREP
+  drill      Generate Drill Files
+  dxf        Generate a DXF from a list of layers
+  gencad     Export the PCB in Gencad format
+  gerbers    Plot multiple Gerbers for a PCB, including the ability to use stored board plot settings
+  glb        Export GLB (binary GLTF)
+  hpgl       No longer supported as of KiCad 10.0.
+  ipc2581    Export the PCB in IPC-2581 format
+  ipcd356    Generate IPC-D-356 netlist file
+  odb        Export the PCB in ODB++ format
+  pdf        Generate PDF from a list of layers
+  ply        Export PLY
+  pos        Generate Position File
+  ps         Generate Postscript from a list of layers
+  stats      Generate a board statistics report
+  step       Export STEP
+  stl        Export STL
+  stpz       Export STEPZ
+  svg        Generate SVG outputs of a given layer list
+  u3d        Export U3D
+  vrml       Export VRML
+  xao        Export XAO

@@ -1,0 +1,23 @@
+input: 1 argument(s) expected. 0 provided.
+Usage: pdf [--help] [--output OUTPUT_FILE] [--layers LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--mirror] [--exclude-refdes] [--exclude-value] [--include-border-title] [--negative] [--black-and-white] [--theme THEME_NAME] [--drill-shape-opt VAR] INPUT_FILE
+
+Generate PDF from a list of layers
+
+Positional arguments:
+  INPUT_FILE                     Input file 
+
+Optional arguments:
+  -h, --help                     Shows help message and exits 
+  -o, --output                   Output file [nargs=0..1] [default: ""]
+  -l, --layers                   Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: ""]
+  --drawing-sheet                Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var               Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                                 Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -m, --mirror                   Mirror the board (useful for trying to show bottom layers) 
+  --erd, --exclude-refdes        Exclude the reference designator text 
+  --ev, --exclude-value          Exclude the value text 
+  --ibt, --include-border-title  Include the border and title block 
+  -n, --negative                 Plot as negative (useful for directly etching from the export) 
+  --black-and-white              Black and white only 
+  -t, --theme                    Color theme to use (will default to PCB Editor settings) [nargs=0..1] [default: ""]
+  --drill-shape-opt              Set pad/via drill shape option (0 = no shape, 1 = small shape, 2 = actual shape) [nargs=0..1] [default: 2]

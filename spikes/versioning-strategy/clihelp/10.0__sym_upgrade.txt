@@ -1,0 +1,11 @@
+Usage: sym upgrade [--help] [--output OUTPUT_FILE_OR_DIR] [--force] INPUT_FILE_OR_DIR
+
+Upgrades the symbol library to the current kicad version format
+
+Positional arguments:
+  INPUT_FILE_OR_DIR  Input file or directory 
+
+Optional arguments:
+  -h, --help         Shows help message and exits 
+  -o, --output       Output file or directory [nargs=0..1] [default: ""]
+  --force            Forces the symbol library to be resaved regardless of versioning 

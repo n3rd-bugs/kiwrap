@@ -1,0 +1,1049 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:09:53",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [],
+    "source": "stale2.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT5] on B.Cu, length 3.4869 mm",
+                    "pos": {
+                        "x": 26.7375,
+                        "y": 15.787
+                    },
+                    "uuid": "3c132e4b-f366-494f-b125-c3e3a49800c6"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT4] on B.Cu, length 12.7527 mm",
+                    "pos": {
+                        "x": 23.9125,
+                        "y": 30.6999
+                    },
+                    "uuid": "9bd9f53c-99d3-4398-9a9e-3da07ebac93d"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT5] on B.Cu, length 12.2202 mm",
+                    "pos": {
+                        "x": 29.2031,
+                        "y": 18.2526
+                    },
+                    "uuid": "b261aadb-4201-4b87-8b5d-703d53a59a8e"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 22.5972,
+                        "y": 20.2165
+                    },
+                    "uuid": "0ecf77e8-b879-4a87-9807-63bebc64e6e7"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 22.5972,
+                        "y": 20.2165
+                    },
+                    "uuid": "0ecf77e8-b879-4a87-9807-63bebc64e6e7"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT3] on B.Cu, length 14.0460 mm",
+                    "pos": {
+                        "x": 23.1989,
+                        "y": 30.7069
+                    },
+                    "uuid": "c279880a-cdf5-4d1e-9bfc-636084d15be5"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT4] on B.Cu, length 2.7136 mm",
+                    "pos": {
+                        "x": 23.9125,
+                        "y": 17.9472
+                    },
+                    "uuid": "c41f1df9-13bf-488c-a5b0-2d022d4f5551"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT2] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 21.4313,
+                        "y": 14.3417
+                    },
+                    "uuid": "86d42e31-8136-4e29-9f07-14ac76abaf85"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT2] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 21.4313,
+                        "y": 14.3417
+                    },
+                    "uuid": "86d42e31-8136-4e29-9f07-14ac76abaf85"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT2] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 15.4125,
+                        "y": 30.6999
+                    },
+                    "uuid": "dff4f5b1-7f4b-4d1e-93c5-6aeffea6d19f"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT2] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 15.4125,
+                        "y": 30.6999
+                    },
+                    "uuid": "dff4f5b1-7f4b-4d1e-93c5-6aeffea6d19f"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 22.9284,
+                        "y": 16.0333
+                    },
+                    "uuid": "6785fcef-a04d-4eca-9d52-9009a68e81f8"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 22.9284,
+                        "y": 16.0333
+                    },
+                    "uuid": "6785fcef-a04d-4eca-9d52-9009a68e81f8"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT2] on B.Cu, length 10.3394 mm",
+                    "pos": {
+                        "x": 21.4313,
+                        "y": 14.3417
+                    },
+                    "uuid": "141160ad-b24b-4865-8c12-792faa2b244e"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [BUS6] on B.Cu, length 3.8520 mm",
+                    "pos": {
+                        "x": 22.5972,
+                        "y": 16.3645
+                    },
+                    "uuid": "58aacc66-b301-48da-b5b1-b450449215ee"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 30.4561,
+                        "y": 13.0228
+                    },
+                    "uuid": "1205d2d0-e077-4848-8b60-99bc3974b311"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 30.4561,
+                        "y": 13.0228
+                    },
+                    "uuid": "1205d2d0-e077-4848-8b60-99bc3974b311"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [BUS6] on B.Cu, length 0.4684 mm",
+                    "pos": {
+                        "x": 22.9284,
+                        "y": 16.0333
+                    },
+                    "uuid": "9c5cdfc5-c3ea-44d3-a1ed-d3014b0babd9"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT3] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 22.8943,
+                        "y": 31.0115
+                    },
+                    "uuid": "33e5705d-14e6-4f21-88bd-1604a361bf15"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT3] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 22.8943,
+                        "y": 31.0115
+                    },
+                    "uuid": "33e5705d-14e6-4f21-88bd-1604a361bf15"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 30.0093,
+                        "y": 32.9315
+                    },
+                    "uuid": "7a2f9467-c19e-4c66-86a5-e04e6bf4fe59"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT6] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 30.0093,
+                        "y": 32.9315
+                    },
+                    "uuid": "7a2f9467-c19e-4c66-86a5-e04e6bf4fe59"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT2] on B.Cu, length 8.5119 mm",
+                    "pos": {
+                        "x": 21.4313,
+                        "y": 24.6811
+                    },
+                    "uuid": "f8b7751d-bb96-41ba-a63c-0d1415c4b5b2"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS1] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 25.4844,
+                        "y": 19.3767
+                    },
+                    "uuid": "56e1ffe8-dde3-466e-bcb4-2b297c9010de"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS1] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 25.4844,
+                        "y": 19.3767
+                    },
+                    "uuid": "56e1ffe8-dde3-466e-bcb4-2b297c9010de"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT3] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 23.847,
+                        "y": 15.9223
+                    },
+                    "uuid": "d2d40cba-6a6b-4ed7-8b24-9d52f22117b9"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT3] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 23.847,
+                        "y": 15.9223
+                    },
+                    "uuid": "d2d40cba-6a6b-4ed7-8b24-9d52f22117b9"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT3] on B.Cu, length 0.4308 mm",
+                    "pos": {
+                        "x": 22.8943,
+                        "y": 31.0115
+                    },
+                    "uuid": "3d8b49c7-4ffc-4109-93e7-534c3fb6726c"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT6] on B.Cu, length 19.4619 mm",
+                    "pos": {
+                        "x": 30.4561,
+                        "y": 13.0228
+                    },
+                    "uuid": "1ee4201c-ffe8-4740-9545-e7f9f462faaa"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT6] on B.Cu, length 0.6319 mm",
+                    "pos": {
+                        "x": 30.4561,
+                        "y": 32.4847
+                    },
+                    "uuid": "b37fa8ff-b4d6-4ff7-8274-f4db020c1438"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT3] on B.Cu, length 0.0905 mm",
+                    "pos": {
+                        "x": 23.847,
+                        "y": 16.0128
+                    },
+                    "uuid": "45fd65f0-3654-4692-9989-4698c2d50d92"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [OUT3] on B.Cu, length 0.9166 mm",
+                    "pos": {
+                        "x": 23.1989,
+                        "y": 16.6609
+                    },
+                    "uuid": "7c60410b-e3ca-420c-94bb-45d7e27a657a"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS1] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 27.1217,
+                        "y": 19.2112
+                    },
+                    "uuid": "665e6386-ff5b-463c-9a3a-83d2c7e963f4"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [BUS1] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 27.1217,
+                        "y": 19.2112
+                    },
+                    "uuid": "665e6386-ff5b-463c-9a3a-83d2c7e963f4"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [BUS1] on B.Cu, length 1.4718 mm",
+                    "pos": {
+                        "x": 25.4844,
+                        "y": 19.3767
+                    },
+                    "uuid": "b5d9c2da-91de-4210-9067-edd6f44aaad1"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT5] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 26.7375,
+                        "y": 15.787
+                    },
+                    "uuid": "973d9f5c-7bcb-4a8f-aa92-bf06bde5f9dd"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT5] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 26.7375,
+                        "y": 15.787
+                    },
+                    "uuid": "973d9f5c-7bcb-4a8f-aa92-bf06bde5f9dd"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [BUS1] on B.Cu, length 0.2341 mm",
+                    "pos": {
+                        "x": 26.9562,
+                        "y": 19.3767
+                    },
+                    "uuid": "df9ff31e-6705-4a96-becf-de0912d1e9d8"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT4] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 23.9125,
+                        "y": 30.6999
+                    },
+                    "uuid": "32c3376e-61ea-400a-bc5d-c3b333afddba"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT4] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 23.9125,
+                        "y": 30.6999
+                    },
+                    "uuid": "32c3376e-61ea-400a-bc5d-c3b333afddba"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT5] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 29.2031,
+                        "y": 30.4728
+                    },
+                    "uuid": "e8d2b230-a122-46dd-aabb-a3edd2f503d5"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT5] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 29.2031,
+                        "y": 30.4728
+                    },
+                    "uuid": "e8d2b230-a122-46dd-aabb-a3edd2f503d5"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT4] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 25.8313,
+                        "y": 16.0284
+                    },
+                    "uuid": "94c7bb0d-4492-4e83-b3c4-a2813b34a31a"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [OUT4] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 25.8313,
+                        "y": 16.0284
+                    },
+                    "uuid": "94c7bb0d-4492-4e83-b3c4-a2813b34a31a"
+                },
+                {
+                    "description": "Zone 'GNDPOUR' [GND] on B.Cu, priority 0",
+                    "pos": {
+                        "x": 1.0,
+                        "y": 1.0
+                    },
+                    "uuid": "008c4efd-8697-4df5-ae42-e8ea35225561"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        }
+    ]
+}

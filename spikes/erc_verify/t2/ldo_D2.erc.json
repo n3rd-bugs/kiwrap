@@ -1,0 +1,188 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T22:05:52",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/948d07c5-31d6-41c9-b883-87ae571788a9",
+            "violations": [
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x02]",
+                            "pos": {
+                                "x": 0.381,
+                                "y": 0.635
+                            },
+                            "uuid": "ab3ec0b0-91f7-4578-83dd-4131b4b9d197"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG01 [PWR_FLAG]",
+                            "pos": {
+                                "x": 0.4826,
+                                "y": 0.6096
+                            },
+                            "uuid": "1e8c7057-a605-4338-8b8a-9676fd0bbb43"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol C1 [C]",
+                            "pos": {
+                                "x": 0.5588,
+                                "y": 0.7112
+                            },
+                            "uuid": "2641ac62-4615-4d96-9ab4-6df67d7bdb66"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol U1 [AMS1117-3.3]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.635
+                            },
+                            "uuid": "fee7986e-cbcb-49a3-9c65-73d3bc306822"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol #FLG02 [PWR_FLAG]",
+                            "pos": {
+                                "x": 0.4826,
+                                "y": 0.889
+                            },
+                            "uuid": "e814b288-7c88-4da9-bbd3-3b4da581d518"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR02 [+3V3]",
+                            "pos": {
+                                "x": 0.9652,
+                                "y": 0.5842
+                            },
+                            "uuid": "9980bccb-2e72-4068-80ba-33539a5fe61f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR01 [GND]",
+                            "pos": {
+                                "x": 0.762,
+                                "y": 0.889
+                            },
+                            "uuid": "a3a3850e-7332-4d41-bda6-6c34687eac71"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol C2 [C]",
+                            "pos": {
+                                "x": 0.9652,
+                                "y": 0.7112
+                            },
+                            "uuid": "97c6f1dc-ba25-43d9-92e6-8a63a9f1c099"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol R1 [R]",
+                            "pos": {
+                                "x": 1.0922,
+                                "y": 0.7112
+                            },
+                            "uuid": "57918526-2a54-4589-9db2-b2de0f05044d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library ''",
+                    "items": [
+                        {
+                            "description": "Symbol D1 [LED]",
+                            "pos": {
+                                "x": 1.1303,
+                                "y": 0.8382
+                            },
+                            "uuid": "829c7818-e1a3-412b-9b29-3706d370fbdf"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                }
+            ]
+        }
+    ],
+    "source": "ldo_D2.kicad_sch"
+}

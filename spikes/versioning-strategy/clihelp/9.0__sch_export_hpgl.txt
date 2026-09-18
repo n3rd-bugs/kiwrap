@@ -1,0 +1,18 @@
+Usage: hpgl [--help] [--output OUTPUT_DIR] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE] [--exclude-drawing-sheet] [--default-font VAR] [--pages PAGE_LIST] [--pen-size PEN_SIZE] [--origin ORIGIN] INPUT_FILE
+
+Export HPGL
+
+Positional arguments:
+  INPUT_FILE                   Input file 
+
+Optional arguments:
+  -h, --help                   Shows help message and exits 
+  -o, --output                 Output directory [nargs=0..1] [default: ""]
+  --drawing-sheet              Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: ""]
+  -D, --define-var             Overrides or adds project variables, can be used multiple times to declare multiple variables.
+                               Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}]
+  -e, --exclude-drawing-sheet  No drawing sheet 
+  --default-font               Default font name [nargs=0..1] [default: ""]
+  --pages                      List of page numbers separated by comma to print, blank or unspecified is equivalent to all pages [nargs=0..1] [default: ""]
+  -p, --pen-size               Pen size [mm] [nargs=0..1] [default: 0.5]
+  -r, --origin                 Origin and scale: 0 bottom left, 1 centered, 2 page fit, 3 content fit [nargs=0..1] [default: 1]

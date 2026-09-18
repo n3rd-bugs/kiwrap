@@ -1,0 +1,10 @@
+Usage: export python-bom [--help] [--output OUTPUT_FILE] INPUT_FILE
+
+Export the legacy BOM XML format used in the schematic editor with Python scripts
+
+Positional arguments:
+  INPUT_FILE    Input file 
+
+Optional arguments:
+  -h, --help    Shows help message and exits 
+  -o, --output  Output file [nargs=0..1] [default: ""]

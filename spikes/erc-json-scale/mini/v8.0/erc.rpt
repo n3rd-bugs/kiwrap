@@ -1,0 +1,23 @@
+ERC report (2026-09-18T22:02:01+0500, Encoding UTF8)
+
+***** Sheet /
+[label_dangling]: Label not connected to anything
+    ; error
+    @(50.8000 mm, 50.8000 mm): Global Label 'FOO'
+[pin_not_connected]: Pin not connected
+    ; error
+    @(63.5000 mm, 59.6900 mm): Symbol R1 Pin 1 [Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(63.5000 mm, 67.3100 mm): Symbol R1 Pin 2 [Passive, Line]
+[lib_symbol_issues]: The current configuration does not include the library 'Device'
+    ; warning
+    @(63.5000 mm, 63.5000 mm): Symbol R1 [R]
+[no_connect_dangling]: Unconnected "no connection" flag
+    ; warning
+    @(101.6000 mm, 50.8000 mm): No Connect
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(76.2000 mm, 50.8000 mm): Horizontal Wire, length 12.7000 mm
+
+ ** ERC messages: 6  Errors 4  Warnings 2

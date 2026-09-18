@@ -1,0 +1,29 @@
+Usage: export bom [--help] [--output OUTPUT_FILE] [--variant VAR]... [--preset PRESET] [--format-preset FMT_PRESET] [--fields FIELDS] [--labels LABELS] [--group-by GROUP_BY] [--sort-field SORT_BY] [--sort-asc VAR] [--filter FILTER] [--exclude-dnp] [--include-excluded-from-bom] [--field-delimiter FIELD_DELIM] [--string-delimiter STR_DELIM] [--ref-delimiter REF_DELIM] [--ref-range-delimiter REF_RANGE_DELIM] [--keep-tabs] [--keep-line-breaks] INPUT_FILE
+
+Generate a Bill of Materials (BOM)
+
+Positional arguments:
+  INPUT_FILE                   Input file 
+
+Optional arguments:
+  -h, --help                   Shows help message and exits 
+  -o, --output                 Output file [nargs=0..1] [default: ""]
+  --variant                    The variant name(s) to output, can be used multiple times to specify multiple variants.
+                               When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.
+                               When no --variant argument is provided the default variant is output. [nargs=0..1] [default: {}] [may be repeated]
+  --preset                     Use a named BOM preset setting from the schematic, e.g. "Grouped By Value". [nargs=0..1] [default: ""]
+  --format-preset              Use a named BOM format preset setting from the schematic, e.g. CSV. [nargs=0..1] [default: ""]
+  --fields                     An ordered list of fields to export. Generated fields such as QUANTITY, ITEM_NUMBER, DNP, EXCLUDE_FROM_BOM, EXCLUDE_FROM_BOARD, and EXCLUDE_FROM_SIM can be specified with or without ${} delimiters. [nargs=0..1] [default: "Reference,Value,Footprint,QUANTITY,DNP"]
+  --labels                     An ordered list of labels to apply the exported fields. [nargs=0..1] [default: "Refs,Value,Footprint,Qty,DNP"]
+  --group-by                   Fields to group references by when field values match. [nargs=0..1] [default: ""]
+  --sort-field                 Field name to sort by. [nargs=0..1] [default: "Reference"]
+  --sort-asc                   Sort ascending (true) or descending (false). [nargs=0..1] [default: true]
+  --filter                     Filter string to remove output lines. [nargs=0..1] [default: ""]
+  --exclude-dnp                Exclude symbols marked Do-Not-Populate. 
+  --include-excluded-from-bom  Deprecated.  Has no effect. 
+  --field-delimiter            Separator between output fields/columns. [nargs=0..1] [default: ","]
+  --string-delimiter           Character to surround fields with. [nargs=0..1] [default: """]
+  --ref-delimiter              Character to place between individual references. [nargs=0..1] [default: ","]
+  --ref-range-delimiter        Character to place in ranges of references. Leave blank for no ranges. [nargs=0..1] [default: "-"]
+  --keep-tabs                  Keep tab characters from input fields. Stripped by default. 
+  --keep-line-breaks           Keep line break characters from input fields. Stripped by default. 

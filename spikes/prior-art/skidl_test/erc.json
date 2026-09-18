@@ -1,0 +1,121 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:52:37",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/3dd22d42-92d2-49eb-92ec-9ada186f1b11",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR001 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 1.5113,
+                                "y": 1.2319
+                            },
+                            "uuid": "f170ac9d-ec25-5706-ae7d-c1f40f41c028"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Symbol 'R' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R1 [R]",
+                            "pos": {
+                                "x": 1.5113,
+                                "y": 0.9906
+                            },
+                            "uuid": "9b5722c5-537b-52b0-a11f-d0dda8a222c1"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'C' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol C1 [C]",
+                            "pos": {
+                                "x": 1.4859,
+                                "y": 1.1176
+                            },
+                            "uuid": "9f77670d-5796-5e1d-9775-e6a90fa1f0f5"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Symbol 'R' doesn't match copy in library 'Device'",
+                    "items": [
+                        {
+                            "description": "Symbol R2 [R]",
+                            "pos": {
+                                "x": 1.5494,
+                                "y": 1.1176
+                            },
+                            "uuid": "7d3fcdd3-4118-5d10-8f46-aa7d38168b5f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_mismatch"
+                },
+                {
+                    "description": "Both VIN and GND are attached to the same items; VIN will be used in the netlist",
+                    "items": [
+                        {
+                            "description": "Global Label 'VIN'",
+                            "pos": {
+                                "x": 1.5113,
+                                "y": 1.1938
+                            },
+                            "uuid": "8c169fa3-367c-5c78-9f6e-8b001768d4ca"
+                        },
+                        {
+                            "description": "Symbol #PWR001 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 1.5113,
+                                "y": 1.2319
+                            },
+                            "uuid": "f170ac9d-ec25-5706-ae7d-c1f40f41c028"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "multiple_net_names"
+                }
+            ]
+        }
+    ],
+    "source": "t.kicad_sch"
+}

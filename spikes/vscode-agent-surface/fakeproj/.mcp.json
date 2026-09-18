@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "kicad-probe": {
+      "type": "stdio",
+      "command": "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\vscode-agent-surface\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\vscode-agent-surface\\kicad_probe_server.py"
+      ],
+      "env": {
+        "KICAD_ROOT": "C:\\Program Files\\KiCad"
+      }
+    }
+  }
+}
