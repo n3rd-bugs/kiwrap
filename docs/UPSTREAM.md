@@ -391,6 +391,73 @@ regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`
   `Ping` as in `qa/tests/api/api_e2e_utils.h`).
 - **Effort:** 0.5 d each. **Detection:** none needed (kiwrap-side).
 
+### G15 — Display input mode: drive a hidden KiCad editor with posted window messages (Windows; GUI-only, no agent signal) — implemented on the fork
+
+- **Why kiwrap needs it:** the VS Code extension's "Live KiCad" tab ([DISPLAY.md §12](DISPLAY.md))
+  captures the real KiCad window with `Windows.Graphics.Capture` and sends the user's input back. On
+  stock KiCad the input half needs the window on the desktop and (for `SendInput`) foreground and
+  unobscured; a window that is covered by VS Code or hidden cannot be driven with `PostMessage`
+  because KiCad and wxMSW consult the hardware instead of the event: `WX_VIEW_CONTROLS` /
+  `TOOL_MANAGER` read `wxGetMousePosition()` (`GetCursorPos`), `TOOL_DISPATCHER`'s button state and
+  KiCad's `wxGetKeyState()` calls read `GetAsyncKeyState`, modifiers come from `GetKeyState` (never
+  updated by posted keys), `wxEVT_CHAR_HOOK` comes from a `WH_KEYBOARD` hook that Windows runs for
+  hardware input only (posted `Esc` never reaches `wxDialog`/`DIALOG_SHIM`), `GenerateMouseLeave`
+  builds LEAVE events from the real cursor, and `center_on_zoom` warps the physical cursor. This is
+  not a tier-3 *data* gap: no agent tool depends on it (D17 keeps the loop data-first); it is the
+  only path to "KiCad invisible, VS Code is the UI" on Windows (DISPLAY.md decision 5 → §12.8 row 5).
+- **Status 2026-09-20:** implemented on the fork branch `mr/display-input` (= `base/6dd893f7d1` +
+  one commit `d70b0af290` "Add an input-from-events mode for message-driven editors (MSW)", 25 files
+  +534 −48, `Assisted-by: Claude Code`), built with the `msvc-win64-release` preset and measured on
+  pcbnew (`research/display/win-input-patch.md`). Pushed to the private origin only; issue and MR
+  **not** filed (D19), drafts in `docs/upstream/drafts/display-input-mr.md`. Not yet on the
+  integration branch `kiwrap/6dd893f7d1` and not in the manifest: that is decision 5 in
+  DISPLAY.md §12.8 (carry vs not). Manifest status if carried: `local`.
+- **What it is:** an environment-variable-gated mode `KICAD_INPUT_FROM_EVENTS=1|cloak`, no change
+  while unset, GTK/macOS stubs. New seam in `KIPLATFORM::UI`: `InputFromEvents()`,
+  `GetMousePosition()` (last event / last warp), `GetMouseState()` (event buttons + thread-synchronous
+  modifiers), `IsKeyDown()` (`GetKeyState`), `WarpPointer()` moving only the reported pointer,
+  `InfiniteDragPrepareWindow()` refusing; a process-wide `wxEventFilter` (`INPUT_FROM_EVENTS_FILTER`,
+  installed by `PGM_BASE::InitPgm`) that records pointer/buttons, mirrors key transitions with
+  `SetKeyboardState`, synthesises `wxEVT_CHAR_HOOK` from `wxEVT_KEY_DOWN` like `wxKeyboardHook`, and
+  drops spurious LEAVE events; the state hangs off `wxTheApp`'s client object because kiplatform is a
+  static library linked once per module. A mechanical sweep routes the direct `wxGetMousePosition` /
+  `wxGetMouseState` / `wxGetKeyState` callers (tool dispatcher, view controls, the three selection
+  tools, choosers, view switchers, properties panel, lib tree, AUI art, 3D preview, `SCH_MOVE_TOOL`)
+  through the seam. Value `cloak` additionally `DWMWA_CLOAK`s every wx top-level on show (invisible on
+  the desktop, still delivered by WGC; only the owning process may cloak).
+- **Verified (posted messages only, window covered or cloaked):** click select, `R`, `Delete`,
+  `Ctrl+Z`, drag-move, wheel zoom centred on the reported pointer, middle-drag pan, double-click →
+  Footprint Properties, `E` → dialog, field click + `Ctrl+A` + typing + OK (73 ms), footprint
+  chooser (`A`, filter, two-step `Esc`), context menu at the reported pointer + item click, `Esc` on
+  menus/dialogs; `GetCursorPos` and `GetForegroundWindow` unchanged during the runs; wheel → pixel
+  69 ms median, 27.6 fps motion at 8.8 % helper / 3.4 % pcbnew, 0 idle. Not fixed by the patch:
+  tooltips (comctl32 polls the real cursor), popup menus / drop-downs (OS windows, still shown on the
+  desktop), one foreground grab at launch, fully off-screen windows get no WGC updates. **Untested:**
+  eeschema and the other editors, a project session (`kicad.exe`), Alt combinations, the auto-pan
+  focus path, the 10.0 stable branch. No QA test added yet (the mode is exercised by the
+  `prototypes/display/winstream` drivers, `bench/actions/events_*.json`).
+- **kiwrap side (planned, DISPLAY.md §10 D6):** the session supervisor launches builds carrying the
+  patch with `KICAD_INPUT_FROM_EVENTS=cloak` in the sandbox env and without activation; the display
+  helper selects its `events` injector (PostMessage only) when `kiwrap.patches` contains
+  `display-input`, and the `hybrid` injector otherwise. No tool branches on it (§3.1).
+- **Detection:** there is no CLI subcommand or IPC handler to probe — the mode is GUI-only and
+  env-var gated — so the id is taken from the manifest + `kiwrap.patched_build` (the installed
+  commit matches a `kiwrap-build/*` tag whose integration branch includes `mr/display-input`), and
+  the helper confirms it at run time: a cloaked KiCad window (`DWMWA_CLOAKED` set on the frame after
+  launch with `=cloak`) proves the build honours the variable; if the frame is not cloaked the helper
+  falls back to the hybrid injector. Proposed key: `gui.input_from_events` (informational, derived
+  from the manifest, refined by that runtime check).
+- **Upstream plan (on hold, D19):** issue first, pitched as *assistive / automated input on Windows*
+  (UI automation, accessibility tooling, test drivers), not as remote display for an IDE; MR = seam +
+  filter + the mechanical sweep, `cloak` left out of the first MR (fork-only until asked for). Before
+  submitting: rebase on `upstream/master` (the sweep touches `tool_dispatcher.cpp`,
+  `wx_view_controls.cpp`, `pcb_selection_tool.cpp`, which move often), guard hardware keys from
+  reaching `wxEVT_CHAR_HOOK` twice while the mode is on, `clang-format` the changed ranges, run the
+  pcbnew/eeschema QA binaries, and do not batch with the G1/G6 MRs (§3.1 no-batches rule).
+- **Effort:** KiCad side done for pcbnew; 0.5 d eeschema/editor matrix, 0.5 d pre-MR hygiene, 0.5–1 w
+  optional in-process cloaking of popup menus (untested). Rebase cost on every base bump is the
+  ongoing price of carrying it.
+
 Summary table (priority = order of work; "P" = priority):
 
 | P | Gap | Kind | Effort | Acceptance | Detection key |
@@ -409,6 +476,7 @@ Summary table (priority = order of work; "P" = priority):
 | 5 | G8 pins as items | convenience | 1 d | medium | `ipc.schematic_pins_are_items` |
 | 5 | G12 DRC per-type caps | fix | 0.5 d | medium | `cli.drc_unlimited_violations` |
 | 6 | G9 unfiltered GetOpenDocuments | trivial | 0.5 d | low | — |
+| — | G15 display input mode (`KICAD_INPUT_FROM_EVENTS`, Windows GUI only) — **on the fork**, MR on hold (D19); not an agent signal | feature (platform) | done (pcbnew); 0.5 d eeschema matrix + 0.5 d pre-MR hygiene | low-medium (assistive-input framing) | manifest + `kiwrap.patched_build`, runtime cloak check (`gui.input_from_events`) |
 
 ---
 
@@ -438,6 +506,7 @@ The fork tracks the read-only GitHub mirror; MRs go to GitLab (`upstream` remote
 | `master`, `10.0` | mirror of upstream, never committed to | `git fetch upstream` only |
 | `base/<kicad-sha12>` | the exact upstream commit the current nightly / patched build is on (today `base/6dd893f7d1` for 10.99.0-4083) | moves only when the pinned nightly moves (D16 re-probe) |
 | `mr/<issue>-<slug>` | one branch per upstream MR, rebased on `master` (or `10.0` for stable-only fixes such as G3) | this is what the GitLab MR points at; force-pushed on rebase; deleted after merge |
+| `mr/display-input` (G15) | the one branch without an issue number yet: no issue may be filed under D19, so it is named by slug alone and renamed `mr/<issue>-display-input` when the issue exists | same rules; carried in `kiwrap/<sha>` only if DISPLAY.md §12.8 decision 5 says so |
 | `kiwrap/<kicad-sha12>` | integration branch = `base/<sha>` + every `mr/*` branch cherry-picked in priority order + `patches/kiwrap-version.patch` | rebuilt by script, never edited by hand; this is what the bench builds |
 | tag `kiwrap-build/<kicad-sha12>-<n>` | an integration branch state that was built, T5-snapshotted and installed | immutable; `n` increments per rebuild; **lightweight tags only** — an annotated tag becomes `git describe`'s output, KiCad's CMake takes it for the version and every reconfigure fails (found 2026-09-19); keep `git fetch upstream --tags` current for the same reason |
 

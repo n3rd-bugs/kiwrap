@@ -33,6 +33,13 @@ let wsPort = 0;
 let activePanel: vscode.WebviewPanel | undefined;
 let extUri: vscode.Uri;
 let instanceSeq = 0;
+// Live KiCad surfaces (winstream helper): one webview per KiCad editor frame, keyed by surface kind.
+const livePanels = new Map<string, vscode.Webview>();
+type Page = 'probe' | 'view' | 'canvas' | 'live';
+function surfaceForFile(fsPath: string): string {
+  const ext = path.extname(fsPath).toLowerCase();
+  return ext === '.kicad_pcb' ? 'pcb' : ext === '.kicad_sch' ? 'sch' : ext === '.kicad_pro' ? 'mgr' : 'pcb';
+}
 
 function cfg<T>(key: string, dflt: T): T {
   return vscode.workspace.getConfiguration('kiwrapShell').get<T>(key, dflt);
@@ -116,7 +123,7 @@ function startWs(): Promise<number> {
 // ---------------------------------------------------------------- webview HTML
 function nonce(): string { return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
 
-function pageHtml(webview: vscode.Webview, page: 'probe' | 'view' | 'canvas', extra: Record<string, string>): string {
+function pageHtml(webview: vscode.Webview, page: Page, extra: Record<string, string>): string {
   const mediaDir = vscode.Uri.joinPath(extUri, 'media');
   let html = fs.readFileSync(path.join(mediaDir.fsPath, page + '.html'), 'utf8');
   const n = nonce();
@@ -130,7 +137,8 @@ function pageHtml(webview: vscode.Webview, page: 'probe' | 'view' | 'canvas', ex
   return html
     .replace(/__CSP__/g, csp).replace(/__NONCE__/g, n).replace(/__PROBE_JS__/g, probeJs)
     .replace(/__IFRAME_URL__/g, iframeUrl).replace(/__WS_URL__/g, wsUrl)
-    .replace(/__INSTANCE__/g, String(++instanceSeq)).replace(/__TITLE__/g, extra.title ?? page);
+    .replace(/__INSTANCE__/g, String(++instanceSeq)).replace(/__TITLE__/g, extra.title ?? page)
+    .replace(/__SURFACE__/g, extra.surface ?? 'pcb').replace(/__LIVE_WS__/g, extra.liveWs ?? cfg('liveWs', 'ws://127.0.0.1:8765/ws'));
 }
 
 function wireWebview(webview: vscode.Webview, label: string, disposables: vscode.Disposable[]): void {
@@ -141,18 +149,20 @@ function wireWebview(webview: vscode.Webview, label: string, disposables: vscode
   }));
 }
 
-function makePanel(mode: 'probe' | 'view' | 'canvas', column: vscode.ViewColumn): vscode.WebviewPanel {
+function makePanel(mode: Page, column: vscode.ViewColumn, surface = ''): vscode.WebviewPanel {
   const retain = cfg('retainContextWhenHidden', true);
-  const panel = vscode.window.createWebviewPanel(VIEW_TYPE, mode === 'probe' ? 'KiCad input probe' : 'KiCad view', column, {
+  const title = mode === 'probe' ? 'KiCad input probe' : mode === 'live' ? `KiCad ${surface || 'pcb'} (live)` : 'KiCad view';
+  const panel = vscode.window.createWebviewPanel(VIEW_TYPE, title, column, {
     enableScripts: true, retainContextWhenHidden: retain, enableFindWidget: false,
     localResourceRoots: [vscode.Uri.joinPath(extUri, 'media')],
     // portMapping lets the webview reach the extension host's local port as localhost:<same> even when the
     // extension host is remote (WSL / SSH / Codespaces). Locally it is a no-op but we declare it anyway.
     portMapping: httpPort ? [{ webviewPort: httpPort, extensionHostPort: httpPort }] : [],
   });
-  panel.webview.html = pageHtml(panel.webview, mode, { url: cfg('url', ''), wsUrl: cfg('wsUrl', '') });
+  panel.webview.html = pageHtml(panel.webview, mode, { url: cfg('url', ''), wsUrl: cfg('wsUrl', ''), surface: surface || 'pcb' });
   const disposables: vscode.Disposable[] = [];
-  wireWebview(panel.webview, mode, disposables);
+  wireWebview(panel.webview, mode === 'live' ? 'live:' + surface : mode, disposables);
+  if (mode === 'live') { livePanels.set(surface || 'pcb', panel.webview); panel.onDidDispose(() => { if (livePanels.get(surface || 'pcb') === panel.webview) { livePanels.delete(surface || 'pcb'); } }); }
   disposables.push(panel.onDidChangeViewState((e) => {
     log('panel', { mode, active: e.webviewPanel.active, visible: e.webviewPanel.visible, column: e.webviewPanel.viewColumn });
     if (e.webviewPanel.active) { activePanel = e.webviewPanel; }
@@ -172,20 +182,22 @@ class BoardDoc implements vscode.CustomDocument {
 class BoardEditorProvider implements vscode.CustomReadonlyEditorProvider<BoardDoc> {
   openCustomDocument(uri: vscode.Uri): BoardDoc { return new BoardDoc(uri); }
   resolveCustomEditor(doc: BoardDoc, panel: vscode.WebviewPanel): void {
-    const mode = cfg('wsUrl', '') ? 'canvas' : 'view';
+    const mode: Page = cfg('liveWs', '') ? 'live' : cfg('wsUrl', '') ? 'canvas' : 'view';
+    const surface = surfaceForFile(doc.uri.fsPath);
     panel.webview.options = {
       enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extUri, 'media')],
       portMapping: httpPort ? [{ webviewPort: httpPort, extensionHostPort: httpPort }] : [],
     };
-    panel.webview.html = pageHtml(panel.webview, mode, { url: cfg('url', ''), wsUrl: cfg('wsUrl', ''), title: path.basename(doc.uri.fsPath) });
+    panel.webview.html = pageHtml(panel.webview, mode, { url: cfg('url', ''), wsUrl: cfg('wsUrl', ''), title: path.basename(doc.uri.fsPath), surface });
     const disposables: vscode.Disposable[] = [];
     wireWebview(panel.webview, 'editor:' + path.basename(doc.uri.fsPath), disposables);
+    if (mode === 'live') { livePanels.set(surface, panel.webview); }
     // Backend contract sketch: tell the display backend which document this surface shows.
     panel.webview.postMessage({ type: 'open', file: doc.uri.fsPath });
     disposables.push(panel.onDidChangeViewState((e) => log('editor', { file: doc.uri.fsPath, active: e.webviewPanel.active, visible: e.webviewPanel.visible })));
-    panel.onDidDispose(() => disposables.forEach((d) => d.dispose()));
+    panel.onDidDispose(() => { disposables.forEach((d) => d.dispose()); if (livePanels.get(surface) === panel.webview) { livePanels.delete(surface); } });
     activePanel = panel;
-    log('editor', { file: doc.uri.fsPath, resolved: true, mode });
+    log('editor', { file: doc.uri.fsPath, resolved: true, mode, surface });
   }
 }
 
@@ -199,7 +211,9 @@ async function runControl(m: Record<string, unknown>): Promise<unknown> {
     case 'clipboardRead': return await vscode.env.clipboard.readText();
     case 'openFile': await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(String(m.path)), m.column ?? vscode.ViewColumn.Active); return 'ok';
     case 'openText': { const d = await vscode.workspace.openTextDocument(vscode.Uri.file(String(m.path))); await vscode.window.showTextDocument(d, { viewColumn: (m.column as vscode.ViewColumn) ?? vscode.ViewColumn.Beside, preserveFocus: !!m.preserveFocus }); return 'ok'; }
-    case 'openPanel': { const p = makePanel((m.mode as 'probe' | 'view' | 'canvas') ?? 'probe', (m.column as vscode.ViewColumn) ?? vscode.ViewColumn.Active); return 'panel ' + p.title; }
+    case 'openPanel': { const p = makePanel((m.mode as Page) ?? 'probe', (m.column as vscode.ViewColumn) ?? vscode.ViewColumn.Active, String(m.surface ?? '')); return 'panel ' + p.title; }
+    case 'postSurface': { const wv = livePanels.get(String(m.surface)); wv?.postMessage(m.msg); return wv ? 'posted ' + m.surface : 'no live panel ' + m.surface; }
+    case 'livePanels': return [...livePanels.keys()];
     case 'reveal': activePanel?.reveal(undefined, !!m.preserveFocus); return 'ok';
     case 'state': return { activeEditor: vscode.window.activeTextEditor?.document.fileName, tabs: vscode.window.tabGroups.all.map((g) => ({ col: g.viewColumn, active: g.isActive, tabs: g.tabs.map((t) => ({ label: t.label, active: t.isActive })) })), zoom: vscode.workspace.getConfiguration('window').get('zoomLevel'), keyboardDispatch: vscode.workspace.getConfiguration('keyboard').get('dispatch') };
     case 'setConfig': await vscode.workspace.getConfiguration().update(String(m.key), m.value, vscode.ConfigurationTarget.Global); return 'ok';
@@ -247,6 +261,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('kiwrapShell.openProbe', () => makePanel('probe', vscode.ViewColumn.Active)),
     vscode.commands.registerCommand('kiwrapShell.openView', () => makePanel('view', vscode.ViewColumn.Active)),
     vscode.commands.registerCommand('kiwrapShell.openCanvas', () => makePanel('canvas', vscode.ViewColumn.Active)),
+    vscode.commands.registerCommand('kiwrapShell.openLive', (surface?: string) => makePanel('live', vscode.ViewColumn.Active, surface ?? '3d')),
     vscode.commands.registerCommand('kiwrapShell.marker', (text?: string) => log('marker', { text: text ?? '' })),
     vscode.commands.registerCommand('kiwrapShell.focusView', () => activePanel?.reveal(undefined, false)),
     // Keys that VS Code would otherwise consume while the view is active. The webview already received the

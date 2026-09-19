@@ -1,0 +1,28 @@
+{
+ "note": "console output of the second hybrid.mjs run (borrowed-cursor injector, Notepad held the foreground on monitor 1, before the other agent's automation started stealing the foreground); the later runs are in hybrid_matrix_lastrun_contended.json",
+ "inject": "hybrid",
+ "steps": [
+  {"m": "foreground at start", "fg": "12952 'Untitled - Notepad'"},
+  {"m": "click select R3 ref", "panelDiff": 25.17, "canvasDiff": 34.03, "fg": "12952 'Untitled - Notepad'"},
+  {"m": "R rotate", "canvasDiff": 30.43, "fg": "12952 'Untitled - Notepad'"},
+  {"m": "Delete", "canvasDiff": 0.67, "fg": "12952 'Untitled - Notepad'"},
+  {"m": "Ctrl+Z", "canvasDiff": 0, "fg": "12952 'Untitled - Notepad'", "note": "undo did NOT restore in this run (zone stayed deleted); it did in run 1 (real-cursor hybrid) and natively afterwards"},
+  {"m": "wheel zoom", "canvasDiff": 53.29, "fg": "15696 'cover (stands in for VS Code)'", "note": "foreground stolen by another agent's window from here on"},
+  {"m": "middle-drag pan", "canvasDiff": 10.27},
+  {"m": "left-drag move R3 ref", "canvasDiff": 3.43, "cursorBefore": "(4491, 408)", "cursorAfter": "(4491, 408)"},
+  {"m": "Ctrl+Z after drag", "canvasDiff": 0},
+  {"m": "E -> dialog", "windows": ["", "*ecc83-pp - PCB Editor"], "note": "dialog listed before its title was set"},
+  {"m": "Esc on dialog", "windows": ["*ecc83-pp - PCB Editor"]},
+  {"m": "right-click context menu", "windows": ["", "*ecc83-pp - PCB Editor"], "fg": "83788 '*ecc83-pp - PCB Editor'", "note": "one foreground flip by design"},
+  {"m": "A -> chooser + typed ecc83", "windows": ["Footprint Chooser (15464 items loaded)", "*ecc83-pp - PCB Editor"]},
+  {"m": "Esc on chooser", "windows": ["*ecc83-pp - PCB Editor"]},
+  {"m": "foreground at end", "foreground_fixes": 1, "timeouts": 0}
+ ],
+ "run1_real_cursor_hybrid": [
+  {"m": "click select R3 ref", "panelDiff": 20.04, "fg": "Notepad"}, {"m": "R rotate", "canvasDiff": 0.06, "verified": "screenshot: R3 vertical"},
+  {"m": "Delete", "canvasDiff": 0.08, "verified": "screenshot: R3 gone"}, {"m": "Ctrl+Z", "canvasDiff": 0.05, "verified": "screenshot: R3 back, rotated"},
+  {"m": "wheel zoom", "canvasDiff": 63.25}, {"m": "middle-drag pan", "canvasDiff": 57.99}, {"m": "E -> dialog then Esc(WM_CLOSE)", "ok": true},
+  {"m": "right-click context menu", "ok": false, "note": "menu window flashed and closed: TrackPopupMenu in a background window"},
+  {"m": "A -> chooser + typed", "ok": true}, {"m": "Esc on chooser", "ok": false, "note": "fixed afterwards: posted Esc -> WM_CLOSE for any owned top-level"}
+ ]
+}

@@ -146,6 +146,9 @@ class SendInputInjector:
         self._vx, self._vy, self._vw, self._vh = W.virtual_screen()
         self.foreground_fixes = 0
         self.obscured_fixes = 0
+        # HWNDs that count as "this surface is foreground" (the editor frame + its owned dialogs);
+        # a project session is ONE process, so a PID check cannot tell pcbnew from eeschema.
+        self.surface_hwnds: set[int] = {main_hwnd}
 
     def _abs(self, sx: int, sy: int) -> tuple[int, int]:
         # MOUSEEVENTF_ABSOLUTE|VIRTUALDESK: 0..65535 across the virtual screen (pixel centre).
@@ -154,15 +157,18 @@ class SendInputInjector:
         return max(0, min(65535, nx)), max(0, min(65535, ny))
 
     def ensure_foreground(self) -> None:
-        if W.foreground_pid() != self.pid:
+        fg = win32gui.GetForegroundWindow()
+        if fg not in self.surface_hwnds and fg != self.main_hwnd:
             self.foreground_fixes += 1
             W.bring_to_front(self.main_hwnd)
 
     def ensure_unobscured(self, sx: int, sy: int) -> None:
-        """SendInput hits whatever HWND is under the point: if another app (e.g. VS Code itself)
-        overlaps KiCad there, raise KiCad first. Counted so the report shows how often it happens."""
+        """SendInput hits whatever HWND is under the point: if another window (another KiCad
+        frame of the same process, or another app such as VS Code itself) overlaps this surface
+        there, raise it first. Counted so the report shows how often it happens."""
         h = win32gui.WindowFromPoint((sx, sy))
-        if h and win32process.GetWindowThreadProcessId(h)[1] != self.pid:
+        top = user32.GetAncestor(h, 2) if h else 0  # GA_ROOT
+        if top and top not in self.surface_hwnds and top != self.main_hwnd:
             self.obscured_fixes += 1
             W.bring_to_front(self.main_hwnd)
 
@@ -267,6 +273,13 @@ class PostMessageInjector:
         h = W.focused_hwnd_of_thread(self.main_hwnd) or self.main_hwnd
         scan = user32.MapVirtualKeyW(vk, 0)
         lp = 1 | (scan << 16) | ((1 << 24) if ext else 0)
+        if vk == 0x1B and down:
+            # wxDialog ignores a posted VK_ESCAPE (measured); WM_CLOSE is what its Cancel does.
+            # Owned top-level = a dialog (#32770) or a DIALOG_SHIM such as the footprint chooser (wxWindowNR).
+            top = user32.GetAncestor(h, 2)
+            if top and (win32gui.GetClassName(top) == "#32770" or win32gui.GetWindow(top, win32con.GW_OWNER)):
+                win32gui.PostMessage(top, win32con.WM_CLOSE, 0, 0)
+                return True
         if down:
             win32gui.PostMessage(h, win32con.WM_KEYDOWN, vk, lp)
             # No WM_CHAR here: wx's message loop runs TranslateMessage on the posted WM_KEYDOWN and
@@ -276,9 +289,103 @@ class PostMessageInjector:
         return True
 
 
+class HybridInjector(PostMessageInjector):
+    """Posted input with a *borrowed* cursor. KiCad's canvas takes the position of a click, a wheel
+    zoom or a context menu from `wxGetMousePosition()` (the OS cursor), which is why plain
+    PostMessage clicks select nothing. Here every button/wheel event teleports the real cursor to
+    the target point, delivers the message synchronously (SendMessageTimeout, so KiCad reads the
+    cursor while it is there) and puts the cursor back where the user had it: the user's pointer
+    stays over VS Code, no window is activated, the foreground keeps the keyboard. Pointer moves
+    are only posted (WM_MOUSEMOVE with event coordinates; measured: enough for middle-drag pan).
+    Keys are posted to the thread's focus window (hotkeys, text); modifiers are real
+    (GetKeyState); a posted Esc on an owned dialog becomes WM_CLOSE. Context menus are the one
+    thing that needs a real foreground flip (TrackPopupMenu closes in a background window).
+    The target HWND is found inside THIS surface's windows (never a foreign window on top)."""
+
+    name = "hybrid"
+    SEND_TIMEOUT_MS = 250
+
+    def __init__(self, main_hwnd: int, pid: int) -> None:
+        super().__init__(main_hwnd, pid)
+        self.surface_hwnds: set[int] = {main_hwnd}
+        self.obscured_fixes = 0
+        self.timeouts = 0
+        user32.ChildWindowFromPointEx.argtypes = [wt.HWND, wt.POINT, wt.UINT]
+        user32.ChildWindowFromPointEx.restype = wt.HWND
+        user32.SetCursorPos.argtypes = [ctypes.c_int, ctypes.c_int]
+        user32.SendMessageTimeoutW.argtypes = [wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM, wt.UINT, wt.UINT, ctypes.POINTER(ctypes.c_size_t)]
+
+    def _target(self, sx: int, sy: int) -> tuple[int, int, int]:
+        # topmost window of THIS surface containing the point, then its deepest child at the point
+        top = 0
+        for h in self._z_order():
+            if h in self.surface_hwnds:
+                l, t, r, b = win32gui.GetWindowRect(h)
+                if l <= sx < r and t <= sy < b:
+                    top = h
+                    break
+        if not top:
+            top = self.main_hwnd
+        h = top
+        while True:
+            cx, cy = win32gui.ScreenToClient(h, (sx, sy))
+            c = user32.ChildWindowFromPointEx(h, wt.POINT(cx, cy), 0x0001 | 0x0002)  # CWP_SKIPINVISIBLE|SKIPDISABLED
+            if not c or c == h:
+                break
+            h = c
+        cx, cy = win32gui.ScreenToClient(h, (sx, sy))
+        return h, cx, cy
+
+    @staticmethod
+    def _z_order() -> list[int]:
+        out: list[int] = []
+        win32gui.EnumWindows(lambda h, _: out.append(h) or True, None)
+        return out
+
+    def _send_with_cursor(self, h: int, msg: int, wp: int, lp: int, sx: int, sy: int) -> None:
+        """Teleport the cursor, deliver synchronously, restore. SMTO_ABORTIFHUNG|SMTO_BLOCK."""
+        ox, oy = win32gui.GetCursorPos()
+        user32.SetCursorPos(sx, sy)
+        res = ctypes.c_size_t(0)
+        ok = user32.SendMessageTimeoutW(h, msg, wp, lp, 0x0002 | 0x0001, self.SEND_TIMEOUT_MS, ctypes.byref(res))
+        if not ok:
+            self.timeouts += 1
+        user32.SetCursorPos(ox, oy)
+
+    def button(self, sx: int, sy: int, button: int, down: bool) -> None:
+        h, cx, cy = self._target(sx, sy)
+        msg_down, msg_up, mk = _BTN_WM[button]
+        if button == 2 and down:
+            # A popup menu (TrackPopupMenu) in a window that is not the foreground window closes
+            # at once (Win32 rule, measured: no #32768 window ever listed). Context menus are the
+            # one input that needs a real foreground flip.
+            fg = win32gui.GetForegroundWindow()
+            if fg not in self.surface_hwnds:
+                self.foreground_fixes += 1
+                W.bring_to_front(self.main_hwnd)
+        if down:
+            self._buttons |= mk
+            try:
+                user32.SetFocus(h)
+            except Exception:  # noqa: BLE001
+                pass
+        else:
+            self._buttons &= ~mk
+        self._send_with_cursor(h, msg_down if down else msg_up, self._buttons | self._mods, self._lparam(cx, cy), sx, sy)
+
+    def wheel(self, sx: int, sy: int, dx: int, dy: int) -> None:
+        h, _cx, _cy = self._target(sx, sy)
+        if dy:
+            self._send_with_cursor(h, WM_MOUSEWHEEL, (dy & 0xFFFF) << 16 | (self._buttons | self._mods), self._lparam(sx, sy), sx, sy)
+        if dx:
+            self._send_with_cursor(h, WM_MOUSEHWHEEL, (dx & 0xFFFF) << 16 | (self._buttons | self._mods), self._lparam(sx, sy), sx, sy)
+
+
 def make_injector(kind: str, main_hwnd: int, pid: int):
     if kind == "postmessage":
         return PostMessageInjector(main_hwnd, pid)
+    if kind == "hybrid":
+        return HybridInjector(main_hwnd, pid)
     return SendInputInjector(main_hwnd, pid)
 
 

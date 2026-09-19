@@ -1,0 +1,15 @@
+[
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":200}, {"a":"key","code":"Home"}, {"a":"sleep","ms":400},
+ {"a":"click","x":747,"y":785}, {"a":"sleep","ms":1100},
+ {"a":"key","code":"KeyE"}, {"a":"waitwin","name":"t_dialog","title":"Footprint Properties"}, {"a":"sleep","ms":800}, {"a":"shotall","name":"01_E_dialog"},
+ {"a":"clickwin","name":"ck_x","title":"Footprint Properties","dx":200,"dy":1014}, {"a":"sleep","ms":400},
+ {"a":"chord","codes":["ControlLeft","KeyA"]}, {"a":"sleep","ms":100},
+ {"a":"type","text":"140"}, {"a":"sleep","ms":400}, {"a":"shotall","name":"02_typed"},
+ {"a":"clickwin","name":"ck_ok","title":"Footprint Properties","dx":758,"dy":1236}, {"a":"waitwin","name":"t_close","title":"Footprint Properties","gone":true}, {"a":"sleep","ms":600},
+ {"a":"windows","name":"w_after_ok"}, {"a":"shot","name":"03_after_ok"},
+ {"a":"chord","codes":["ControlLeft","KeyZ"]}, {"a":"sleep","ms":400}, {"a":"shot","name":"04_undo"},
+ {"a":"key","code":"KeyE"}, {"a":"waitwin","name":"t_dialog2","title":"Footprint Properties"}, {"a":"sleep","ms":500},
+ {"a":"key","code":"Escape"}, {"a":"waitwin","name":"t_esc","title":"Footprint Properties","gone":true},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":300},
+ {"a":"cursor","name":"c1"}
+]

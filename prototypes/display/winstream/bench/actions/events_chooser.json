@@ -1,0 +1,11 @@
+[
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":200}, {"a":"key","code":"Home"}, {"a":"sleep","ms":400},
+ {"a":"move","x":900,"y":600}, {"a":"sleep","ms":200},
+ {"a":"key","code":"KeyA"}, {"a":"waitwin","name":"t_chooser","title":"Choose Footprint","timeout":30}, {"a":"sleep","ms":1500},
+ {"a":"windows","name":"w_chooser"}, {"a":"shotall","name":"01_chooser"},
+ {"a":"type","text":"led"}, {"a":"sleep","ms":1500}, {"a":"shotall","name":"02_typed"},
+ {"a":"key","code":"Escape"}, {"a":"waitwin","name":"t_esc","title":"Choose Footprint","gone":true,"timeout":6},
+ {"a":"windows","name":"w_after_esc"},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":300},
+ {"a":"cursor","name":"c1"}
+]

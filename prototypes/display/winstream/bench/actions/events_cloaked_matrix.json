@@ -1,0 +1,20 @@
+[
+ {"a":"cursor","name":"c0"},
+ {"a":"click","x":1000,"y":600}, {"a":"sleep","ms":400},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":200}, {"a":"key","code":"Home"}, {"a":"sleep","ms":500}, {"a":"shot","name":"01_home"},
+ {"a":"click","x":747,"y":825}, {"a":"sleep","ms":400}, {"a":"shot","name":"02_click_R3ref"},
+ {"a":"key","code":"KeyR"}, {"a":"sleep","ms":400}, {"a":"shot","name":"03_rotate"},
+ {"a":"chord","codes":["ControlLeft","KeyZ"]}, {"a":"sleep","ms":400}, {"a":"shot","name":"04_undo"},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":1100},
+ {"a":"click","x":747,"y":785}, {"a":"sleep","ms":1100},
+ {"a":"drag","x1":747,"y1":785,"x2":747,"y2":945,"steps":8,"step_ms":40}, {"a":"sleep","ms":500}, {"a":"shot","name":"05_dragmove"},
+ {"a":"chord","codes":["ControlLeft","KeyZ"]}, {"a":"sleep","ms":400},
+ {"a":"key","code":"KeyE"}, {"a":"waitwin","name":"t_dialog","title":"Footprint Properties"}, {"a":"sleep","ms":800}, {"a":"windows","name":"w_dialog"}, {"a":"shotall","name":"06_E_dialog"},
+ {"a":"sleep","ms":1000}, {"a":"key","code":"Escape"}, {"a":"waitwin","name":"t_esc","title":"Footprint Properties","gone":true},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":300},
+ {"a":"wheel","x":1163,"y":562,"dy":120}, {"a":"sleep","ms":400}, {"a":"shot","name":"07_wheel"},
+ {"a":"key","code":"Home"}, {"a":"sleep","ms":400},
+ {"a":"drag","x1":960,"y1":600,"x2":760,"y2":480,"button":1,"steps":8}, {"a":"sleep","ms":400}, {"a":"shot","name":"08_pan"},
+ {"a":"key","code":"Home"}, {"a":"sleep","ms":400},
+ {"a":"cursor","name":"c1"}, {"a":"stats","name":"s1"}
+]

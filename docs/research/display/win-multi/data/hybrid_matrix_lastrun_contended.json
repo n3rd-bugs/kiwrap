@@ -1,0 +1,143 @@
+{
+ "steps": [
+  {
+   "m": "foreground at start",
+   "fg": "12952 'Untitled - Notepad'",
+   "inject": "hybrid"
+  },
+  {
+   "m": "click select R3 ref",
+   "panelDiff": 1.14,
+   "canvasDiff": 0,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "R rotate",
+   "canvasDiff": 0,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "Delete",
+   "canvasDiff": 0,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "Ctrl+Z",
+   "canvasDiff": 0,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "wheel zoom",
+   "canvasDiff": 52.47,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "middle-drag pan",
+   "canvasDiff": 0,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "left-drag move R3 ref",
+   "canvasDiff": 0,
+   "cursorBefore": "(4491, 408)",
+   "cursorAfter": "(4491, 408)",
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "Ctrl+Z after drag",
+   "canvasDiff": 0,
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "E -> dialog",
+   "windows": [
+    "*ecc83-pp — PCB Editor"
+   ],
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "Esc on dialog",
+   "windows": [
+    "*ecc83-pp — PCB Editor"
+   ],
+   "fg": "12952 'Untitled - Notepad'"
+  },
+  {
+   "m": "right-click context menu",
+   "windows": [
+    "",
+    "*ecc83-pp — PCB Editor"
+   ],
+   "monitor_session": true,
+   "fragile_seen": 1,
+   "fg": "11076 'C:\\\\Users\\\\usama\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Upwork-KiCad\\\\48a8df66-7213-479f-ab2e-a63b89135016\\\\scratchpad\\\\display\\\\winstream\\\\.venv\\\\Scripts\\\\python.exe'"
+  },
+  {
+   "m": "A -> chooser + typed",
+   "windows": [
+    "*ecc83-pp — PCB Editor"
+   ],
+   "fg": "62504 '*ecc83-pp — PCB Editor'"
+  },
+  {
+   "m": "Esc on chooser",
+   "windows": [
+    "*ecc83-pp — PCB Editor"
+   ],
+   "fg": "62504 '*ecc83-pp — PCB Editor'"
+  },
+  {
+   "m": "foreground at end",
+   "fg": "62504 '*ecc83-pp — PCB Editor'",
+   "foreground_fixes": 1,
+   "timeouts": 0,
+   "input_log": [
+    [
+     67.954,
+     "pcb",
+     "key",
+     "Digit3",
+     false,
+     null,
+     null
+    ],
+    [
+     69.346,
+     "pcb",
+     "key",
+     "Escape",
+     true,
+     null,
+     null
+    ],
+    [
+     69.348,
+     "pcb",
+     "key",
+     "Escape",
+     false,
+     null,
+     null
+    ],
+    [
+     70.224,
+     "pcb",
+     "down",
+     0,
+     null,
+     1586,
+     208
+    ],
+    [
+     70.228,
+     "pcb",
+     "up",
+     0,
+     null,
+     1586,
+     208
+    ]
+   ]
+  }
+ ]
+}

@@ -31,6 +31,10 @@
         "title": "kiwrap: Open input probe"
       },
       {
+        "command": "kiwrapShell.openLive",
+        "title": "kiwrap: Open live KiCad surface (3D viewer)"
+      },
+      {
         "command": "kiwrapShell.marker",
         "title": "kiwrap: Write marker to probe log"
       },
@@ -69,6 +73,11 @@
           "type": "string",
           "default": "",
           "description": "URL of the display backend page to iframe (noVNC / Xpra HTML5 / Broadway / own stream). Empty = built-in demo page served by the extension."
+        },
+        "kiwrapShell.liveWs": {
+          "type": "string",
+          "default": "",
+          "description": "WebSocket URL of a winstream helper (ws://127.0.0.1:8765/ws). When set, *.kicad_pcb / *.kicad_sch open as live KiCad surfaces (pcb / sch) fed by that helper."
         },
         "kiwrapShell.wsUrl": {
           "type": "string",

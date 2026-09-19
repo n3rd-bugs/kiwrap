@@ -1,0 +1,12 @@
+[
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":200}, {"a":"key","code":"Home"}, {"a":"sleep","ms":400},
+ {"a":"click","x":747,"y":785}, {"a":"sleep","ms":1100},
+ {"a":"click","x":747,"y":785,"button":2}, {"a":"waitwin","name":"t_menu","title":"","timeout":3}, {"a":"sleep","ms":400},
+ {"a":"windows","name":"w_menu"},
+ {"a":"clickwin","name":"ck_item","title":"","dx":80,"dy":60}, {"a":"sleep","ms":800},
+ {"a":"windows","name":"w_after_item"}, {"a":"shot","name":"01_after_item"}, {"a":"shotall","name":"02_all"},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":400}, {"a":"key","code":"Escape"}, {"a":"sleep","ms":400}, {"a":"windows","name":"w_end"},
+ {"a":"move","x":634,"y":98}, {"a":"sleep","ms":300}, {"a":"move","x":636,"y":99}, {"a":"sleep","ms":2000}, {"a":"windows","name":"w_tooltip"},
+ {"a":"move","x":900,"y":600}, {"a":"sleep","ms":300},
+ {"a":"cursor","name":"c1"}
+]

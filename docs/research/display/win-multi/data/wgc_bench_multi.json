@@ -1,0 +1,1379 @@
+{
+ "log": [
+  {
+   "m": "client pcb connected",
+   "w": 1920,
+   "h": 1080,
+   "windows": 1,
+   "surfaces": [
+    "3d:46012570*",
+    "pcb:13444380",
+    "sch:10161444",
+    "mgr:78189602"
+   ],
+   "main": 13444380,
+   "t": 1789841706473
+  },
+  {
+   "m": "client sch connected",
+   "w": 1800,
+   "h": 1200,
+   "windows": 1,
+   "surfaces": [
+    "3d:46012570*",
+    "pcb:13444380",
+    "sch:10161444",
+    "mgr:78189602"
+   ],
+   "main": 10161444,
+   "t": 1789841707358
+  },
+  {
+   "m": "client 3d connected",
+   "w": 1400,
+   "h": 900,
+   "windows": 1,
+   "surfaces": [
+    "3d:46012570*",
+    "pcb:13444380",
+    "sch:10161444",
+    "mgr:78189602"
+   ],
+   "main": 46012570,
+   "t": 1789841708248
+  },
+  {
+   "m": "idle 3 s frames (pcb, sch, 3d)",
+   "delta": [
+    0,
+    0,
+    0
+   ],
+   "t": 1789841712761
+  },
+  {
+   "m": "pcb page: click + wheel zoom",
+   "clientFrames": [
+    4,
+    3,
+    0
+   ],
+   "serverFramesPerSurface": {
+    "sch": 3,
+    "pcb": 4,
+    "3d": 0,
+    "mgr": 0
+   },
+   "foreground": [
+    "pcb"
+   ],
+   "t": 1789841714021
+  },
+  {
+   "m": "sch page: click + wheel zoom",
+   "clientFrames": [
+    1,
+    3,
+    0
+   ],
+   "serverFramesPerSurface": {
+    "sch": 3,
+    "pcb": 1,
+    "3d": 0,
+    "mgr": 0
+   },
+   "foreground": [
+    "sch"
+   ],
+   "t": 1789841715263
+  },
+  {
+   "m": "sch page: key Home",
+   "clientFrames": [
+    0,
+    1,
+    0
+   ],
+   "serverFramesPerSurface": {
+    "sch": 1,
+    "pcb": 0,
+    "3d": 0,
+    "mgr": 0
+   },
+   "foreground": [
+    "sch"
+   ],
+   "t": 1789841716302
+  },
+  {
+   "m": "pcb page: key Home",
+   "clientFrames": [
+    3,
+    2,
+    0
+   ],
+   "serverFramesPerSurface": {
+    "sch": 2,
+    "pcb": 3,
+    "3d": 0,
+    "mgr": 0
+   },
+   "foreground": [
+    "pcb"
+   ],
+   "t": 1789841717331
+  },
+  {
+   "m": "pcb wheel probe (sch + 3d clients live)",
+   "e2e": [
+    43,
+    54,
+    59,
+    66,
+    70,
+    71,
+    81,
+    83
+   ],
+   "median": 70,
+   "min": 43,
+   "max": 83,
+   "misses": 0,
+   "split": {
+    "ws_to_inject": 0.8642578125,
+    "inject_to_capture": 41.226806640625,
+    "capture_to_paint": 26.329833984375
+   },
+   "t": 1789841721215
+  },
+  {
+   "m": "sch wheel probe (pcb + 3d clients live)",
+   "e2e": [
+    35,
+    41,
+    50,
+    50,
+    61,
+    64,
+    66,
+    66
+   ],
+   "median": 61,
+   "min": 35,
+   "max": 66,
+   "misses": 0,
+   "split": {
+    "ws_to_inject": 1.342041015625,
+    "inject_to_capture": 42.45068359375,
+    "capture_to_paint": 20.07763671875
+   },
+   "t": 1789841724816
+  },
+  {
+   "m": "interleaved pcb/sch wheel probes (tab switching)",
+   "v": [
+    {
+     "s": "pcb",
+     "ms": 48
+    },
+    {
+     "s": "sch",
+     "ms": 37
+    },
+    {
+     "s": "pcb",
+     "ms": 62
+    },
+    {
+     "s": "sch",
+     "ms": 44
+    },
+    {
+     "s": "pcb",
+     "ms": 43
+    },
+    {
+     "s": "sch",
+     "ms": 65
+    },
+    {
+     "s": "pcb",
+     "ms": 55
+    },
+    {
+     "s": "sch",
+     "ms": 66
+    },
+    {
+     "s": "pcb",
+     "ms": 74
+    },
+    {
+     "s": "sch",
+     "ms": 58
+    },
+    {
+     "s": "pcb",
+     "ms": 39
+    },
+    {
+     "s": "sch",
+     "ms": 55
+    }
+   ],
+   "t": 1789841730500
+  },
+  {
+   "m": "cpu idle (3 clients)",
+   "tag": "idle",
+   "seconds": 5,
+   "cores": 24,
+   "kicad": 1.2,
+   "kicad_n": 2,
+   "tvnserver": 0,
+   "tvnserver_n": 0,
+   "websockify": 0,
+   "websockify_n": 0,
+   "chromium": 0.9,
+   "chromium_n": 6,
+   "winstream": 1.2,
+   "winstream_n": 2,
+   "code": 0,
+   "code_n": 0,
+   "gpu": "24 %",
+   "t": 1789841735764
+  },
+  {
+   "m": "pan pcbnew 6 s (sch + 3d live)",
+   "seconds": 6.03,
+   "moves": 128,
+   "clientFps": [
+    25.7,
+    0,
+    0
+   ],
+   "serverFpsPerSurface": {
+    "sch": 0,
+    "pcb": 25.7,
+    "3d": 0,
+    "mgr": 0
+   },
+   "decode_ms": 6.6,
+   "net_ms": 12.8,
+   "mbit_s": 57.6,
+   "server_cpu": {
+    "server_pct": 13.7,
+    "kicad_pct": 6.4,
+    "cores": 24
+   },
+   "encode_ms": [
+    6.43,
+    4.7,
+    3.85,
+    2.22
+   ],
+   "t": 1789841742228
+  },
+  {
+   "m": "cpu pan pcb",
+   "tag": "pan_pcb",
+   "seconds": 6,
+   "cores": 24,
+   "kicad": 15.4,
+   "kicad_n": 2,
+   "tvnserver": 0,
+   "tvnserver_n": 0,
+   "websockify": 0,
+   "websockify_n": 0,
+   "chromium": 42,
+   "chromium_n": 6,
+   "winstream": 35.7,
+   "winstream_n": 2,
+   "code": 0,
+   "code_n": 0,
+   "gpu": "30 %",
+   "t": 1789841742228
+  },
+  {
+   "m": "pan eeschema 6 s (pcb + 3d live)",
+   "seconds": 6.03,
+   "moves": 132,
+   "clientFps": [
+    0,
+    25.9,
+    0
+   ],
+   "serverFpsPerSurface": {
+    "sch": 25.9,
+    "pcb": 0,
+    "3d": 0,
+    "mgr": 0
+   },
+   "decode_ms": 6.4,
+   "net_ms": 13.1,
+   "mbit_s": 46.8,
+   "server_cpu": {
+    "server_pct": 19.7,
+    "kicad_pct": 7.8,
+    "cores": 24
+   },
+   "encode_ms": [
+    6.31,
+    4.69,
+    3.85,
+    2.22
+   ],
+   "t": 1789841748684
+  },
+  {
+   "m": "cpu pan sch",
+   "tag": "pan_sch",
+   "seconds": 6,
+   "cores": 24,
+   "kicad": 13,
+   "kicad_n": 2,
+   "tvnserver": 0,
+   "tvnserver_n": 0,
+   "websockify": 0,
+   "websockify_n": 0,
+   "chromium": 41.4,
+   "chromium_n": 6,
+   "winstream": 36.7,
+   "winstream_n": 2,
+   "code": 0,
+   "code_n": 0,
+   "gpu": "29 %",
+   "t": 1789841748684
+  },
+  {
+   "m": "both busy: pan pcbnew + wheel-zoom eeschema interleaved",
+   "seconds": 6.05,
+   "clientFps": [
+    26.8,
+    6.3
+   ],
+   "serverFpsPerSurface": {
+    "sch": 6.3,
+    "pcb": 26.9,
+    "3d": 0,
+    "mgr": 0
+   },
+   "mbit_s": 57.1,
+   "foreground_log": [
+    [
+     726.217,
+     10161444,
+     "sch"
+    ],
+    [
+     726.683,
+     13444380,
+     "pcb"
+    ],
+    [
+     727.141,
+     10161444,
+     "sch"
+    ],
+    [
+     727.625,
+     13444380,
+     "pcb"
+    ],
+    [
+     728.104,
+     10161444,
+     "sch"
+    ],
+    [
+     728.578,
+     13444380,
+     "pcb"
+    ],
+    [
+     729.091,
+     10161444,
+     "sch"
+    ],
+    [
+     729.557,
+     13444380,
+     "pcb"
+    ],
+    [
+     730.024,
+     10161444,
+     "sch"
+    ],
+    [
+     735.782,
+     13444380,
+     "pcb"
+    ],
+    [
+     742.249,
+     10161444,
+     "sch"
+    ],
+    [
+     748.906,
+     13444380,
+     "pcb"
+    ]
+   ],
+   "obscured_fixes": 0,
+   "foreground_fixes": 0,
+   "t": 1789841755291
+  },
+  {
+   "m": "cpu both busy",
+   "tag": "both_busy",
+   "seconds": 6,
+   "cores": 24,
+   "kicad": 12.5,
+   "kicad_n": 2,
+   "tvnserver": 0,
+   "tvnserver_n": 0,
+   "websockify": 0,
+   "websockify_n": 0,
+   "chromium": 47.5,
+   "chromium_n": 6,
+   "winstream": 42.7,
+   "winstream_n": 2,
+   "code": 0,
+   "code_n": 0,
+   "gpu": "33 %",
+   "t": 1789841755291
+  },
+  {
+   "m": "properties dialog (E) in pcb page",
+   "ms_to_window_list": 371,
+   "ms_to_first_frame": 373,
+   "pcbWindows": [
+    {
+     "hwnd": 9774942,
+     "cls": "#32770",
+     "title": "Footprint Reference Properties",
+     "rel": [
+      405,
+      209,
+      1109,
+      465
+     ],
+     "surface": "pcb"
+    },
+    {
+     "hwnd": 13444380,
+     "cls": "wxWindowNR",
+     "title": "*ecc83-pp — PCB Editor",
+     "rel": [
+      0,
+      0,
+      1920,
+      1080
+     ],
+     "surface": "pcb"
+    }
+   ],
+   "schWindows": [
+    "ecc83-pp — Schematic Editor"
+   ],
+   "hook_log": [
+    [
+     756.817,
+     "locationchange",
+     2107092
+    ],
+    [
+     756.818,
+     "locationchange",
+     9774942
+    ],
+    [
+     756.821,
+     "locationchange",
+     11544360
+    ],
+    [
+     756.825,
+     "foreground",
+     9774942
+    ],
+    [
+     756.839,
+     "show",
+     9774942
+    ],
+    [
+     756.86,
+     "locationchange",
+     29954602
+    ],
+    [
+     756.86,
+     "locationchange",
+     29954602
+    ],
+    [
+     756.86,
+     "locationchange",
+     11544360
+    ]
+   ],
+   "t": 1789841757373
+  },
+  {
+   "m": "footprint chooser (A) in pcb page",
+   "ms_to_window_list": 510,
+   "stage": {
+    "uw": 1920,
+    "uh": 1080,
+    "ox": 0,
+    "oy": 0,
+    "windows": [
+     {
+      "title": "Footprint Chooser (15464 items loaded)",
+      "rel": [
+       428,
+       119,
+       1082,
+       842
+      ],
+      "surface": "pcb"
+     },
+     {
+      "title": "*ecc83-pp — PCB Editor",
+      "rel": [
+       0,
+       0,
+       1920,
+       1080
+      ],
+      "surface": "pcb"
+     }
+    ]
+   },
+   "t": 1789841760476
+  },
+  {
+   "m": "3D viewer drag-rotate",
+   "seconds": 1.96,
+   "fps": 0,
+   "t": 1789841763632
+  },
+  {
+   "m": "final",
+   "surfaces": [
+    {
+     "kind": "pcb",
+     "root": 13444380,
+     "title": "*ecc83-pp — PCB Editor",
+     "rect": [
+      5700,
+      60,
+      7620,
+      1140
+     ],
+     "hwnds": [
+      13444380
+     ],
+     "focus_target": 13444380,
+     "foreground": true
+    },
+    {
+     "kind": "sch",
+     "root": 10161444,
+     "title": "ecc83-pp — Schematic Editor",
+     "rect": [
+      3860,
+      820,
+      5660,
+      2020
+     ],
+     "hwnds": [
+      10161444
+     ],
+     "focus_target": 10161444,
+     "foreground": false
+    },
+    {
+     "kind": "3d",
+     "root": 46012570,
+     "title": "3D Viewer",
+     "rect": [
+      5700,
+      1200,
+      7100,
+      2100
+     ],
+     "hwnds": [
+      46012570
+     ],
+     "focus_target": 46012570,
+     "foreground": false
+    },
+    {
+     "kind": "mgr",
+     "root": 78189602,
+     "title": "ecc83-pp — KiCad 10.0",
+     "rect": [
+      3860,
+      60,
+      4860,
+      760
+     ],
+     "hwnds": [
+      78189602
+     ],
+     "focus_target": 78189602,
+     "foreground": false
+    }
+   ],
+   "foreground_log": [
+    [
+     665.588,
+     30215854,
+     "other"
+    ],
+    [
+     667.508,
+     185867766,
+     "other"
+    ],
+    [
+     667.7,
+     16458864,
+     "other"
+    ],
+    [
+     667.744,
+     30215854,
+     "other"
+    ],
+    [
+     668.062,
+     185867766,
+     "other"
+    ],
+    [
+     668.328,
+     11805152,
+     "other"
+    ],
+    [
+     668.445,
+     185867766,
+     "other"
+    ],
+    [
+     682.502,
+     13444380,
+     "pcb"
+    ],
+    [
+     690.466,
+     46012570,
+     "3d"
+    ],
+    [
+     708.255,
+     13444380,
+     "pcb"
+    ],
+    [
+     708.468,
+     10161444,
+     "sch"
+    ],
+    [
+     712.831,
+     13444380,
+     "pcb"
+    ],
+    [
+     714.076,
+     10161444,
+     "sch"
+    ],
+    [
+     716.367,
+     13444380,
+     "pcb"
+    ],
+    [
+     721.225,
+     10161444,
+     "sch"
+    ],
+    [
+     724.825,
+     13444380,
+     "pcb"
+    ],
+    [
+     725.291,
+     10161444,
+     "sch"
+    ],
+    [
+     725.733,
+     13444380,
+     "pcb"
+    ],
+    [
+     726.217,
+     10161444,
+     "sch"
+    ],
+    [
+     726.683,
+     13444380,
+     "pcb"
+    ],
+    [
+     727.141,
+     10161444,
+     "sch"
+    ],
+    [
+     727.625,
+     13444380,
+     "pcb"
+    ],
+    [
+     728.104,
+     10161444,
+     "sch"
+    ],
+    [
+     728.578,
+     13444380,
+     "pcb"
+    ],
+    [
+     729.091,
+     10161444,
+     "sch"
+    ],
+    [
+     729.557,
+     13444380,
+     "pcb"
+    ],
+    [
+     730.024,
+     10161444,
+     "sch"
+    ],
+    [
+     735.782,
+     13444380,
+     "pcb"
+    ],
+    [
+     742.249,
+     10161444,
+     "sch"
+    ],
+    [
+     748.906,
+     13444380,
+     "pcb"
+    ],
+    [
+     755.297,
+     10161444,
+     "sch"
+    ],
+    [
+     755.347,
+     13444380,
+     "pcb"
+    ],
+    [
+     756.825,
+     9774942,
+     "other"
+    ],
+    [
+     757.55,
+     13444380,
+     "pcb"
+    ],
+    [
+     758.655,
+     14355528,
+     "other"
+    ],
+    [
+     760.56,
+     13444380,
+     "pcb"
+    ]
+   ],
+   "hook_events": 821,
+   "rescans": 485,
+   "uptime_s": 107.3,
+   "failed": {},
+   "obscured_fixes": 0,
+   "foreground_fixes": 0,
+   "t": 1789841763763
+  }
+ ],
+ "probe_pcb": {
+  "e2e": [
+   43,
+   54,
+   59,
+   66,
+   70,
+   71,
+   81,
+   83
+  ],
+  "median": 70,
+  "min": 43,
+  "max": 83,
+  "misses": 0,
+  "split": {
+   "ws_to_inject": 0.8642578125,
+   "inject_to_capture": 41.226806640625,
+   "capture_to_paint": 26.329833984375
+  }
+ },
+ "probe_sch": {
+  "e2e": [
+   35,
+   41,
+   50,
+   50,
+   61,
+   64,
+   66,
+   66
+  ],
+  "median": 61,
+  "min": 35,
+  "max": 66,
+  "misses": 0,
+  "split": {
+   "ws_to_inject": 1.342041015625,
+   "inject_to_capture": 42.45068359375,
+   "capture_to_paint": 20.07763671875
+  }
+ },
+ "probe_interleaved": [
+  {
+   "s": "pcb",
+   "ms": 48
+  },
+  {
+   "s": "sch",
+   "ms": 37
+  },
+  {
+   "s": "pcb",
+   "ms": 62
+  },
+  {
+   "s": "sch",
+   "ms": 44
+  },
+  {
+   "s": "pcb",
+   "ms": 43
+  },
+  {
+   "s": "sch",
+   "ms": 65
+  },
+  {
+   "s": "pcb",
+   "ms": 55
+  },
+  {
+   "s": "sch",
+   "ms": 66
+  },
+  {
+   "s": "pcb",
+   "ms": 74
+  },
+  {
+   "s": "sch",
+   "ms": 58
+  },
+  {
+   "s": "pcb",
+   "ms": 39
+  },
+  {
+   "s": "sch",
+   "ms": 55
+  }
+ ],
+ "cpu_idle": {
+  "tag": "idle",
+  "seconds": 5,
+  "cores": 24,
+  "kicad": 1.2,
+  "kicad_n": 2,
+  "tvnserver": 0,
+  "tvnserver_n": 0,
+  "websockify": 0,
+  "websockify_n": 0,
+  "chromium": 0.9,
+  "chromium_n": 6,
+  "winstream": 1.2,
+  "winstream_n": 2,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "24 %"
+ },
+ "pan_pcb": {
+  "seconds": 6.03,
+  "moves": 128,
+  "clientFps": [
+   25.7,
+   0,
+   0
+  ],
+  "serverFpsPerSurface": {
+   "sch": 0,
+   "pcb": 25.7,
+   "3d": 0,
+   "mgr": 0
+  },
+  "decode_ms": 6.6,
+  "net_ms": 12.8,
+  "mbit_s": 57.6,
+  "server_cpu": {
+   "server_pct": 13.7,
+   "kicad_pct": 6.4,
+   "cores": 24
+  },
+  "encode_ms": [
+   6.43,
+   4.7,
+   3.85,
+   2.22
+  ]
+ },
+ "cpu_pan_pcb": {
+  "tag": "pan_pcb",
+  "seconds": 6,
+  "cores": 24,
+  "kicad": 15.4,
+  "kicad_n": 2,
+  "tvnserver": 0,
+  "tvnserver_n": 0,
+  "websockify": 0,
+  "websockify_n": 0,
+  "chromium": 42,
+  "chromium_n": 6,
+  "winstream": 35.7,
+  "winstream_n": 2,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "30 %"
+ },
+ "pan_sch": {
+  "seconds": 6.03,
+  "moves": 132,
+  "clientFps": [
+   0,
+   25.9,
+   0
+  ],
+  "serverFpsPerSurface": {
+   "sch": 25.9,
+   "pcb": 0,
+   "3d": 0,
+   "mgr": 0
+  },
+  "decode_ms": 6.4,
+  "net_ms": 13.1,
+  "mbit_s": 46.8,
+  "server_cpu": {
+   "server_pct": 19.7,
+   "kicad_pct": 7.8,
+   "cores": 24
+  },
+  "encode_ms": [
+   6.31,
+   4.69,
+   3.85,
+   2.22
+  ]
+ },
+ "cpu_pan_sch": {
+  "tag": "pan_sch",
+  "seconds": 6,
+  "cores": 24,
+  "kicad": 13,
+  "kicad_n": 2,
+  "tvnserver": 0,
+  "tvnserver_n": 0,
+  "websockify": 0,
+  "websockify_n": 0,
+  "chromium": 41.4,
+  "chromium_n": 6,
+  "winstream": 36.7,
+  "winstream_n": 2,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "29 %"
+ },
+ "both_busy": {
+  "seconds": 6.05,
+  "clientFps": [
+   26.8,
+   6.3
+  ],
+  "serverFpsPerSurface": {
+   "sch": 6.3,
+   "pcb": 26.9,
+   "3d": 0,
+   "mgr": 0
+  },
+  "mbit_s": 57.1,
+  "foreground_log": [
+   [
+    726.217,
+    10161444,
+    "sch"
+   ],
+   [
+    726.683,
+    13444380,
+    "pcb"
+   ],
+   [
+    727.141,
+    10161444,
+    "sch"
+   ],
+   [
+    727.625,
+    13444380,
+    "pcb"
+   ],
+   [
+    728.104,
+    10161444,
+    "sch"
+   ],
+   [
+    728.578,
+    13444380,
+    "pcb"
+   ],
+   [
+    729.091,
+    10161444,
+    "sch"
+   ],
+   [
+    729.557,
+    13444380,
+    "pcb"
+   ],
+   [
+    730.024,
+    10161444,
+    "sch"
+   ],
+   [
+    735.782,
+    13444380,
+    "pcb"
+   ],
+   [
+    742.249,
+    10161444,
+    "sch"
+   ],
+   [
+    748.906,
+    13444380,
+    "pcb"
+   ]
+  ],
+  "obscured_fixes": 0,
+  "foreground_fixes": 0
+ },
+ "cpu_both": {
+  "tag": "both_busy",
+  "seconds": 6,
+  "cores": 24,
+  "kicad": 12.5,
+  "kicad_n": 2,
+  "tvnserver": 0,
+  "tvnserver_n": 0,
+  "websockify": 0,
+  "websockify_n": 0,
+  "chromium": 47.5,
+  "chromium_n": 6,
+  "winstream": 42.7,
+  "winstream_n": 2,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "33 %"
+ },
+ "final_stats": {
+  "surfaces": [
+   {
+    "kind": "pcb",
+    "root": 13444380,
+    "title": "*ecc83-pp — PCB Editor",
+    "rect": [
+     5700,
+     60,
+     7620,
+     1140
+    ],
+    "hwnds": [
+     13444380
+    ],
+    "focus_target": 13444380,
+    "foreground": true
+   },
+   {
+    "kind": "sch",
+    "root": 10161444,
+    "title": "ecc83-pp — Schematic Editor",
+    "rect": [
+     3860,
+     820,
+     5660,
+     2020
+    ],
+    "hwnds": [
+     10161444
+    ],
+    "focus_target": 10161444,
+    "foreground": false
+   },
+   {
+    "kind": "3d",
+    "root": 46012570,
+    "title": "3D Viewer",
+    "rect": [
+     5700,
+     1200,
+     7100,
+     2100
+    ],
+    "hwnds": [
+     46012570
+    ],
+    "focus_target": 46012570,
+    "foreground": false
+   },
+   {
+    "kind": "mgr",
+    "root": 78189602,
+    "title": "ecc83-pp — KiCad 10.0",
+    "rect": [
+     3860,
+     60,
+     4860,
+     760
+    ],
+    "hwnds": [
+     78189602
+    ],
+    "focus_target": 78189602,
+    "foreground": false
+   }
+  ],
+  "foreground_log": [
+   [
+    665.588,
+    30215854,
+    "other"
+   ],
+   [
+    667.508,
+    185867766,
+    "other"
+   ],
+   [
+    667.7,
+    16458864,
+    "other"
+   ],
+   [
+    667.744,
+    30215854,
+    "other"
+   ],
+   [
+    668.062,
+    185867766,
+    "other"
+   ],
+   [
+    668.328,
+    11805152,
+    "other"
+   ],
+   [
+    668.445,
+    185867766,
+    "other"
+   ],
+   [
+    682.502,
+    13444380,
+    "pcb"
+   ],
+   [
+    690.466,
+    46012570,
+    "3d"
+   ],
+   [
+    708.255,
+    13444380,
+    "pcb"
+   ],
+   [
+    708.468,
+    10161444,
+    "sch"
+   ],
+   [
+    712.831,
+    13444380,
+    "pcb"
+   ],
+   [
+    714.076,
+    10161444,
+    "sch"
+   ],
+   [
+    716.367,
+    13444380,
+    "pcb"
+   ],
+   [
+    721.225,
+    10161444,
+    "sch"
+   ],
+   [
+    724.825,
+    13444380,
+    "pcb"
+   ],
+   [
+    725.291,
+    10161444,
+    "sch"
+   ],
+   [
+    725.733,
+    13444380,
+    "pcb"
+   ],
+   [
+    726.217,
+    10161444,
+    "sch"
+   ],
+   [
+    726.683,
+    13444380,
+    "pcb"
+   ],
+   [
+    727.141,
+    10161444,
+    "sch"
+   ],
+   [
+    727.625,
+    13444380,
+    "pcb"
+   ],
+   [
+    728.104,
+    10161444,
+    "sch"
+   ],
+   [
+    728.578,
+    13444380,
+    "pcb"
+   ],
+   [
+    729.091,
+    10161444,
+    "sch"
+   ],
+   [
+    729.557,
+    13444380,
+    "pcb"
+   ],
+   [
+    730.024,
+    10161444,
+    "sch"
+   ],
+   [
+    735.782,
+    13444380,
+    "pcb"
+   ],
+   [
+    742.249,
+    10161444,
+    "sch"
+   ],
+   [
+    748.906,
+    13444380,
+    "pcb"
+   ],
+   [
+    755.297,
+    10161444,
+    "sch"
+   ],
+   [
+    755.347,
+    13444380,
+    "pcb"
+   ],
+   [
+    756.825,
+    9774942,
+    "other"
+   ],
+   [
+    757.55,
+    13444380,
+    "pcb"
+   ],
+   [
+    758.655,
+    14355528,
+    "other"
+   ],
+   [
+    760.56,
+    13444380,
+    "pcb"
+   ]
+  ],
+  "hook_events": 821,
+  "rescans": 485,
+  "uptime_s": 107.3,
+  "failed": {},
+  "obscured_fixes": 0,
+  "foreground_fixes": 0
+ }
+}

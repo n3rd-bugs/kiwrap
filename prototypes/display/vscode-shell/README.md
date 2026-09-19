@@ -14,7 +14,9 @@ Not published, not packaged; `private: true`.
 | `media/view.html` | iframe host page (mode `view` and the custom editor by default); pushes focus into the frame |
 | `media/demo.html` | page served over `http://localhost:<port>` and iframed by `view.html` (stands in for noVNC / Xpra / Broadway) |
 | `media/canvas.html` | `<canvas>` + WebSocket client with fps / bandwidth / RTT / stamp-to-paint HUD (mode `canvas`) |
+| `media/live.html` | **live mode**: the winstream viewer as a webview page — one KiCad *surface* per tab (`pcb` for `*.kicad_pcb`, `sch` for `*.kicad_sch`, `3d` via the *Open live KiCad surface* command), JPEG frames over `kiwrapShell.liveWs` (`ws://127.0.0.1:8765/ws?surface=…`), input back to the helper, 1 Hz `live-stats` + probe results relayed to the extension log; control messages `liveProbe` / `liveInput` / `liveStats` via `postSurface` |
 | `tools/gen_keybindings.js` | regenerates the 178 rescue keybindings in `package.json` |
+| `tools/drive_live.ps1` | Windows driver for live mode: launches the dev host against a running winstream helper (a `kicad.exe` project session with the PCB + schematic editors open), opens `ecc83-pp.kicad_pcb` and `ecc83-pp.kicad_sch` side by side + the 3D panel, screenshots, wheel probes per tab, pan fps while another client pans, then REAL `SendInput` clicks/keys into each tab (`-Phase hostinput`) verifying the foreground before/after; results in `probe.jsonl` (`docs/research/display/win-multi.md` §5) |
 | `tools/drive_probe.ps1` | Windows driver: launches the Extension Development Host in an isolated profile, sends real input with `SendInput`, runs the DPI / clipboard / pointer-lock / zen / fullscreen / split / retain / custom-editor checks, captures screenshots, closes the host |
 | `tools/analyze_probe.py` | turns `probe.jsonl` into a markdown table |
 
@@ -43,7 +45,8 @@ Then `Ctrl+Shift+P` -> `kiwrap: Open input probe` / `Open KiCad view (iframe URL
 default` in the prototype; "Reopen Editor With..." switches back to text).
 
 Settings (`kiwrapShell.*`): `url` (iframe target; empty = built-in demo page), `wsUrl` (frame stream;
-empty = built-in synthetic stream), `retainContextWhenHidden`, `rescueKeys` (turns the contributed
+empty = built-in synthetic stream), `liveWs` (winstream helper, e.g. `ws://127.0.0.1:8765/ws`; when set,
+`*.kicad_pcb` / `*.kicad_sch` open as live KiCad surfaces `pcb` / `sch`), `retainContextWhenHidden`, `rescueKeys` (turns the contributed
 keybindings on/off through a context key), `logFile` (JSONL sink; `cmd.jsonl` next to it is the
 control channel), `autoOpen` (`probe` / `view` / `canvas` at startup, used by the driver).
 

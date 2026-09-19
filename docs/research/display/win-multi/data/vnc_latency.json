@@ -1,0 +1,162 @@
+{
+ "runs": {
+  "pcbnew wheel -> first rect in pcb frame": {
+   "values": [
+    16.4,
+    55.4,
+    5.9,
+    7.8,
+    69.6,
+    5.9,
+    15.8,
+    9.7
+   ],
+   "median": 15.8,
+   "min": 5.9,
+   "max": 69.6,
+   "misses": 0
+  },
+  "eeschema wheel -> first rect in sch frame": {
+   "values": [
+    55.1,
+    12.7,
+    3.6,
+    28.6,
+    33,
+    14.8,
+    3.4,
+    14.2
+   ],
+   "median": 14.8,
+   "min": 3.4,
+   "max": 55.1,
+   "misses": 0
+  },
+  "eeschema key Home (after wheel) -> first rect": {
+   "values": [
+    2.1,
+    10.7,
+    45.6,
+    60.1,
+    111.4,
+    96.7
+   ],
+   "median": 60.1,
+   "min": 2.1,
+   "max": 111.4,
+   "misses": 0
+  },
+  "pcbnew key Home (after wheel) -> first rect": {
+   "values": [
+    15.4,
+    39.8,
+    98.3,
+    12.4,
+    42.4,
+    17.5
+   ],
+   "median": 39.8,
+   "min": 12.4,
+   "max": 98.3,
+   "misses": 0
+  },
+  "pan pcbnew 6 s": {
+   "seconds": 6.02,
+   "moves": 124,
+   "fbu": 51,
+   "fbuPerS": 8.5,
+   "rectsInRegion": 0,
+   "distinctPaintTicks": 0,
+   "rectsTotal": 2,
+   "paintTicksPerS": 0
+  },
+  "pan eeschema 6 s": {
+   "seconds": 6.06,
+   "moves": 131,
+   "fbu": 53,
+   "fbuPerS": 8.7,
+   "rectsInRegion": 0,
+   "distinctPaintTicks": 0,
+   "rectsTotal": 0,
+   "paintTicksPerS": 0
+  },
+  "alternating zoom both editors": {
+   "seconds": 6.12,
+   "zoomEventsPerEditor": 30,
+   "fbu": 55,
+   "fbuPerS": 9
+  }
+ },
+ "cpu_idle": {
+  "tag": "idle",
+  "seconds": 5,
+  "cores": 24,
+  "kicad": 1.6,
+  "kicad_n": 1,
+  "tvnserver": 94.1,
+  "tvnserver_n": 2,
+  "websockify": 0,
+  "websockify_n": 3,
+  "chromium": 0,
+  "chromium_n": 0,
+  "winstream": 0,
+  "winstream_n": 1,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "24 %"
+ },
+ "cpu_pan_pcb": {
+  "tag": "pan_pcb",
+  "seconds": 6,
+  "cores": 24,
+  "kicad": 12,
+  "kicad_n": 1,
+  "tvnserver": 113,
+  "tvnserver_n": 2,
+  "websockify": 0,
+  "websockify_n": 3,
+  "chromium": 0,
+  "chromium_n": 0,
+  "winstream": 0,
+  "winstream_n": 1,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "32 %"
+ },
+ "cpu_pan_sch": {
+  "tag": "pan_sch",
+  "seconds": 6,
+  "cores": 24,
+  "kicad": 14.1,
+  "kicad_n": 1,
+  "tvnserver": 107.3,
+  "tvnserver_n": 2,
+  "websockify": 0.3,
+  "websockify_n": 3,
+  "chromium": 0,
+  "chromium_n": 0,
+  "winstream": 0,
+  "winstream_n": 1,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "29 %"
+ },
+ "cpu_alt_both": {
+  "tag": "alt_both",
+  "seconds": 6,
+  "cores": 24,
+  "kicad": 10.2,
+  "kicad_n": 1,
+  "tvnserver": 104.7,
+  "tvnserver_n": 2,
+  "websockify": 0,
+  "websockify_n": 3,
+  "chromium": 0,
+  "chromium_n": 0,
+  "winstream": 0,
+  "winstream_n": 1,
+  "code": 0,
+  "code_n": 0,
+  "gpu": "30 %"
+ }
+}

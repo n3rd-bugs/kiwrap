@@ -186,10 +186,16 @@ def monitor_index_for(hwnd: int) -> tuple[int, tuple[int, int]]:
 
 
 class ProcessTracker:
-    """Polls the process's top-level windows and keeps one WindowSession per visible window."""
+    """Keeps one WindowSession per visible top-level window of the process and groups the windows
+    into *surfaces* (one per editor frame: pcb / sch / 3d / mgr ..., see windows.group_surfaces).
+
+    Rescans on SetWinEventHook events (create/destroy/show/hide/move/foreground/minimise, ~1 ms)
+    and, as a fallback, every `poll_s` (250 ms). `main_hwnd` is optional: with 0 the first surface
+    root in z-order at start is the main one (offsets for clients without a surface filter)."""
 
     def __init__(self, pid: int, main_hwnd: int, sink: FrameSink, on_windows, quality: int, fps_cap: int,
-                 poll_s: float = 0.1, capture_children: bool = True) -> None:
+                 poll_s: float = 0.25, capture_children: bool = True, use_hook: bool = True,
+                 gather_dialogs: bool = False) -> None:
         self.pid = pid
         self.main_hwnd = main_hwnd
         self.sink = sink
@@ -203,35 +209,128 @@ class ProcessTracker:
         self.monitor: MonitorCropSession | None = None
         self.fragile_seen = 0
         self.windows: list[W.WinInfo] = []
+        self.surfaces: dict[int, dict] = {}  # root hwnd -> {kind, root, hwnds, title}
+        self.roots_by_kind: dict[str, int] = {}
+        self.rects: dict[int, tuple[int, int, int, int]] = {}
+        self.foreground_hwnd = 0
+        self.foreground_log: deque = deque(maxlen=40)
+        self.rescans = 0
+        self.hook_events = 0
+        self.hook_to_list_ms: deque = deque(maxlen=40)  # hook event -> clients told (per rescan that changed the list)
+        self._t_event = 0.0
+        self.gather_dialogs = gather_dialogs
+        self.gathered: list[int] = []
+        self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="tracker", daemon=True)
-        self.main_rect = W.frame_bounds(main_hwnd)
+        self.hook = W.WinEventHook(pid, self._on_event) if use_hook else None
+        if not main_hwnd:
+            for w in W.windows_of_pid(pid):
+                if w.owner == 0 and w.title and not is_fragile(w.cls):
+                    main_hwnd = w.hwnd
+                    break
+            self.main_hwnd = main_hwnd
+        self.main_rect = W.frame_bounds(main_hwnd) if main_hwnd else (0, 0, 0, 0)
 
     def start(self) -> None:
+        if self.hook:
+            self.hook.start()
         self._thread.start()
 
     def stop(self) -> None:
         self._stop.set()
+        self._wake.set()
+        if self.hook:
+            self.hook.stop()
         for s in list(self.sessions.values()):
             s.stop()
+
+    # -- window -> surface helpers -------------------------------------------------------------
+    def root_for(self, hwnd: int) -> int:
+        for w in self.windows:
+            if w.hwnd == hwnd:
+                return w.root or hwnd
+        return self.main_hwnd
+
+    def root_of_kind(self, kind: str) -> int:
+        return self.roots_by_kind.get(kind, 0)
+
+    def rect_of(self, hwnd: int) -> tuple[int, int, int, int]:
+        r = self.rects.get(hwnd)
+        return r if r else W.frame_bounds(hwnd)
+
+    def surface_of_hwnd(self, hwnd: int) -> str:
+        for w in self.windows:
+            if w.hwnd == hwnd:
+                return w.surface
+        return ""
+
+    def _on_event(self, name: str, hwnd: int) -> None:  # hook thread
+        self.hook_events += 1
+        if name == "foreground":
+            self.foreground_hwnd = hwnd
+            self.foreground_log.append((round(time.time() % 1000, 3), hwnd, self.surface_of_hwnd(hwnd) or "other"))
+            return
+        if not self._t_event:
+            self._t_event = time.perf_counter()
+        self._wake.set()
+
+    def _gather(self, wins: list[W.WinInfo]) -> list[W.WinInfo]:
+        """An owned dialog (KiCad remembers dialog positions) can open far from its frame, e.g. the
+        footprint chooser on another part of the desktop; a per-editor tab would then have to grow
+        to the union rect. Centre such a window on its owner frame once, when it first shows."""
+        import win32con
+        import win32gui
+
+        changed = False
+        for w in wins:
+            if w.owner == 0 or w.root == 0 or w.hwnd in self.gathered or is_fragile(w.cls):
+                continue
+            rr = self.rects.get(w.root)
+            if not rr:
+                continue
+            inside = w.rect[0] >= rr[0] and w.rect[1] >= rr[1] and w.rect[2] <= rr[2] and w.rect[3] <= rr[3]
+            self.gathered.append(w.hwnd)
+            if inside:
+                continue
+            x = rr[0] + max(0, (rr[2] - rr[0] - w.width) // 2)
+            y = rr[1] + max(0, (rr[3] - rr[1] - w.height) // 2)
+            try:
+                win32gui.SetWindowPos(w.hwnd, 0, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
+                changed = True
+            except Exception:  # noqa: BLE001
+                pass
+        if changed:
+            wins = W.windows_of_pid(self.pid)
+            W.group_surfaces(wins)
+            self.rects = {w.hwnd: w.rect for w in wins}
+        return wins
 
     def _run(self) -> None:
         last_sig = None
         while not self._stop.is_set():
+            self.rescans += 1
             try:
                 wins = W.windows_of_pid(self.pid)
             except Exception:  # noqa: BLE001
                 wins = []
             if not self.capture_children:
                 wins = [w for w in wins if w.hwnd == self.main_hwnd]
+            self.surfaces = W.group_surfaces(wins)
+            self.roots_by_kind = {info["kind"]: r for r, info in self.surfaces.items()}
+            if self.gather_dialogs:
+                wins = self._gather(wins)
+            self.rects = {w.hwnd: w.rect for w in wins}
             for w in wins:
                 if w.hwnd == self.main_hwnd:
                     self.main_rect = w.rect
+            wins = [w for w in wins if w.root]  # windows outside every surface are ignored
             present = {w.hwnd for w in wins}
             fragile = {w.hwnd: w.rect for w in wins if is_fragile(w.cls)}
             if fragile and self.monitor is None:
                 try:
-                    idx, origin = monitor_index_for(self.main_hwnd)
+                    anchor = next(iter(fragile))
+                    idx, origin = monitor_index_for(anchor)
                     self.monitor = MonitorCropSession(idx, origin, self.sink, self.quality, self.fps_cap)
                     self.monitor.start()
                 except Exception as e:  # noqa: BLE001
@@ -260,7 +359,7 @@ class ProcessTracker:
             for h in list(self.failed):
                 if h not in present:
                     del self.failed[h]
-            sig = tuple((w.hwnd, w.rect, w.z) for w in wins)
+            sig = tuple((w.hwnd, w.rect, w.z, w.surface) for w in wins)
             if sig != last_sig:
                 last_sig = sig
                 self.windows = wins
@@ -268,4 +367,12 @@ class ProcessTracker:
                     self.on_windows(wins)
                 except Exception:  # noqa: BLE001
                     pass
-            self._stop.wait(self.poll_s)
+                if self._t_event:
+                    self.hook_to_list_ms.append(round((time.perf_counter() - self._t_event) * 1000, 1))
+            else:
+                self.windows = wins
+            self._t_event = 0.0
+            self._wake.wait(self.poll_s)
+            self._wake.clear()
+            # coalesce bursts of hook events (a dialog opening fires create+show+locationchange...)
+            time.sleep(0.01)

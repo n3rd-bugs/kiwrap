@@ -1,0 +1,191 @@
+{
+ "step": "input",
+ "steps": [
+  {
+   "m": "connected",
+   "w": 7680,
+   "h": 2160,
+   "name": "usama-home",
+   "t": 1789840936822
+  },
+  {
+   "m": "canvas box",
+   "x": 0,
+   "y": 270,
+   "width": 1920,
+   "height": 540,
+   "scale": 0.25,
+   "t": 1789840936857
+  },
+  {
+   "m": "fb png",
+   "w": 7680,
+   "h": 2160,
+   "t": 1789840937195
+  },
+  {
+   "m": "region v3d",
+   "fbRect": [
+    5700,
+    1200,
+    7100,
+    2100
+   ],
+   "meanLum": 146.1,
+   "blackPct": 0.2,
+   "colours": 540,
+   "t": 1789840937199
+  },
+  {
+   "m": "region pcb",
+   "fbRect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "meanLum": 171.1,
+   "blackPct": 0.2,
+   "colours": 736,
+   "t": 1789840937203
+  },
+  {
+   "m": "region sch",
+   "fbRect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "meanLum": 238.6,
+   "blackPct": 0.1,
+   "colours": 561,
+   "t": 1789840937207
+  },
+  {
+   "m": "region mgr",
+   "fbRect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "meanLum": 228.5,
+   "blackPct": 1.2,
+   "colours": 444,
+   "t": 1789840937208
+  },
+  {
+   "m": "region outside_gap",
+   "fbRect": [
+    4900,
+    100,
+    5600,
+    700
+   ],
+   "meanLum": 0,
+   "blackPct": 100,
+   "colours": 1,
+   "t": 1789840937209
+  },
+  {
+   "m": "region outside_right",
+   "fbRect": [
+    7150,
+    1300,
+    7600,
+    2000
+   ],
+   "meanLum": 0,
+   "blackPct": 100,
+   "colours": 1,
+   "t": 1789840937210
+  },
+  {
+   "m": "region overlap",
+   "fbRect": [
+    6300,
+    400,
+    7100,
+    1140
+   ],
+   "meanLum": 102.2,
+   "blackPct": 0,
+   "colours": 239,
+   "t": 1789840937211
+  },
+  {
+   "m": "region foreign",
+   "fbRect": [
+    6000,
+    300,
+    6800,
+    900
+   ],
+   "meanLum": 119.1,
+   "blackPct": 0,
+   "colours": 244,
+   "t": 1789840937212
+  },
+  {
+   "m": "wheel over pcbnew",
+   "dt": 105.3,
+   "pcbDiff": {
+    "changed": 0,
+    "total": 2073600,
+    "pct": 0
+   },
+   "schDiff": {
+    "changed": 0,
+    "total": 2160000,
+    "pct": 0
+   },
+   "t": 1789840939197
+  },
+  {
+   "m": "wheel over eeschema",
+   "dt": 38,
+   "pcbDiff": {
+    "changed": 758438,
+    "total": 2073600,
+    "pct": 36.58
+   },
+   "schDiff": {
+    "changed": 6460,
+    "total": 2160000,
+    "pct": 0.3
+   },
+   "t": 1789840940828
+  },
+  {
+   "m": "Home (eeschema focused)",
+   "dt": 33.3,
+   "pcbDiff": {
+    "changed": 0,
+    "total": 2073600,
+    "pct": 0
+   },
+   "schDiff": {
+    "changed": 44665,
+    "total": 2160000,
+    "pct": 2.07
+   },
+   "t": 1789840941790
+  },
+  {
+   "m": "Home (pcbnew focused)",
+   "dt": 85.2,
+   "pcbDiff": {
+    "changed": 0,
+    "total": 2073600,
+    "pct": 0
+   },
+   "schDiff": {
+    "changed": 0,
+    "total": 2160000,
+    "pct": 0
+   },
+   "t": 1789840943414
+  }
+ ]
+}

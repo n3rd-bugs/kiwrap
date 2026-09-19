@@ -1,0 +1,195 @@
+[
+ {
+  "t": 1789843922422,
+  "kind": "driver",
+  "msg": "launch",
+  "exe": "C:\\Users\\usama\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+  "helperPid": 83788,
+  "surfaces": "sch@3860,820,5660,2020 pcb@5700,60,7620,1020 3d@4880,60,5680,760 mgr@3860,60,4860,760",
+  "inject": "hybrid"
+ },
+ {
+  "t": 1789843928423,
+  "kind": "driver",
+  "title": "[Extension Development Host] workspace - Visual Studio Code",
+  "msg": "window",
+  "rect": "40,40,2640,1540"
+ },
+ {
+  "t": 1789843928492,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_pcb",
+  "resolved": true,
+  "mode": "live",
+  "surface": "pcb"
+ },
+ {
+  "t": 1789843928950,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_pcb",
+  "active": false,
+  "visible": true
+ },
+ {
+  "t": 1789843928961,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_sch",
+  "resolved": true,
+  "mode": "live",
+  "surface": "sch"
+ },
+ {
+  "t": 1789843932774,
+  "kind": "driver",
+  "seconds": 4.3,
+  "msg": "two tabs",
+  "sch": true,
+  "pcb": true
+ },
+ {
+  "t": 1789843936374,
+  "kind": "shot",
+  "name": "01-vscode-pcb-sch-tabs"
+ },
+ {
+  "t": 1789843936435,
+  "kind": "panel",
+  "mode": "live",
+  "created": true,
+  "retainContextWhenHidden": true,
+  "column": 3
+ },
+ {
+  "t": 1789843936445,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_sch",
+  "active": false,
+  "visible": true
+ },
+ {
+  "t": 1789843940196,
+  "kind": "shot",
+  "name": "02-vscode-pcb-sch-3d"
+ },
+ {
+  "t": 1789843942957,
+  "kind": "tab",
+  "surface": "pcb",
+  "last": {
+   "value": "{\"t\":1789843942634,\"kind\":\"wv\",\"src\":\"editor:ecc83-pp.kicad_pcb\",\"ev\":\"live-stats\",\"surface\":\"pcb\",\"fps\":0,\"kbit\":0,\"frames\":1,\"decode_ms\":7.6,\"net_ms\":1.7,\"w\":1920,\"h\":960,\"scale\":0.29,\"dpr\":1.5,\"windows\":[\"*ecc83-pp \u2014 PCB Editor\"],\"connected\":true,\"focus\":false,\"src2\":\"live-pcb\"}"
+  }
+ },
+ {
+  "t": 1789843949683,
+  "kind": "tab",
+  "surface": "sch",
+  "last": {
+   "value": "{\"t\":1789843949014,\"kind\":\"wv\",\"src\":\"editor:ecc83-pp.kicad_sch\",\"ev\":\"live-stats\",\"surface\":\"sch\",\"fps\":0,\"kbit\":0,\"frames\":1,\"decode_ms\":6.8,\"net_ms\":1.9,\"w\":1800,\"h\":1200,\"scale\":0.309,\"dpr\":1.5,\"windows\":[\"ecc83-pp \u2014 Schematic Editor\"],\"connected\":true,\"focus\":false,\"src2\":\"live-sch\"}"
+  }
+ },
+ {
+  "t": 1789843956750,
+  "kind": "tab",
+  "surface": "3d",
+  "last": {
+   "value": "{\"t\":1789843956561,\"kind\":\"wv\",\"src\":\"live:3d\",\"ev\":\"live-stats\",\"surface\":\"3d\",\"fps\":0,\"kbit\":0,\"frames\":1,\"decode_ms\":3.5,\"net_ms\":1,\"w\":800,\"h\":700,\"scale\":0.696,\"dpr\":1.5,\"windows\":[\"3D Viewer\"],\"connected\":true,\"focus\":true,\"src2\":\"live-3d\"}"
+  }
+ },
+ {
+  "t": 1789843964575,
+  "kind": "panel",
+  "mode": "live",
+  "active": false,
+  "visible": true,
+  "column": 3
+ },
+ {
+  "t": 1789843964575,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_pcb",
+  "active": true,
+  "visible": true
+ },
+ {
+  "t": 1789843967364,
+  "kind": "hostinput",
+  "fgNow": "[Extension Development Host] ecc83-pp.kicad_pcb - workspace - Visual Studio Code",
+  "keydownInTab": 1,
+  "clickAt": "560,370",
+  "kicadFrames": "mgr=0 sch=0 3d=0 pcb=5",
+  "fgAfterClick": "[Extension Development Host] ecc83-pp.kicad_pcb - workspace - Visual Studio Code",
+  "cursorAfterClick": "559,369",
+  "cursorNow": "6736,612",
+  "inputLog": "931.709 pcb key Home False   | 932.165 sch key Home True   | 932.465 sch key Home False   | 964.555 pcb down 0  1001.9390288375224 349.2998292330566 | 964.606 pcb up 0  1001.9390288375224 349.2998292330566 | 965.474 pcb key Home True   | 965.514 pcb key Home False   | 966.255 pcb wheel   999.640933572711 348.1508078994614",
+  "inputEvents": 7,
+  "pointerdownInTab": 1,
+  "try": 1,
+  "fgAfterKey": "[Extension Development Host] ecc83-pp.kicad_pcb - workspace - Visual Studio Code",
+  "tab": "pcb",
+  "cursorBefore": "559,369",
+  "inject": "hybrid",
+  "obscured_fixes": 0,
+  "foreground_fixes": 0
+ },
+ {
+  "t": 1789843967966,
+  "kind": "shot",
+  "name": "04-hostinput-pcb"
+ },
+ {
+  "t": 1789843968984,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_pcb",
+  "active": false,
+  "visible": true
+ },
+ {
+  "t": 1789843968984,
+  "kind": "editor",
+  "file": "c:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\display2\\multi\\vscode\\workspace\\ecc83-pp.kicad_sch",
+  "active": true,
+  "visible": true
+ },
+ {
+  "t": 1789843971810,
+  "kind": "hostinput",
+  "fgNow": "[Extension Development Host] ecc83-pp.kicad_sch - workspace - Visual Studio Code",
+  "keydownInTab": 1,
+  "clickAt": "1392,415",
+  "kicadFrames": "mgr=0 sch=5 3d=0 pcb=1",
+  "fgAfterClick": "[Extension Development Host] ecc83-pp.kicad_sch - workspace - Visual Studio Code",
+  "cursorAfterClick": "1391,414",
+  "cursorNow": "4990,1466",
+  "inputLog": "965.474 pcb key Home True   | 965.514 pcb key Home False   | 966.255 pcb wheel   999.640933572711 348.1508078994614 | 968.941 sch down 0  931.7774116885939 424.4165499291685 | 968.986 sch up 0  931.7774116885939 424.4165499291685 | 969.853 sch key Home True   | 969.893 sch key Home False   | 970.621 sch wheel   930.7001795332136 423.33931777378814",
+  "inputEvents": 7,
+  "pointerdownInTab": 1,
+  "try": 1,
+  "fgAfterKey": "[Extension Development Host] ecc83-pp.kicad_sch - workspace - Visual Studio Code",
+  "tab": "sch",
+  "cursorBefore": "1391,414",
+  "inject": "hybrid",
+  "obscured_fixes": 0,
+  "foreground_fixes": 0
+ },
+ {
+  "t": 1789843972400,
+  "kind": "shot",
+  "name": "04-hostinput-sch"
+ },
+ {
+  "t": 1789843973366,
+  "kind": "shot",
+  "name": "05-vscode-final"
+ },
+ {
+  "t": 1789843973368,
+  "kind": "driver",
+  "msg": "done"
+ },
+ {
+  "t": 1789843975439,
+  "kind": "driver",
+  "leftover": 0,
+  "msg": "closed"
+ }
+]

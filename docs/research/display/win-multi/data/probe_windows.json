@@ -1,0 +1,406 @@
+{
+ "base": [
+  {
+   "hwnd": 13444380,
+   "tid": 92068,
+   "z": 1,
+   "cls": "wxWindowNR",
+   "title": "*ecc83-pp \u2014 PCB Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 78189602,
+   "tid": 92068,
+   "z": 3,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 KiCad 10.0",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 10161444,
+   "tid": 92068,
+   "z": 21,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 Schematic Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  }
+ ],
+ "t_dialog_s": 0.34,
+ "properties_dialog": [
+  {
+   "hwnd": 45750426,
+   "tid": 92068,
+   "z": 1,
+   "cls": "#32770",
+   "title": "Footprint Reference Properties",
+   "owner": 13444380,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    6105,
+    269,
+    7214,
+    734
+   ],
+   "style": "-0x6933ff7c",
+   "exstyle": "0x10101",
+   "caption": true,
+   "popup": true,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 13444380,
+   "tid": 92068,
+   "z": 2,
+   "cls": "wxWindowNR",
+   "title": "*ecc83-pp \u2014 PCB Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": false,
+   "rect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "style": "0x1ecf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 78189602,
+   "tid": 92068,
+   "z": 6,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 KiCad 10.0",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 10161444,
+   "tid": 92068,
+   "z": 24,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 Schematic Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  }
+ ],
+ "t_chooser_s": 8.17,
+ "footprint_chooser": [
+  {
+   "hwnd": 45815962,
+   "tid": 92068,
+   "z": 1,
+   "cls": "wxWindowNR",
+   "title": "Footprint Chooser (15464 items loaded)",
+   "owner": 13444380,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    4039,
+    190,
+    5121,
+    1031
+   ],
+   "style": "0x16cc0000",
+   "exstyle": "0x100",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 13444380,
+   "tid": 92068,
+   "z": 2,
+   "cls": "wxWindowNR",
+   "title": "*ecc83-pp \u2014 PCB Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": false,
+   "rect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "style": "0x1ecf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 78189602,
+   "tid": 92068,
+   "z": 4,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 KiCad 10.0",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 10161444,
+   "tid": 92068,
+   "z": 22,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 Schematic Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  }
+ ],
+ "t_3d_s": 12.26,
+ "viewer3d": [
+  {
+   "hwnd": 13444380,
+   "tid": 92068,
+   "z": 1,
+   "cls": "wxWindowNR",
+   "title": "*ecc83-pp \u2014 PCB Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 78189602,
+   "tid": 92068,
+   "z": 3,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 KiCad 10.0",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 10161444,
+   "tid": 92068,
+   "z": 21,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 Schematic Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  }
+ ],
+ "final": [
+  {
+   "hwnd": 10161444,
+   "tid": 92068,
+   "z": 2,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 Schematic Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 13444380,
+   "tid": 92068,
+   "z": 3,
+   "cls": "wxWindowNR",
+   "title": "*ecc83-pp \u2014 PCB Editor",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  },
+  {
+   "hwnd": 78189602,
+   "tid": 92068,
+   "z": 5,
+   "cls": "wxWindowNR",
+   "title": "ecc83-pp \u2014 KiCad 10.0",
+   "owner": 0,
+   "visible": true,
+   "iconic": false,
+   "cloaked": false,
+   "enabled": true,
+   "rect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "style": "0x16cf0000",
+   "exstyle": "0x110",
+   "caption": true,
+   "popup": false,
+   "toolwindow": false
+  }
+ ]
+}

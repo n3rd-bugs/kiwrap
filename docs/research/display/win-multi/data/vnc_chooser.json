@@ -1,0 +1,144 @@
+{
+ "step": "chooser",
+ "steps": [
+  {
+   "m": "connected",
+   "w": 7680,
+   "h": 2160,
+   "name": "usama-home",
+   "t": 1789840770080
+  },
+  {
+   "m": "canvas box",
+   "x": 0,
+   "y": 270,
+   "width": 1920,
+   "height": 540,
+   "scale": 0.25,
+   "t": 1789840770096
+  },
+  {
+   "m": "fb png",
+   "w": 7680,
+   "h": 2160,
+   "t": 1789840770444
+  },
+  {
+   "m": "region v3d",
+   "fbRect": [
+    5700,
+    1200,
+    7100,
+    2100
+   ],
+   "meanLum": 146.2,
+   "blackPct": 0.2,
+   "colours": 539,
+   "t": 1789840770449
+  },
+  {
+   "m": "region pcb",
+   "fbRect": [
+    5700,
+    60,
+    7620,
+    1140
+   ],
+   "meanLum": 171.2,
+   "blackPct": 0.2,
+   "colours": 746,
+   "t": 1789840770452
+  },
+  {
+   "m": "region sch",
+   "fbRect": [
+    3860,
+    820,
+    5660,
+    2020
+   ],
+   "meanLum": 238.5,
+   "blackPct": 0.1,
+   "colours": 547,
+   "t": 1789840770456
+  },
+  {
+   "m": "region mgr",
+   "fbRect": [
+    3860,
+    60,
+    4860,
+    760
+   ],
+   "meanLum": 191,
+   "blackPct": 0.9,
+   "colours": 667,
+   "t": 1789840770457
+  },
+  {
+   "m": "region outside_gap",
+   "fbRect": [
+    4900,
+    100,
+    5600,
+    700
+   ],
+   "meanLum": 12.3,
+   "blackPct": 72.1,
+   "colours": 31,
+   "t": 1789840770458
+  },
+  {
+   "m": "region outside_right",
+   "fbRect": [
+    7150,
+    1300,
+    7600,
+    2000
+   ],
+   "meanLum": 0,
+   "blackPct": 100,
+   "colours": 1,
+   "t": 1789840770458
+  },
+  {
+   "m": "region overlap",
+   "fbRect": [
+    6300,
+    400,
+    7100,
+    1140
+   ],
+   "meanLum": 102.3,
+   "blackPct": 0,
+   "colours": 247,
+   "t": 1789840770459
+  },
+  {
+   "m": "region foreign",
+   "fbRect": [
+    6000,
+    300,
+    6800,
+    900
+   ],
+   "meanLum": 119.1,
+   "blackPct": 0,
+   "colours": 252,
+   "t": 1789840770460
+  },
+  {
+   "m": "region chooser",
+   "fbRect": [
+    4039,
+    190,
+    5121,
+    1032
+   ],
+   "meanLum": 167.5,
+   "blackPct": 0.7,
+   "colours": 270,
+   "t": 1789840770462
+  }
+ ]
+}

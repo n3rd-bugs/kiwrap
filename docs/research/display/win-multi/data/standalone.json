@@ -1,0 +1,23 @@
+{
+ "pcbnew_pid": 38188,
+ "eeschema_pid": 77588,
+ "seconds": 8.6,
+ "pcbnew": [
+  [
+   34153790,
+   84508,
+   0,
+   "wxWindowNR",
+   "*ecc83-pp \u2014 PCB Editor"
+  ]
+ ],
+ "eeschema": [
+  [
+   42542072,
+   91044,
+   0,
+   "wxWindowNR",
+   "ecc83-pp \u2014 Schematic Editor"
+  ]
+ ]
+}

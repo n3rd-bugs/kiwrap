@@ -1,0 +1,10 @@
+[
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":200}, {"a":"key","code":"Home"}, {"a":"sleep","ms":400},
+ {"a":"click","x":747,"y":785}, {"a":"sleep","ms":1100}, {"a":"shot","name":"00_selected"},
+ {"a":"drag","x1":747,"y1":785,"x2":747,"y2":945,"steps":8,"step_ms":40}, {"a":"sleep","ms":600}, {"a":"shot","name":"01_drag"},
+ {"a":"chord","codes":["ControlLeft","KeyZ"]}, {"a":"sleep","ms":400}, {"a":"shot","name":"03_undo"},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":1100},
+ {"a":"dblclick","x":747,"y":785}, {"a":"sleep","ms":2500}, {"a":"windows","name":"w_dbl"}, {"a":"shotall","name":"04_dblclick_dialog"},
+ {"a":"key","code":"Escape"}, {"a":"sleep","ms":600}, {"a":"windows","name":"w_after_esc"},
+ {"a":"cursor","name":"c1"}
+]

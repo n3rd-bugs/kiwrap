@@ -24,12 +24,13 @@
   const stage = document.getElementById('stage');
   const q = new URLSearchParams(location.search);
   const token = q.get('token') || '';
+  const surface = q.get('surface') || '';   // pcb | sch | 3d | mgr | fp | sym ('' = everything, main-window relative)
   const state = {
     main: 0, w: 0, h: 0, scale: 1, dpi: 0, inject: '',
     canvases: new Map(), windows: [],
     frames: 0, bytes: 0, decodeMs: [], paintTimes: [], netMs: [],
     probes: new Map(), probeSeq: 0, lastPaint: 0, log: [],
-    fps: 0, kbps: 0, connected: false, hello: null,
+    fps: 0, kbps: 0, connected: false, hello: null, surface, surfaces: [],
   };
   window.__state = state;
 
@@ -120,15 +121,16 @@
 
   let ws;
   function connect() {
-    ws = new WebSocket(`ws://${location.host}/ws${token ? '?token=' + token : ''}`);
+    const qs = [token ? 'token=' + token : '', surface ? 'surface=' + surface : ''].filter(Boolean).join('&');
+    ws = new WebSocket(`ws://${location.host}/ws${qs ? '?' + qs : ''}`);
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => { state.connected = true; };
     ws.onclose = () => { state.connected = false; bar.textContent = 'disconnected'; };
     ws.onmessage = ev => {
       if (typeof ev.data === 'string') {
         const m = JSON.parse(ev.data);
-        if (m.t === 'hello') { state.hello = m; state.main = m.main; state.w = m.w; state.h = m.h; state.dpi = m.dpi; state.inject = m.inject; layout(); stage.focus(); }
-        else if (m.t === 'windows') applyWindows(m.list);
+        if (m.t === 'hello') { state.hello = m; state.main = m.main; state.w = m.w; state.h = m.h; state.dpi = m.dpi; state.inject = m.inject; state.surfaces = m.surfaces || []; layout(); stage.focus(); }
+        else if (m.t === 'windows') { state.surfaces = m.surfaces || state.surfaces; if (m.main !== state.main) { state.main = m.main; } applyWindows(m.list); }
         else if (m.t === 'pong') { const p = state.probes.get('ping' + m.id); if (p) { state.probes.delete('ping' + m.id); p.resolve({ rtt_ms: Date.now() - p.tSend }); } }
       } else handleFrame(ev.data);
     };
@@ -186,13 +188,14 @@
     const recent = state.paintTimes.filter(t => t > now - 1000).length;
     const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
     return { frames: state.frames, bytes: state.bytes, fps_1s: recent, decode_ms_avg: avg(state.decodeMs), net_ms_avg: avg(state.netMs),
-             scale: state.scale, w: state.w, h: state.h, dpi: state.dpi, windows: state.windows.length, connected: state.connected, inject: state.inject };
+             scale: state.scale, w: state.w, h: state.h, dpi: state.dpi, windows: state.windows.length, connected: state.connected, inject: state.inject,
+             surface: state.surface, main: state.main, surfaces: state.surfaces.map(s => s.kind + ':' + s.root + (s.foreground ? '*' : '')) };
   };
   let lastF = 0, lastB = 0;
   setInterval(() => {
     state.fps = state.frames - lastF; state.kbps = Math.round((state.bytes - lastB) * 8 / 1000);
     lastF = state.frames; lastB = state.bytes;
-    bar.textContent = `${state.w}x${state.h} @ scale ${state.scale.toFixed(3)} dpi ${state.dpi} | ${state.fps} fps | ${state.kbps} kbit/s | decode ${window.__stats().decode_ms_avg.toFixed(1)} ms | net ${window.__stats().net_ms_avg.toFixed(1)} ms | windows ${state.windows.length} | inject ${state.inject}`;
+    bar.textContent = `[${state.surface || 'all'}] ${state.w}x${state.h} @ scale ${state.scale.toFixed(3)} dpi ${state.dpi} | ${state.fps} fps | ${state.kbps} kbit/s | decode ${window.__stats().decode_ms_avg.toFixed(1)} ms | net ${window.__stats().net_ms_avg.toFixed(1)} ms | windows ${state.windows.length} | inject ${state.inject} | surfaces ${state.surfaces.map(s => s.kind + (s.foreground ? '*' : '')).join(' ')}`;
   }, 1000);
 })();
 </script>
