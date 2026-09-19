@@ -12,8 +12,9 @@ Modules and their public functions (signatures are the contract; see each module
                    `config.restore_seed()` afterwards;
                  - deletes any `.kicad_prl` the run created next to the input (cli.writes_prl_on_read);
                  - maps exit codes: 0 ok, 5 violations (ERC/DRC with --exit-code-violations),
-                   3 / -1 / 127 / 0xFFFFFFFF "failed to load" -> CliLoadError, others -> CliError.
-    flagmap.py   parse_help(text) -> {"subcommands": [...], "flags": [...]};
+                   3 (and the `return -1` family -1 / 127 / 255 / 0xFFFFFFFF when an input file was
+                   named) "failed to load" -> CliLoadError, others -> CliError.
+    flagmap.py   parse_help(text) -> {"subcommands": [...], "flags": [...]}  (the ONLY help parser);
                  help_tree(install, config) -> nested dict (cached per install key) used by capability probes
     erc.py       run_erc(install, config, schematic: Path, *, severity="all", units="mm") -> Report
                  - `--format json`, positions AND description strings rescaled by cli.erc_json_pos_scale

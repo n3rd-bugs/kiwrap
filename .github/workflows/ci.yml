@@ -1,0 +1,252 @@
+# kiwrap CI (docs/DECISIONS.md D12 Windows + Linux, D14 GitHub Actions for headless tests).
+#
+# Jobs
+#   lint           ruff + import-linter (blocking), mypy (non-blocking)           ubuntu
+#   scripts-lint   bash -n + shellcheck on the bootstrap/CI shell scripts, PowerShell parse
+#   unit           pytest tests/ + scripts/ci/tests_ci (no KiCad; kicad-marked tests auto-skip)   windows + ubuntu
+#   kicad-linux    KiCad 10 from ppa:kicad/kicad-10.0-releases, `pytest -m kicad`, capability JSON artifact
+#   kicad-windows  KiCad 10.0.6 NSIS installer (cached), `pytest -m kicad`, capability JSON artifact
+#
+# The KiCad jobs can be skipped from the Actions UI (workflow_dispatch input `skip_kicad`).
+# Every KiCad process runs with KICAD_CONFIG_HOME/DOCUMENTS/CACHE under $RUNNER_TEMP; the user config
+# dir of the runner is fingerprinted before and after and must be unchanged (CLAUDE.md hard rule).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      skip_kicad:
+        description: "Skip the kicad-linux and kicad-windows jobs"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  # Pinned installer facts (verified 2026-09-19): winget KiCad.KiCad 10.0.6 and Chocolatey kicad 10.0.6 both
+  # resolve to this exact NSIS installer, so caching it directly is equivalent to either package manager.
+  KICAD_WIN_VERSION: "10.0.6"
+  KICAD_WIN_URL: "https://github.com/KiCad/kicad-source-mirror/releases/download/10.0.6/kicad-10.0.6-x86_64.exe"
+  KICAD_WIN_SHA256: "9e24dc47119f7c472128c2f293c5e3f35569274a44c905e60a7514d47c16ce48"
+  # PPA verified on Launchpad 2026-09-19: kicad 10.0.6~ubuntu24.04.1 for noble (amd64); the SWIG python3
+  # bindings ship inside the `kicad` package (/usr/lib/python3/dist-packages/pcbnew.py + _pcbnew.so).
+  KICAD_PPA: "ppa:kicad/kicad-10.0-releases"
+
+jobs:
+  lint:
+    name: lint (ruff, import-linter, mypy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Sync
+        run: uv sync --all-extras
+      - name: ruff check
+        run: uv run ruff check .
+      - name: import-linter (architectural contracts)
+        run: uv run lint-imports
+      - name: mypy (non-blocking until the tree is typed end to end)
+        continue-on-error: true
+        run: uv run mypy
+
+  scripts-lint:
+    name: scripts (bash -n, shellcheck, PowerShell parse)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: bash -n
+        run: |
+          for f in scripts/bootstrap.sh scripts/ci/run_pytest.sh; do bash -n "$f"; done
+      - name: shellcheck
+        run: shellcheck -S style scripts/bootstrap.sh scripts/ci/run_pytest.sh
+      - name: PowerShell parse (bootstrap.ps1)
+        shell: pwsh
+        run: |
+          $tokens = $null; $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/bootstrap.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Host $_.Message }; exit 1 }
+          Write-Host "bootstrap.ps1 parses cleanly"
+      - name: engines.json is valid JSON with the pinned keys
+        run: |
+          python3 - <<'EOF'
+          import json
+          d = json.load(open("scripts/engines.json"))
+          for os_ in ("windows", "linux"):
+              e = d["jre"][os_]
+              assert len(e["sha256"]) == 64 and e["url"].startswith("https://"), e
+          assert len(d["freerouting"]["sha256"]) == 64
+          print("engines.json ok:", d["jre"]["release_name"], "freerouting", d["freerouting"]["version"])
+          EOF
+
+  unit:
+    name: unit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Sync
+        run: uv sync --all-extras
+      - name: pytest (no KiCad on this runner; kicad/gui tests auto-skip)
+        shell: bash
+        run: bash scripts/ci/run_pytest.sh tests scripts/ci/tests_ci -q -m "not gui" --timeout 600
+
+  kicad-linux:
+    name: kicad-linux (KiCad 10 from PPA)
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_kicad) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Storage home for this job (kiwrap.platform honours KIWRAP_HOME)
+        run: echo "KIWRAP_HOME=$RUNNER_TEMP/kiwrap-home" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Install KiCad 10 (kicad, kicad-libraries + its members, kicad-demos; python3 bindings are inside `kicad`)
+        run: |
+          set -euxo pipefail
+          sudo add-apt-repository -y "$KICAD_PPA"
+          sudo apt-get update
+          # kicad-libraries is a metapackage that only *Recommends* its members, so name them explicitly;
+          # kicad-packages3d (3.3 GB) is deliberately left out - nothing in kiwrap needs 3D models.
+          sudo apt-get install -y --no-install-recommends \
+            kicad kicad-libraries kicad-symbols kicad-footprints kicad-templates kicad-demos xvfb
+          kicad-cli version --format plain
+          python3 -c "import pcbnew; print('SWIG pcbnew', pcbnew.GetBuildVersion())"
+        env:
+          # Even `kicad-cli version` rewrites kicad_common.json on exit (ARCHITECTURE.md section 6).
+          KICAD_CONFIG_HOME: ${{ runner.temp }}/kicad-config
+          KICAD_DOCUMENTS_HOME: ${{ runner.temp }}/kicad-documents
+          KICAD_CACHE_HOME: ${{ runner.temp }}/kicad-cache
+      - name: Sync
+        run: uv sync --all-extras
+      - name: Snapshot the runner's ~/.config/kicad (must stay untouched)
+        run: uv run python scripts/ci/user_config_hash.py --write "$RUNNER_TEMP/user-config-before.txt"
+      - name: Bootstrap engines (JRE 25 + Freerouting 2.4.1 into KIWRAP_HOME, verified hashes)
+        run: |
+          bash scripts/bootstrap.sh --skip-sync
+          bash scripts/bootstrap.sh --check
+      - name: "pytest -m kicad (headless: kicad-cli, SWIG driver, formats)"
+        run: bash scripts/ci/run_pytest.sh -m "kicad and not gui" -q --timeout 600
+      - name: pytest -m gui under Xvfb (evidence only until the Linux GUI/IPC path is certified; docs/LINUX.md)
+        continue-on-error: true
+        timeout-minutes: 15
+        run: xvfb-run -a bash scripts/ci/run_pytest.sh -m "kicad and gui" -q --timeout 300
+      - name: kiwrap.installation report
+        run: uv run python -m kiwrap.installation
+      - name: Collect capability JSON
+        run: uv run python scripts/ci/collect_capabilities.py --require-one --out "$RUNNER_TEMP/capabilities-linux.json" > /dev/null
+      - name: Verify ~/.config/kicad is unchanged
+        run: uv run python scripts/ci/user_config_hash.py --verify "$RUNNER_TEMP/user-config-before.txt"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: capabilities-linux
+          path: ${{ runner.temp }}/capabilities-linux.json
+          if-no-files-found: warn
+
+  kicad-windows:
+    name: kicad-windows (KiCad 10.0.6 NSIS installer)
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_kicad) }}
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Storage home for this job (kiwrap.platform honours KIWRAP_HOME)
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_ENV -Value "KIWRAP_HOME=$env:RUNNER_TEMP\kiwrap-home"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Cache the KiCad installer (~923 MiB, keyed on version + sha256)
+        id: installer-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}\kicad-installer
+          key: kicad-installer-${{ env.KICAD_WIN_VERSION }}-${{ env.KICAD_WIN_SHA256 }}
+      - name: Download the installer (cache miss)
+        if: steps.installer-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $dir = "$env:RUNNER_TEMP\kicad-installer"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          curl.exe -L --fail --retry 3 -o "$dir\kicad-$env:KICAD_WIN_VERSION-x86_64.exe" $env:KICAD_WIN_URL
+      - name: Verify sha256 and install silently (all users -> C:\Program Files\KiCad\10.0)
+        shell: pwsh
+        run: |
+          $exe = "$env:RUNNER_TEMP\kicad-installer\kicad-$env:KICAD_WIN_VERSION-x86_64.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLowerInvariant()
+          if ($hash -ne $env:KICAD_WIN_SHA256) { throw "installer sha256 $hash != $env:KICAD_WIN_SHA256" }
+          $p = Start-Process -FilePath $exe -ArgumentList '/S', '/allusers' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
+          Get-ChildItem "C:\Program Files\KiCad"
+      - name: kicad-cli version (throw-away KICAD_CONFIG_HOME)
+        shell: pwsh
+        env:
+          KICAD_CONFIG_HOME: ${{ runner.temp }}\kicad-config
+          KICAD_DOCUMENTS_HOME: ${{ runner.temp }}\kicad-documents
+          KICAD_CACHE_HOME: ${{ runner.temp }}\kicad-cache
+        run: |
+          & "C:\Program Files\KiCad\10.0\bin\kicad-cli.exe" version --format plain
+      - name: Sync
+        run: uv sync --all-extras
+      - name: Snapshot %APPDATA%\kicad (must stay untouched)
+        shell: pwsh
+        run: uv run python scripts/ci/user_config_hash.py --write "$env:RUNNER_TEMP\user-config-before.txt"
+      - name: Bootstrap engines (JRE 25 + Freerouting 2.4.1 into KIWRAP_HOME, verified hashes)
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -SkipSync
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: "pytest -m kicad (headless: kicad-cli, SWIG driver, formats)"
+        shell: bash
+        run: bash scripts/ci/run_pytest.sh -m "kicad and not gui" -q --timeout 600
+      - name: kiwrap.installation report
+        run: uv run python -m kiwrap.installation
+      - name: Collect capability JSON
+        shell: pwsh
+        run: uv run python scripts/ci/collect_capabilities.py --require-one --out "$env:RUNNER_TEMP\capabilities-windows.json" | Out-Null
+      - name: Verify %APPDATA%\kicad is unchanged
+        shell: pwsh
+        run: uv run python scripts/ci/user_config_hash.py --verify "$env:RUNNER_TEMP\user-config-before.txt"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: capabilities-windows
+          path: ${{ runner.temp }}\capabilities-windows.json
+          if-no-files-found: warn

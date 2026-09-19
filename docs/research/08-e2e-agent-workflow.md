@@ -169,7 +169,7 @@ for V in 7.0 8.0 9.0 10.0; do K="C:/Program Files/KiCad/$V/bin/kicad-cli.exe"; "
 cp -r "C:/Program Files/KiCad/10.0/share/kicad/demos/pic_programmer" .; python break_sch.py pic_programmer/pic_programmer.kicad_sch pic_programmer/pic_programmer.kicad_sch 6; "$K" sch erc --format json --severity-all -o out/erc_pic.json pic_programmer/pic_programmer.kicad_sch; (same with 9.0/8.0 demos into v9.0/, v8.0/)  # break_sch.py: paren-balanced removal of N '\n\t(wire' blocks
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/out/erc_pic.json`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/out/erc_pic.json`
 - **ERC JSON coordinate scale check vs text report**
   - Result: Report: @(87.63 mm, 46.99 mm); JSON mm: {0.8763, 0.4699}; JSON in: {0.0345, 0.0185}; symbol D3 at (87.63 50.8) -> JSON is exactly 100x too small in 8.0.1, 9.0.5, 10.0.0.
   - Command/code:
@@ -192,7 +192,7 @@ EOF
 "$K" pcb drc --format json --severity-all --all-track-errors -o out/drc_broken.json out/pic_broken.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/out/drc_broken.json`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/out/drc_broken.json`
 - **pcbnew.WriteDRCReport from standalone bundled python (10.0)**
   - Result: Assertion 'C:\jenkins\...\common\pgm_base.cpp(1043): assert "process" failed in Pgm().' — no report written; DRC needs the app context (GUI) or kicad-cli.
   - Command/code:
@@ -217,7 +217,7 @@ EOF
 "$K" pcb render -w 1200 -h 800 --side top --quality basic --background opaque -o out/render_top.png pic_programmer/pic_programmer.kicad_pcb; "$K" pcb render -w 1200 -h 800 --rotate "-45,0,45" --perspective --quality high --floor -o out/render_iso.png ...; "$K" pcb export svg --mode-single --layers "F.Cu,B.Cu,F.SilkS,Edge.Cuts,F.Mask" --page-size-mode 2 --exclude-drawing-sheet -o out/board_top.svg ...; "$K" sch export svg --exclude-drawing-sheet -o out/sch_svg pic_programmer/pic_programmer.kicad_sch; .venv/Scripts/python.exe -c "import fitz; [fitz.open(s)[0].get_pixmap(matrix=fitz.Matrix(z,z)).save(d) for s,d,z in [('out/board_top.svg','out/board_top.png',3),('out/sch_svg/pic_programmer.svg','out/sch_top.png',2)]]"
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/out/board_top.png`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/out/board_top.png`
 - **Install and inspect kicad-python (kipy) 0.8.0, kicad-skip, kicad-sch-api, easyeda2kicad, pymupdf in a scratch venv**
   - Result: kicad-python 0.8.0 (KICAD_API_VERSION 10.0.6-0-gcaf7377e9c), kicad-skip 0.2.5, kicad-sch-api 0.5.6, easyeda2kicad 1.0.1, pymupdf 1.28.2, pynng 0.9.0, protobuf 5.29.6. `import kipy.schematic` -> ImportError: cannot import name 'PageSettings' from 'kipy.common_types' (proto/schematic .pyi only has Line/Text/labels; wrapper references Junction/SheetSymbol/SchematicSymbolInstance...).
   - Command/code:
@@ -242,7 +242,7 @@ EOF
 curl -sL https://gitlab.com/kicad/code/kicad/-/raw/10.0/pcbnew/api/api_handler_pcb.cpp | grep -o 'registerHandler<[A-Za-z:]*' ; same for master pcbnew/api/api_handler_pcb.cpp, master eeschema/api/api_handler_sch.cpp, 10.0 and master common/api/api_handler_editor.cpp; grep -o '"pcbnew\.[A-Za-z]*\.[A-Za-z]*"' pcb_actions.cpp; GitLab API tree of common/jobs and kicad/cli on 10.0 and master
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/web/`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/web/`
 - **SWIG pcbnew feature presence across 7/8/9/10 bundled pythons and standalone zone fill / connectivity in 10**
   - Result: All True on 7.0.6/8.0.1/9.0.5/10.0.0. ZONE_FILLER.Fill -> True in 0.44 s (GND zone 11691 mm2 filled); unconnected count 2.
   - Command/code:
@@ -271,7 +271,7 @@ python: b=LoadBoard('out/pic_unrouted.kicad_pcb'); pcbnew.ImportSpecctraSES(b,'o
 "$K" pcb drc --format json --severity-all -o out/drc_routed.json out/pic_routed.kicad_pcb; "$K" pcb drc --format json --severity-all --refill-zones --save-board -o out/drc_routed2.json out/pic_routed.kicad_pcb; "$K" pcb render ... -o out/render_routed.png
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/out/pic_routed.kicad_pcb`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/out/pic_routed.kicad_pcb`
 - **Programmatic schematic creation with kicad-sch-api from KiCad 10 standard symbols, then kicad-cli ERC + netlist verification**
   - Result: File written as version 20250114 / generator_version 9.0; KiCad 10 accepted it. ERC: 10 violations (label_dangling GND, pin_not_connected U1.1, power_pin_not_driven x2, wire_dangling, isolated_pin_label x2, endpoint_off_grid, unconnected_wire_endpoint x2). Netlist: /GND [C1.1], /SIG [R1.1], /VCC_3V3 [C1.2, R1.2, U1.2], /VIN [U1.3], unconnected-(U1-GND-Pad1) [U1.1] => labels landed on the opposite pins (Y-sign bug in kicad-sch-api get_pin_position; Device:R pin 1 is at (0 3.81 270) in symbol space). get_symbol_info('RF_Module:ESP32-S3-WROOM-1') returned 41 pins; search_symbols('ESP32-S3-WROOM') returned [] (index not built).
   - Command/code:
@@ -281,7 +281,7 @@ python: b=LoadBoard('out/pic_unrouted.kicad_pcb'); pcbnew.ImportSpecctraSES(b,'o
 "$K" sch erc --format json --severity-all -o gen/erc.json gen/agent_test.kicad_sch; "$K" sch export netlist --format kicadsexpr -o gen/agent_test.net gen/agent_test.kicad_sch; python regex over (nets ...) to print net -> [(ref,pin)]
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/gen/agent_test.kicad_sch`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/gen/agent_test.kicad_sch`
 - **Annotation storage check: reference property vs instances block**
   - Result: ERC reported no annotation problem; netlist still exported ref="R1" (instances block wins). No kicad-cli annotate exists.
   - Command/code:
@@ -299,7 +299,7 @@ sed 's/(property "Reference" "R1"/(property "Reference" "R?"/' gen/agent_test.ki
 "$K" pcb drc --format json --severity-all --schematic-parity -o gen/drc.json gen/agent_test.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/netlist_to_pcb.py`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/netlist_to_pcb.py`
 - **LCSC part import with easyeda2kicad and validation in KiCad 10**
   - Result: 3.9 s: MCP73831T-2ACI/OT symbol (kicad_symbol_lib v20211014), footprint SOT-23-5 (legacy 'module' format), STEP 2.9 MB + WRL. sym export svg OK; sym upgrade -> 20251024; fp upgrade -> 20260206; FootprintLoad -> 5 pads, WRL model path. API: lcsc {number C424093, price 0.483334, stock 2935, url}, szlcsc, packageDetail; datasheet None.
   - Command/code:
@@ -316,7 +316,7 @@ sed 's/(property "Reference" "R1"/(property "Reference" "R?"/' gen/agent_test.ki
 "$K" pcb export gerbers -o fab/gerbers/ --subtract-soldermask --use-drill-file-origin out/pic_routed.kicad_pcb; "$K" pcb export drill -o fab/gerbers/ --excellon-separate-th --generate-map --map-format gerberx2 ...; "$K" pcb export pos --format csv --units mm --side both -o fab/pos.csv ...; "$K" pcb export stats --format json -o fab/stats.json ...; "$K" sch export bom --fields "Reference,Value,Footprint,\${QUANTITY},LCSC" --group-by "Value,Footprint" -o fab/bom.csv pic_programmer/pic_programmer.kicad_sch; "$K" pcb export step --subst-models -f -o fab/board.step ...
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/e2e-agent-workflow/fab/`
+  - Artifact: `<scratchpad>/e2e-agent-workflow/fab/`
 - **Read-only inspection of KiCad 10 user config and library tables (no modification)**
   - Result: api.enable_server false (user config untouched), interpreter_path pythonw.exe; user fp-lib-table = one (type "Table") entry to template fp-lib-table; template uses ${KICAD10_FOOTPRINT_DIR}; 223 symbol libs, 155 footprint libs; schemas/api.v1.schema.json = IPC plugin.json schema (runtime.type python|exec, actions).
   - Command/code:

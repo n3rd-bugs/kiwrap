@@ -1,0 +1,139 @@
+"""kw_env: what is installed and what it can do (docs/ARCHITECTURE.md §10 row 1)."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from kiwrap.core.state import KiwrapError, Receipt
+from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec
+from kiwrap.platform import current
+
+SUMMARY_KEYS = (
+    "cli.has_erc",
+    "cli.has_drc",
+    "cli.has_render",
+    "cli.has_jobset",
+    "cli.has_sch_pcb_upgrade",
+    "cli.drc_refill_flags",
+    "cli.erc_json_pos_scale",
+    "cli.gerbers_creates_outdir",
+    "cli.writes_prl_on_read",
+    "formats.sch",
+    "formats.pcb",
+    "formats.sym",
+    "formats.pro",
+    "swig.available",
+    "ipc.available",
+    "ipc.headless",
+    "rules.default_min_track_width_mm",
+)
+
+ENGINE_DIRS = {
+    "freerouting": "engines/freerouting",
+    "jre": "engines/jre",
+    "krt": "engines/krt",
+    "jlcparts": "engines/jlcparts",
+}
+
+
+class EnvArgs(BaseModel):
+    refresh: bool = Field(
+        default=False,
+        description="Re-discover installs and re-probe capabilities instead of using the cached record",
+    )
+
+
+def install_dict(install: Any) -> dict[str, Any]:
+    return {
+        "version": install.version,
+        "major_minor": install.major_minor,
+        "root": str(install.root),
+        "kicad_cli": str(install.kicad_cli),
+        "share": str(install.share),
+        "source": install.source,
+        "python": str(install.python) if getattr(install, "python", None) else None,
+    }
+
+
+def caps_summary(caps: Any) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key in SUMMARY_KEYS:
+        try:
+            out[key] = caps[key]
+        except (KeyError, TypeError):
+            out[key] = None
+    out["probed"] = bool(getattr(caps, "probed", False))
+    try:
+        out["subcommands"] = len(caps["cli.subcommands"])
+    except (KeyError, TypeError):
+        out["subcommands"] = None
+    return out
+
+
+def run(ctx: ToolContext, args: EnvArgs) -> Receipt:
+    plat = current()
+    warnings: list[str] = []
+    degraded: list[str] = []
+    try:
+        installs = ctx.services.installs(refresh=args.refresh)
+    except KiwrapError as exc:
+        if exc.code != "E_UNSUPPORTED":
+            raise
+        installs = []
+        degraded.append("discovery_unavailable")
+        warnings.append(exc.message)
+
+    rows: list[dict[str, Any]] = []
+    for inst in installs:
+        row = install_dict(inst)
+        try:
+            row["capabilities"] = caps_summary(ctx.services.caps(inst, refresh=args.refresh))
+        except KiwrapError as exc:
+            row["capabilities"] = None
+            row["capabilities_error"] = exc.to_dict()
+            if "capabilities_unavailable" not in degraded:
+                degraded.append("capabilities_unavailable")
+        rows.append(row)
+
+    storage = ctx.services.storage_home
+    engines = {name: (storage / rel).exists() for name, rel in ENGINE_DIRS.items()}
+    data = {
+        "ok": True,
+        "kiwrap_version": ctx.server_version,
+        "platform": plat.name,
+        "installs": rows,
+        "default_install": rows[0]["version"] if rows else None,
+        "engines": engines,
+        "storage": {
+            "home": str(storage),
+            "sandbox_roots": str(storage / "kicad-config"),  # kiwrap.sandbox: kicad-config/<semver>-<root digest>/
+            "jobs": str(ctx.jobs.storage_dir) if ctx.jobs.storage_dir else None,
+            "temp": str(plat.temp_dir),
+            "user_kicad_config_home": str(plat.user_kicad_config_home) + " (read-only, never written)",
+        },
+    }
+    if not rows:
+        warnings.append("no KiCad installation found; every KiCad-backed tool will return E_NO_KICAD")
+    return Receipt(
+        provider_used="discovery",
+        degraded=degraded,
+        warnings=warnings,
+        next_suggested="kw_project",
+        data=data,
+    )
+
+
+SPEC = ToolSpec(
+    name="kw_env",
+    title="Environment",
+    description=(
+        "List installed KiCad versions, their verified capabilities (ERC/DRC/render/upgrade support, "
+        "format epochs, quirks), external engines present and kiwrap's storage paths. Call first; "
+        "`refresh=true` re-probes."
+    ),
+    input_model=EnvArgs,
+    handler=run,
+    annotations=READ_ONLY,
+)

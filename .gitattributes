@@ -3,3 +3,6 @@
 *.bat text eol=crlf
 *.png binary
 *.jar binary
+# Conformance corpus files are byte-exact evidence of what each KiCad wrote (CRLF on Windows);
+# never normalise them (conformance/corpus/README.md, T1 reads them byte for byte).
+conformance/corpus/** -text

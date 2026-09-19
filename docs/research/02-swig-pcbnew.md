@@ -74,7 +74,7 @@ Measured with the same script on 7.0.6 / 8.0.1 / 9.0.5 / 10.0.0 (Windows, bundle
 - On the in-KiCad plugin <-> VS Code channel: SWIG action plugins (PYTHON_ACTION_PLUGINS) can host a socket inside pcbnew today and have Pgm()/GetBoard()/WriteDRCReport available there, but they are removed in 11 – do not build the channel on SWIG; use the official IPC API plugin path for the 'live GUI' channel and keep SWIG strictly headless. A KiCad source build is NOT required for any of the SWIG findings here (everything was reproduced with installed binaries + faulthandler); it would only be needed to debug KiCad-side crashes like the WriteDRCReport Pgm() null (10.0) or #24124, or to build a patched pcbnew with a headless PGM init.
 - Never hard-code numeric layer ids or enum ints; always use pcbnew.<symbol> at runtime and gate by GetSemanticVersion(); persist layer names ('B.Cu') not numbers in wrapper state.
 - Use a same-minor system/venv Python only as a convenience for developers (os.add_dll_directory + sys.path); production should use the bundled interpreter to avoid ABI mismatch (3.12 fails, 3.9 needed for 7.0).
-- Keep all test scripts from this task (C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/{test_swig_board.py, wx_noassert.py, netlist_to_pcb.py, route_roundtrip.py, sys_python_import.py}) as the seed of the wrapper's SWIG conformance test suite run against every installed KiCad version.
+- Keep all test scripts from this task (<scratchpad>/swig-pcbnew/{test_swig_board.py, wx_noassert.py, netlist_to_pcb.py, route_roundtrip.py, sys_python_import.py}) as the seed of the wrapper's SWIG conformance test suite run against every installed KiCad version.
 
 ## Experiments run
 
@@ -86,7 +86,7 @@ Measured with the same script on 7.0.6 / 8.0.1 / 9.0.5 / 10.0.0 (Windows, bundle
 cd <scratch>/swig-pcbnew; for v in 10.0 9.0 8.0 7.0; do NOASSERT=1 OUTLINE_MODE=inplace timeout -k 5 180 "/c/Program Files/KiCad/$v/bin/python.exe" -u -X faulthandler test_swig_board.py "$PWD/out${v%%.*}" $v > run${v%%.*}.log 2>&1; done   (10.0 additionally with SKIP_STEPS=s14 NOASSERT=0 to get past the DRC crash)
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/test_swig_board.py`
+  - Artifact: `<scratchpad>/swig-pcbnew/test_swig_board.py`
 - **Bisect of the random SaveBoard access violation (found ZONE.SetOutline ownership bug) and repetition tests of the three safe outline patterns**
   - Result: Buggy pattern: fill area 0.0 mm^2 and ~50% 'Windows fatal exception: access violation' in SaveBoard; all three safe patterns: 504 mm^2 fill and 0 crashes (8/8 additional inplace runs).
   - Command/code:
@@ -95,7 +95,7 @@ cd <scratch>/swig-pcbnew; for v in 10.0 9.0 8.0 7.0; do NOASSERT=1 OUTLINE_MODE=
 for mode in inplace appendcorner setoutline_disown; do for rep in 1 2 3; do OUTLINE_MODE=$mode STOP_AT=s12 "/c/Program Files/KiCad/10.0/bin/python.exe" -u -X faulthandler test_swig_board.py "$PWD/out10m" 10.0; done; done   (bisect_save.py / bisect2.py / bisect3.py / bisect4.py with feature flags; SAVE_EACH=1 instrumentation)
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/bisect2.py`
+  - Artifact: `<scratchpad>/swig-pcbnew/bisect2.py`
 - **One-BOARD-per-process hazard: 5-6 repetitions per version with/without a second BOARD()/CreateEmptyBoard() object, with and without aSkipSettings**
   - Result: Single board: 0 failures in all versions. Extra board: 8.0 abort(3)/segv(139) in 3-5 of 6 runs; 9.0 1-2 of 5; 10.0 1 of 5; skip-settings does not fully avoid it. Traceback always inside pcbnew.SaveBoard.
   - Command/code:
@@ -104,7 +104,7 @@ for mode in inplace appendcorner setoutline_disown; do for rep in 1 2 3; do OUTL
 ./reps.sh 8.0 "newboard,fp,zone,fill" 5; ./reps.sh 8.0 "newboard,boardctor2,fp,zone,fill" 6; ./reps.sh 8.0 "newboard,emptyboard2,fp,zone,fill" 5; (same for 9.0 and 10.0; plus ',skip' and ',bsave' variants)
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/reps.sh`
+  - Artifact: `<scratchpad>/swig-pcbnew/reps.sh`
 - **Disable wx assert dialogs via ctypes (null the exported wxTheAssertHandler) and run WriteDRCReport headless; repeated calls; injected short; env var for footprint dir**
   - Result: Export ?wxTheAssertHandler@@3P6AXAEBVwxString@@H000@ZEA present in 7/8/9/10 wx base DLLs. 9.0: WriteDRCReport True in 0.30s, 0 violations with env var (2 lib_footprint_issues warnings without); 3 calls ok; 6 violations after adding a VCC-GND short. 8.0 and 7.0 also OK. 10.0: access violation in WriteDRCReport (Pgm() null).
   - Command/code:
@@ -113,7 +113,7 @@ for mode in inplace appendcorner setoutline_disown; do for rep in 1 2 3; do OUTL
 "/c/Python311/python.exe" pe_exports.py AssertHandler <wxbase dlls>  ->  KICAD9_FOOTPRINT_DIR="C:/Program Files/KiCad/9.0/share/kicad/footprints" "/c/Program Files/KiCad/9.0/bin/python.exe" -u -X faulthandler drc_test.py out9/swig_test.kicad_pcb out9/py_drc_env.rpt ; drc_twice.py (3 calls + short)
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/wx_noassert.py`
+  - Artifact: `<scratchpad>/swig-pcbnew/wx_noassert.py`
 - **kicad-cli validation of the SWIG-built board (DRC json+report, SVG export, 3D render PNG)**
   - Result: Found 0 violations, 0 unconnected items; SVG 6411 bytes; PNG rendered and visually matches (outline, R1, rotated R2, SIG track, GND track + via).
   - Command/code:
@@ -122,7 +122,7 @@ for mode in inplace appendcorner setoutline_disown; do for rep in 1 2 3; do OUTL
 cd out10; kicad-cli pcb drc --format json --severity-all --units mm -o swig_drc_cli.json swig_test.kicad_pcb; kicad-cli pcb export svg --layers F.Cu,B.Cu,Edge.Cuts,F.SilkS --page-size-mode 2 --exclude-drawing-sheet -o swig_test_cli.svg swig_test.kicad_pcb; kicad-cli pcb render --side top --width 800 --height 600 --background opaque -o swig_test_top.png swig_test.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/out10/swig_drc_cli.json`
+  - Artifact: `<scratchpad>/swig-pcbnew/out10/swig_drc_cli.json`
 - **Headless autoroute round trip: SWIG unrouted board -> ExportSpecctraDSN -> Freerouting 1.9.0 (Java 17) -> ImportSpecctraSES -> SaveBoard -> kicad-cli drc + render**
   - Result: unrouted: 0 tracks, 5 unconnected -> DSN 3260 bytes -> freerouting exit 0 in 23.2 s (no GUI) -> SES imported: 14 tracks, 0 unconnected -> saved 23463 bytes -> kicad-cli: 0 violations, 0 unconnected; rr_top.png shows routes.
   - Command/code:
@@ -131,7 +131,7 @@ cd out10; kicad-cli pcb drc --format json --severity-all --units mm -o swig_drc_
 curl -sL -o freerouting/freerouting-1.9.0.jar https://github.com/freerouting/freerouting/releases/download/v1.9.0/freerouting-1.9.0.jar; "/c/Program Files/KiCad/10.0/bin/python.exe" -u -X faulthandler route_roundtrip.py "$PWD/route10" 10.0 "C:/Program Files/Eclipse Adoptium/jre-17.0.12.7-hotspot/bin/java.exe" "$PWD/freerouting/freerouting-1.9.0.jar"; kicad-cli pcb drc --format json --severity-all -o route10/rr_drc.json route10/rr.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/route_roundtrip.py`
+  - Artifact: `<scratchpad>/swig-pcbnew/route_roundtrip.py`
 - **Netlist -> PCB through SWIG (no netlist reader exists): kicad-cli netlist export of the pic_programmer demo, s-expr parse, FootprintLoad/NETINFO_ITEM/pad.SetNet, save, kicad-cli drc**
   - Result: 63 components / 111 nets parsed; 58 footprints placed (5 in a project-local lib skipped by the naive resolver); 111 nets, 184 pad assignments; board saved 270 KB; kicad-cli: 105 unconnected (unrouted), 30 placement-related violations from the naive grid.
   - Command/code:
@@ -140,7 +140,7 @@ curl -sL -o freerouting/freerouting-1.9.0.jar https://github.com/freerouting/fre
 cp -r "/c/Program Files/KiCad/10.0/share/kicad/demos/pic_programmer" netlist/; kicad-cli sch export netlist --format kicadsexpr -o pic_programmer.net pic_programmer/pic_programmer.kicad_sch; "/c/Program Files/KiCad/10.0/bin/python.exe" -u -X faulthandler ../netlist_to_pcb.py pic_programmer.net "$PWD/from_netlist.kicad_pcb" 10.0; kicad-cli pcb drc --format json -o from_netlist_drc.json from_netlist.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/netlist_to_pcb.py`
+  - Artifact: `<scratchpad>/swig-pcbnew/netlist_to_pcb.py`
 - **DLL/path pitfalls: import KiCad 10 pcbnew from system Python 3.11.8, Python 3.12.3 and a uv venv (3.11) with sys.path only / os.add_dll_directory / runtime PATH edit**
   - Result: naive/path: 'DLL load failed while importing _pcbnew'; dlldir (os.add_dll_directory): import OK, BOARD ok, FootprintLoad ok on both system 3.11 and venv; 3.12: 'Module use of python311.dll conflicts with this version of Python'.
   - Command/code:
@@ -149,7 +149,7 @@ cp -r "/c/Program Files/KiCad/10.0/share/kicad/demos/pic_programmer" netlist/; k
 for m in naive dlldir path; do "/c/Python311/python.exe" sys_python_import.py $m; done; "/c/Python312/python.exe" sys_python_import.py dlldir; uv venv --python 3.11 venv311; ./venv311/Scripts/python.exe sys_python_import.py dlldir
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/sys_python_import.py`
+  - Artifact: `<scratchpad>/swig-pcbnew/sys_python_import.py`
 - **User-settings safety: sha256/mtime of %APPDATA%/kicad/{9.0,10.0}/kicad_common.json before/after SWIG runs; KICAD_CONFIG_HOME redirection**
   - Result: Files unchanged across my controlled runs (changes observed earlier coincided with a sibling task's pcbnew.exe GUI); with KICAD_CONFIG_HOME set, cfghome/9.0/kicad_common.json was created and the real config untouched.
   - Command/code:
@@ -158,7 +158,7 @@ for m in naive dlldir path; do "/c/Python311/python.exe" sys_python_import.py $m
 stat/sha256sum kicad_common.json; run NewBoard+SaveBoard and WriteDRCReport in 9.0/10.0; KICAD_CONFIG_HOME="$PWD/cfghome" python drc_test.py ...; find cfghome -type f
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/cfghome`
+  - Artifact: `<scratchpad>/swig-pcbnew/cfghome`
 - **API drift inventory: per-version constants, diff of top-level defs/classes 9.0 vs 10.0, VIATYPE presence, kicad-cli flag availability, doxygen doc sites**
   - Result: Layer renumbering in 9.0 (B_Cu 31->2, Edge_Cuts 44->25, COUNT 60->128); VIATYPE_* present 7/8/9, absent 10; 12 new defs + 11 new classes in 10.0, 2 removed; --refill-zones/--save-board only in kicad-cli 10; kicad-cli 7 has only 'pcb export'; doxygen-python-8.0/9.0/10.0 all HTTP 200.
   - Command/code:
@@ -167,4 +167,4 @@ stat/sha256sum kicad_common.json; run NewBoard+SaveBoard and WriteDRCReport in 9
 for v in 7.0 8.0 9.0 10.0: python -c 'import pcbnew as p; print(p.F_Cu,p.B_Cu,p.In1_Cu,p.Edge_Cuts,p.F_SilkS,p.User_1,p.PCB_LAYER_ID_COUNT)'; grep VIATYPE_THROUGH pcbnew.py; diff <(grep -oE '^def [A-Za-z_0-9]+' 9.0/pcbnew.py|sort -u) <(... 10.0 ...); kicad-cli pcb drc --help | grep -oE -- '--refill-zones|--save-board'; curl -I https://docs.kicad.org/doxygen-python-10.0/
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/swig-pcbnew/run10.log`
+  - Artifact: `<scratchpad>/swig-pcbnew/run10.log`

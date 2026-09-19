@@ -26,6 +26,32 @@ Numbers are written the way KiCad writes them (no trailing zeros, no exponent, u
 
 from __future__ import annotations
 
-from kiwrap.formats.sexpr.cst import Atom, Node, ParseError, build, dump, dumps, load, loads, quote, unquote
+from kiwrap.formats.sexpr.cst import (
+    Atom,
+    Node,
+    ParseError,
+    Style,
+    build,
+    dump,
+    dumps,
+    format_number,
+    load,
+    loads,
+    quote,
+    unquote,
+)
 
-__all__ = ["Atom", "Node", "ParseError", "build", "dump", "dumps", "load", "loads", "quote", "unquote"]
+__all__ = [
+    "Atom",
+    "Node",
+    "ParseError",
+    "Style",
+    "build",
+    "dump",
+    "dumps",
+    "format_number",
+    "load",
+    "loads",
+    "quote",
+    "unquote",
+]

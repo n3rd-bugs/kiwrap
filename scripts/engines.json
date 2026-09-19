@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "pinned_on": "2026-09-19",
+  "notes": [
+    "Pinned by scripts/bootstrap.{ps1,sh}; both scripts verify sha256 after download and refuse to install a mismatch.",
+    "JRE: Eclipse Temurin JRE 25 (hotspot, x64). Freerouting 2.4.1 needs Java 25 (class file 69) - docs/research/04-autorouting.md, docs/VERIFICATION.md claim 8.",
+    "jre.<os>.url/sha256/size were taken verbatim from https://api.adoptium.net/v3/assets/latest/25/hotspot?image_type=jre&os=<os>&architecture=x64 on pinned_on.",
+    "freerouting.sha256 is the GitHub release asset digest and equals the sha256 of the jar the spikes ran (spikes/autorouting, spikes/freerouting-verify).",
+    "Engines are GPL-3.0 and are downloaded into the user's storage home at bootstrap time, never redistributed with kiwrap (docs/ARCHITECTURE.md section 12)."
+  ],
+  "jre": {
+    "release_name": "jdk-25.0.4.1+1",
+    "version": "25.0.4.1+1",
+    "semver": "25.0.4+101.0.LTS",
+    "vendor": "Eclipse Temurin",
+    "image_type": "jre",
+    "api": "https://api.adoptium.net/v3/assets/latest/25/hotspot?image_type=jre&os={os}&architecture=x64",
+    "windows": {
+      "url": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jre_x64_windows_hotspot_25.0.4.1_1.zip",
+      "asset": "OpenJDK25U-jre_x64_windows_hotspot_25.0.4.1_1.zip",
+      "sha256": "4c95451cea98556def2c54f7782933f52a26d4a36bd85e1d59f0364464828b07",
+      "size": 58475080,
+      "archive": "zip",
+      "top_dir": "jdk-25.0.4.1+1-jre",
+      "java": "bin/java.exe"
+    },
+    "linux": {
+      "url": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jre_x64_linux_hotspot_25.0.4.1_1.tar.gz",
+      "asset": "OpenJDK25U-jre_x64_linux_hotspot_25.0.4.1_1.tar.gz",
+      "sha256": "1731a34baadec5479258ea0202e4d5d865d2efeee60cb0c7d7eb056fe96ca219",
+      "size": 61718288,
+      "archive": "tar.gz",
+      "top_dir": "jdk-25.0.4.1+1-jre",
+      "java": "bin/java"
+    }
+  },
+  "freerouting": {
+    "version": "2.4.1",
+    "released": "2026-09-03",
+    "license": "GPL-3.0",
+    "requires_java": 25,
+    "asset": "freerouting-2.4.1.jar",
+    "url": "https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar",
+    "sha256": "251101c3eeac22d7e7dfcf6796603279e5d1000283eb82d8f093780f7afc6aa9",
+    "size": 64076787,
+    "upgrade_trigger": "2.5.0 fixes router-introduced overlaps (#858); re-pin when released"
+  }
+}

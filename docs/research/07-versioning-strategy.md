@@ -118,7 +118,7 @@ cd "/c/Program Files/KiCad"; for v in 7.0 8.0 9.0 10.0; do find $v/share/kicad/t
 cp -r "/c/Program Files/KiCad/7.0/share/kicad/demos/ecc83" src7/; cp -r src7 up10; cd up10/ecc83; "/c/Program Files/KiCad/10.0/bin/kicad-cli.exe" sch upgrade ecc83-pp.kicad_sch; "/c/Program Files/KiCad/10.0/bin/kicad-cli.exe" pcb upgrade ecc83-pp.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/up10/ecc83`
+  - Artifact: `<scratchpad>/versioning-strategy/up10/ecc83`
 - **Token-set diff (Python regex over '(token') of 7.0 vs 10.0-upgraded sch and pcb, plus side-by-side prints of footprint/layers/setup/pad/segment/zone blocks**
   - Result: sch: only additions (body_style, do_not_autoplace, duplicate_pin_numbers_are_jumpers, embedded_fonts, exclude_from_sim, generator_version, hide, in_pos_files, show_name). pcb: removed filled_areas_thickness, hpglpen*, net_name, plotinvisibletext/plotreference/plotvalue, tstamp, viasonmask; added uuid, sheetfile, tenting/covering/plugging/capping/filling, pdf_*, embedded_fonts, island_removal_mode, legacy_teardrops, remove_unused_layers, duplicate_pad_numbers_are_jumpers ...; layers renumbered (B.Cu 31->2); layerselection 0x00000f0_80000001 -> 0x00000000_00000000_00000000_000000af; pad (net 2 "Net-(P3-P1)") -> (net "Net-(P3-P1)"); no top-level (net N ...) rows in 10
   - Command/code:
@@ -135,7 +135,7 @@ python: collections.Counter(re.findall(r'\(([A-Za-z_][A-Za-z0-9_]*)', open(f).re
 for v in 7.0 8.0 9.0 10.0; do "/c/Program Files/KiCad/$v/bin/python.exe" -c "import pcbnew; b=pcbnew.LoadBoard(r'...pysave/in_$v.kicad_pcb'); pcbnew.SaveBoard(r'...pysave/out_$v.kicad_pcb', b)"; done; python token diff over pysave/out_*.kicad_pcb
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/pysave`
+  - Artifact: `<scratchpad>/versioning-strategy/pysave`
 - **sym upgrade / fp upgrade of the 7.0 ecc83 library with each kicad-cli to get exact .kicad_sym/.kicad_mod versions and token drift**
   - Result: sym: 20220914, 20231120, 20241209, 20251024; mod: 20221018, 20240108, 20241229, 20260206. sym drift 7->8 +exclude_from_sim,generator_version,hide; 8->9 +embedded_fonts; 9->10 +do_not_autoplace,duplicate_pin_numbers_are_jumpers,in_pos_files,show_name. mod 7->8 -tstamp +property,uuid,remove_unused_layers,unlocked,hide,generator_version; 8->9 -unlocked +embedded_fonts; 9->10 +duplicate_pad_numbers_are_jumpers
   - Command/code:
@@ -144,7 +144,7 @@ for v in 7.0 8.0 9.0 10.0; do "/c/Program Files/KiCad/$v/bin/python.exe" -c "imp
 for v in 7.0 8.0 9.0 10.0; do kicad-cli.exe sym upgrade --force -o libup/sym_out_$v.kicad_sym libup/sym_in_$v.kicad_sym; kicad-cli.exe fp upgrade --force -o libup/fp_out_$v.pretty libup/fp_in_$v.pretty; done
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/libup`
+  - Artifact: `<scratchpad>/versioning-strategy/libup`
 - **Forward-compat test: older kicad-cli reading newer files, with exact exit codes and stderr**
   - Result: 7.0 pcb exit 127 'created with a more recent version ... dated 02/06/26 ... Unknown token generator_version'; 8.0 pcb exit 127 '... upgrade KiCad to version 10.0 or later (file format dated 20260206 or later)'; 9.0 pcb exit 3 'Failed to load board'; sch exit 3 on 7/8/9; 8.0 on 9.0 board: 'file format dated 20241229 or later'; 7.0 on 8.0 board: 'dated 01/08/24'; 10.0 reads 7.0 sch fine (exit 0)
   - Command/code:
@@ -161,7 +161,7 @@ for v in 7.0 8.0 9.0; do kicad-cli.exe pcb export pos -o fwd/pos_$v.csv --format
 append '(embedded_fonts no)' to 7.0 sch/pcb -> run netlist/pos with 7,8,9,10; sed version 20260306->20230121 in 10 sch -> run 7 and 10; sed 20221018->20990101 in 7 pcb -> run 10
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/tol`
+  - Artifact: `<scratchpad>/versioning-strategy/tol`
 - **Capture `--help` for ~50 kicad-cli subcommands on all four installs and compute per-subcommand flag additions/removals**
   - Result: Full drift table (see findings); e.g. gerbers: 8 +--define-var,--drawing-sheet; 9 +--sp/--hdnp/--sdnp/--cdnp,--plot-invisible-text(deprecated); 10 +--check-zones,--variant -(--plot-invisible-text). drc: 10 +--refill-zones,--save-board. netlist: 9 +pads,allegro formats; 10 +--variant. 10 removed `pcb export gerber`, hpgl is a stub
   - Command/code:
@@ -170,7 +170,7 @@ append '(embedded_fonts no)' to 7.0 sch/pcb -> run netlist/pos with 7,8,9,10; se
 for v in 7.0 8.0 9.0 10.0; do for cmd in '' sch pcb sym fp jobset version 'sch export' 'pcb export' 'sch erc' 'pcb drc' 'sch export netlist' ... 'pcb export gerbers' 'pcb export drill' 'pcb export step' ... 'jobset run'; do kicad-cli.exe $cmd --help > clihelp/${v}__${cmd// /_}.txt 2>&1; done; done; python flag-diff script -> cli_flag_drift.txt
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/cli_flag_drift.txt`
+  - Artifact: `<scratchpad>/versioning-strategy/cli_flag_drift.txt`
 - **Exit-code and output-dir behaviour probes: leaf --help, root --help, unknown subcommand, missing input, gerbers -o with/without pre-created dir**
   - Result: leaf --help exit: 7.0=1, 8.0=1, 9.0=0, 10.0=0; root --help 0; unknown subcmd 1; missing input 3 (all). gerbers into non-existent dir: 7.0/8.0 exit 4 'Failed to plot to ...' (no files), 9.0/10.0 exit 0 and create dir; with a pre-created dir 7/8 succeed regardless of trailing slash
   - Command/code:
@@ -203,7 +203,7 @@ kicad-cli.exe pcb drc --format json --severity-all -o out/drc_$v.json pysave/out
 KICAD_CONFIG_HOME=<scratch>/cfg10 kicad-cli.exe pcb export step --subst-models -o out/ard10.step ard10/Arduino_Uno.kicad_pcb; find cfg10 -type f; sed KICAD9_3DMODEL_DIR->{KICAD5,KICAD99,FOO,KISYS3DMOD,KICAD10} and .wrl->.step variants; compare 'File not found' counts and STEP sizes
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/out`
+  - Artifact: `<scratchpad>/versioning-strategy/out`
 - **ERC dependence on global lib tables: fresh config vs user config vs fresh config + provisioned template tables; then project-local tables using KICAD7_SYMBOL_DIR / KICAD6_FOOTPRINT_DIR under kicad-cli 10**
   - Result: fresh: 37 violations incl. 8 lib_symbol_issues + 4 footprint_link_issues; user config: 25; provisioned: 25 (kicad_version 10.0.0, $schema erc.v1). Project tables with KICAD7_/KICAD6_ vars under 10: 25 violations (all lib/footprint issues gone) -> legacy versioned vars resolve
   - Command/code:
@@ -212,7 +212,7 @@ KICAD_CONFIG_HOME=<scratch>/cfg10 kicad-cli.exe pcb export step --subst-models -
 KICAD_CONFIG_HOME=cfg10b kicad-cli.exe sch erc --format json --severity-all -o out/erc_fresh.json ard10/Arduino_Uno.kicad_sch; (no env) ... erc_user.json; cp share/kicad/template/{sym,fp}-lib-table cfg10b/10.0/ ... erc_prov.json; ard_symtest/ with sym-lib-table '(uri "${KICAD7_SYMBOL_DIR}/Connector_Generic.kicad_sym")' and fp-lib-table '(uri "${KICAD6_FOOTPRINT_DIR}/Connector_PinSocket_2.54mm.pretty")' under fresh cfg_symtest
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/ard_symtest`
+  - Artifact: `<scratchpad>/versioning-strategy/ard_symtest`
 - **Registry / file-association / build-tool discovery**
   - Result: HKLM\SOFTWARE\Kicad missing; HKCU\SOFTWARE\KiCad\{eeschema,kicad,kicad-cli,pcbnew,pl_editor} empty; Uninstall: 'KiCad 10.0' 10.0.0-1 C:\Program Files\KiCad\10.0 uninstall.exe /allusers, 'KiCad 9.0' 9.0.5, 'KiCad 8.0' 8.0.1 (64-bit hive), 'KiCad 7.0' 7.0.6 under WOW6432Node with uninstaller.exe; no HKCR associations; VS 2022 Community + VS 2019 Build Tools present, cl not on PATH; no KICAD* env vars in the process
   - Command/code:
@@ -237,16 +237,16 @@ for v: "$v/bin/python.exe" -c "import sys,sysconfig,pcbnew; print(sys.version, s
 uv venv --python 3.11 .venv-kipy; uv pip install --python .venv-kipy/Scripts/python.exe kicad-python; python -c 'from kipy.kicad_api_version import KICAD_API_VERSION; ...; inspect.getsource(KiCad.check_version); list DESCRIPTOR.message_types_by_name of schematic_commands_pb2 / board_commands_pb2 / editor_commands_pb2'
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/.venv-kipy`
+  - Artifact: `<scratchpad>/versioning-strategy/.venv-kipy`
 - **Live IPC session against pcbnew 10.0.0 launched with an isolated KICAD_CONFIG_HOME (API enabled), including diagnosis of the KiCad 10 first-run wizard blocking the API**
-  - Result: Before adding the three lib tables: visible window 'KiCad Setup' and every RPC -> ApiError 'KiCad is not ready to reply' (STARTWIZARD libraries provider requires LIBRARY_MANAGER::GlobalTablesValid). After: ping OK; 'KiCad version via IPC: 10.0.0 | kipy built for API version: 10.0.6'; check_version True; open docs ['ecc83-pp.kicad_pcb']; footprints 15, tracks 59, nets 14, zones 1, copper layers 2; get_kicad_binary_path('kicad-cli') = C:/Program Files/KiCad/10.0/bin/kicad-cli.exe. Note: my first instance (PID 84956) was killed by a sibling task's taskkill; only my own PIDs were terminated by me; pipe seen as \\.\pipe\C:\Users\usama\AppData\Local\Temp\kicad\api.sock
+  - Result: Before adding the three lib tables: visible window 'KiCad Setup' and every RPC -> ApiError 'KiCad is not ready to reply' (STARTWIZARD libraries provider requires LIBRARY_MANAGER::GlobalTablesValid). After: ping OK; 'KiCad version via IPC: 10.0.0 | kipy built for API version: 10.0.6'; check_version True; open docs ['ecc83-pp.kicad_pcb']; footprints 15, tracks 59, nets 14, zones 1, copper layers 2; get_kicad_binary_path('kicad-cli') = C:/Program Files/KiCad/10.0/bin/kicad-cli.exe. Note: my first instance (PID 84956) was killed by a sibling task's taskkill; only my own PIDs were terminated by me; pipe seen as \\.\pipe\%LOCALAPPDATA%\Temp\kicad\api.sock
   - Command/code:
 
 ```
 cfgapi10/10.0/kicad_common.json = {"api":{"enable_server":true},"do_not_show_again":{"data_collection_prompt":true,"update_check_prompt":true,...},"system":{"first_run_shown":true}} + copies of template sym-lib-table/fp-lib-table + '(design_block_lib_table (version 7))'; PowerShell: $env:KICAD_CONFIG_HOME=...cfgapi10; Start-Process pcbnew.exe apiboard10/ecc83-pp.kicad_pcb -WindowStyle Minimized (PID recorded); EnumWindows title check; .venv-kipy python: KiCad(timeout_ms=5000).get_version()/check_version()/get_open_documents()/get_board()...; Stop-Process -Id <my pid>
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/cfgapi10`
+  - Artifact: `<scratchpad>/versioning-strategy/cfgapi10`
 - **Live IPC session against pcbnew 9.0.5 with kipy 0.8.0 (isolated cfgapi9), probing a 10.0.1-only RPC**
   - Result: KiCad 9.0.5 via IPC, kipy API 10.0.6, check_version True; footprints 15 / tracks 59 / nets 14 / zones 1 / copper 2 / stackup 9 layers; get_connected_items -> ApiError 'no handler available for request of type kiapi.board.commands.GetConnectedItems' (graceful capability failure)
   - Command/code:
@@ -255,7 +255,7 @@ cfgapi10/10.0/kicad_common.json = {"api":{"enable_server":true},"do_not_show_aga
 cfgapi9/9.0/kicad_common.json {api.enable_server:true, do_not_show_again...} + 9.0 template lib tables + empty design-block table; Start-Process "C:\Program Files\KiCad\9.0\bin\pcbnew.exe" apiboard9/board9.kicad_pcb; kipy: get_version, check_version, get_board().get_footprints()/get_copper_layer_count()/get_stackup(); get_connected_items([pad]); Stop-Process -Id <my pid>
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/cfgapi9`
+  - Artifact: `<scratchpad>/versioning-strategy/cfgapi9`
 - **Download and grep KiCad source headers/branches for authoritative constants (file versions, project/jobset schema, env var logic, exit codes, start wizard, SWIG deprecation)**
   - Result: SEXPR_BOARD_FILE_VERSION history (…20241229 'Expand User layers', 20251028 'Stop writing netcodes', 20260101 'PCB variants', 20260206 'Fix barcode and variant attribute serialization', master 20260901); sch/sym version tables; projectFileSchemaVersion 1/1/3/3 (master 4); projectLocalSettingsVersion 3/3/5/5; jobsFileSchemaVersion 1; ENV_VAR::GetVersionedEnvVarName('KICAD%d_%s'); ExpandEnvVarSubstitutions fallbacks per branch; CalculateUserSettingsPath(KICAD_CONFIG_HOME + major.minor); exit codes 0-6; STARTWIZARD providers; SWIG DeprecationWarning text
   - Command/code:
@@ -264,7 +264,7 @@ cfgapi9/9.0/kicad_common.json {api.enable_server:true, do_not_show_again...} + 9
 curl -sL https://gitlab.com/kicad/code/kicad/-/raw/{master,10.0,9.0,8.0,7.0}/{pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h, eeschema/sch_file_versions.h, common/project/project_file.cpp, common/project/project_local_settings.cpp, common/jobs/jobset.cpp, common/env_vars.cpp, common/common.cpp, common/paths.cpp, include/cli/exit_codes.h, common/startwizard/*.cpp, pcbnew/python/swig/pcbnew.i} -o src/...; grep
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/src`
+  - Artifact: `<scratchpad>/versioning-strategy/src`
 - **Write the verified version/capability matrix as JSON seed data for the wrapper**
   - Result: valid JSON with installs, file_format_versions_written, env_vars, cli and python sections
   - Command/code:
@@ -273,4 +273,4 @@ curl -sL https://gitlab.com/kicad/code/kicad/-/raw/{master,10.0,9.0,8.0,7.0}/{pc
 heredoc -> kicad_version_matrix.json; python -c 'json.load(...)'
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/versioning-strategy/kicad_version_matrix.json`
+  - Artifact: `<scratchpad>/versioning-strategy/kicad_version_matrix.json`

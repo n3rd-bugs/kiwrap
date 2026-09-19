@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "kiwrap": {
+      "command": "uv",
+      "args": ["run", "--project", "${CLAUDE_PROJECT_DIR:-.}", "kiwrap", "serve"],
+      "env": {}
+    }
+  }
+}

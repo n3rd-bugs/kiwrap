@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "filename": "led_d9.kicad_pro",
+    "version": 1
+  },
+  "sheets": [
+    [
+      "ed474af4-80ef-4710-9cd2-deb05c287384",
+      "Root"
+    ]
+  ],
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "text_variables": {}
+}

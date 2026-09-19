@@ -150,7 +150,7 @@ KiCad 7.0.6: kicad-cli has only export commands (no pcb drc, sch erc, render, jo
 cd <scratch>/prior-art && while read r; do gh api "repos/$r" --jq '[.full_name, .stargazers_count, (.license.spdx_id // "none"), .language, .pushed_at, .archived, .description] | @tsv'; done < repos.txt | tee gh_meta_1.tsv; gh api -X GET search/repositories -f q='kicad mcp' -f sort=stars -f per_page=40 --jq '.items[] | [.full_name, .stargazers_count, (.license.spdx_id // "none"), .language, .pushed_at, .description] | @tsv' | tee gh_search_kicad_mcp.tsv
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/gh_meta_1.tsv`
+  - Artifact: `<scratchpad>/prior-art/gh_meta_1.tsv`
 - **Downloaded READMEs of 36 repos and grep-classified their KiCad channel (pcbnew/SWIG/kipy/IPC/kicad-cli/kicad-skip/kiutils/kicad-sch-api/PCM/nng)**
   - Result: Channel classification per project as reported in findings (e.g. kipilot IPC=36/kicad-python=11; Konnect IPC=14/SWIG=8/PCM=5; lamaalrajih kicad-cli-only; Seeed pcbnew+kicad-cli)
   - Command/code:
@@ -159,7 +159,7 @@ cd <scratch>/prior-art && while read r; do gh api "repos/$r" --jq '[.full_name, 
 while read r; do f="readmes/$(echo $r | tr '/' '_').md"; gh api "repos/$r/readme" --jq '.content' | base64 -d > "$f"; done < repos3.txt; for f in readmes/*.md; do for k in pcbnew SWIG kipy kicad-python IPC kicad-cli kicad-skip kiutils kicad-sch-api Freerouting 'KiCad 10' 'KiCad 9' PCM protobuf nng; do grep -o -i -- "$k" "$f" | wc -l; done; done
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/readmes/`
+  - Artifact: `<scratchpad>/prior-art/readmes/`
 - **PyPI release data (version, date, requires_python) and GitLab kicad-python tags**
   - Result: kicad-python 0.8.0 (2026-08-30); kicad-skip 0.2.5 (2024-02-16, 1 release); kiutils 1.4.8 (2024-02-02); kicad-sch-api 0.5.6 (2025-11-19); circuit-synth 0.12.1 (2026-01-09, py>=3.12); skidl 2.3.0 (2026-07-28); atopile 0.15.9 (2026-09-12, py>=3.14); kibot 1.9.1; easyeda2kicad 1.0.1; InteractiveHtmlBom 2.12.0; kicad-mcp-pro 3.34.6 (py>=3.13); mcp-server-kicad 0.20.1; kicad-mcp (Huaqiu) 0.1.6
   - Command/code:
@@ -176,7 +176,7 @@ curl -s https://gitlab.com/api/v4/projects/kicad%2Fcode%2Fkicad-python/repositor
 python vsmarket.py kicad  # POST https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery with filterType 10 = 'kicad'; also atopile, skidl, jitx, tscircuit; curl 'https://open-vsx.org/api/-/search?query=kicad&size=30'
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/vsmarket_kicad.tsv`
+  - Artifact: `<scratchpad>/prior-art/vsmarket_kicad.tsv`
 - **Built a 4-version test corpus: copied the ecc83 demo from each KiCad install and upgraded the 10.0 copy (which ships in 9.0 format) plus cm5_minima with kicad-cli 10**
   - Result: Format stamps: 7.0 sch 20230121/pcb 20221018; 8.0 20231120/20240108; 9.0 20250114/20241229; 10.0 20260306/20260206 (generator_version 10.0)
   - Command/code:
@@ -185,7 +185,7 @@ python vsmarket.py kicad  # POST https://marketplace.visualstudio.com/_apis/publ
 for v in 7.0 8.0 9.0 10.0; do cp -r "C:/Program Files/KiCad/$v/share/kicad/demos/ecc83/." samples/ecc83_$v/; done; "C:/Program Files/KiCad/10.0/bin/kicad-cli.exe" pcb upgrade --force samples/ecc83_10.0/ecc83-pp.kicad_pcb; ... sch upgrade --force samples/ecc83_10.0/ecc83-pp.kicad_sch
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/samples/`
+  - Artifact: `<scratchpad>/prior-art/samples/`
 - **Round-trip test of kicad-skip, kiutils, kicad-sch-api on KiCad 7/8/9/10 schematics and boards, measuring dropped S-expression tokens**
   - Result: kicad-skip: sch OK all versions, 0 tokens lost (not byte-identical); PCB fails on 8/9/10 (AttributeError _base_coords). kiutils: sch OK all versions but drops hide/exclude_from_sim/generator_version/in_pos_files/embedded_fonts...; PCB OK 7/8/9, FAILS on 10 (IndexError). kicad-sch-api 0.5.6: loads all versions but writes empty (lib_symbols) and drops 33-45 token kinds
   - Command/code:
@@ -194,7 +194,7 @@ for v in 7.0 8.0 9.0 10.0; do cp -r "C:/Program Files/KiCad/$v/share/kicad/demos
 uv venv --python 3.11 venv311 && uv pip install --python venv311/Scripts/python.exe kicad-skip kiutils kicad-sch-api kicad-python skidl; venv311/Scripts/python.exe test_parsers.py; venv311/Scripts/python.exe test_ksa.py; venv311/Scripts/python.exe test_roundtrip_loss.py
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/test_roundtrip_loss.py`
+  - Artifact: `<scratchpad>/prior-art/test_roundtrip_loss.py`
 - **Validated the round-tripped KiCad 10 schematics with kicad-cli 10 ERC and XML netlist export**
   - Result: orig/skip/kiutils: 0 ERC violations, 13 nets / 15 comps / 33 nodes. kicad-sch-api output: 72 violations (pin_not_connected 24, wire_dangling 7, unconnected_wire_endpoint 36, pin_to_pin 1, no_connect_dangling 4), netlist 17 nets / 0 comps / 51 nodes => corrupted
   - Command/code:
@@ -203,7 +203,7 @@ uv venv --python 3.11 venv311 && uv pip install --python venv311/Scripts/python.
 for lib in orig skip kiutils ksa; do cp -r samples/ecc83_10.0 erc_test/$lib; cp out_${lib}_10_0.kicad_sch erc_test/$lib/ecc83-pp.kicad_sch; "C:/Program Files/KiCad/10.0/bin/kicad-cli.exe" sch erc --format json --severity-all -o erc_test/$lib/erc.json erc_test/$lib/ecc83-pp.kicad_sch; kicad-cli sch export netlist --format kicadxml -o erc_test/$lib/net.xml ...; grep -c '<net ' ...; done
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/erc_test/`
+  - Artifact: `<scratchpad>/prior-art/erc_test/`
 - **Inspected kicad-python 0.8.0 generated protos and connected read-only to the running KiCad 10**
   - Result: schematic_commands messages: [] (empty); board_commands 41 messages; editor_commands include CreateItems/UpdateItems/DeleteItems/GetItems/HitTest/RunAction/SaveDocument/BeginCommit/EndCommit/ParseAndCreateItemsFromString; KiCad().get_version() -> '10.0.0 (10.0.0)' from the already-running pcbnew.exe PID 74560; board_jobs_pb2 import fails: couldn't resolve name '.kiapi.common.types.Units'
   - Command/code:
@@ -228,7 +228,7 @@ for v in 7.0 8.0 9.0 10.0; do "C:/Program Files/KiCad/$v/bin/python.exe" -c "imp
 cd swig_test; timeout 110 "C:/Program Files/KiCad/10.0/bin/python.exe" -u swig_nofill.py; for v in 9.0 10.0; do timeout 60 "C:/Program Files/KiCad/$v/bin/python.exe" -u swig_fill.py <board>; done; for v in 7.0 8.0 9.0; do timeout 60 "C:/Program Files/KiCad/$v/bin/python.exe" -u swig_drc.py <board>; done  # swig_drc.py uses getattr(pcbnew,'EDA_UNITS_MM',getattr(pcbnew,'EDA_UNITS_MILLIMETRES'))
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/swig_test/`
+  - Artifact: `<scratchpad>/prior-art/swig_test/`
 - **kicad-cli subcommand trees for 7/8/9/10 and cross-version file compatibility**
   - Result: 7.0.6: pcb only 'export' (drill dxf gerber gerbers pdf pos step svg), sch only export; 8.0.1 adds drc/erc; 9.0.5 adds render/jobset/odb/gencad/ipcd356/brep/stl/ply/xao; 10.0.0 adds import/upgrade/stats/3dpdf/stpz/u3d/ps, removes 'gerber', hpgl unsupported. kicad-cli 8: 'To open it you will need to upgrade KiCad to version 10.0 or later (file format dated 20260206 or later)'; kicad-cli 9: 'Failed to load schematic/board'; kicad-cli 10 reads 7.0 board fine
   - Command/code:
@@ -245,7 +245,7 @@ for v in 7.0 8.0 9.0 10.0; do "C:/Program Files/KiCad/$v/bin/kicad-cli.exe" pcb 
 cd skidl_test; KICAD_SYMBOL_DIR='C:\Program Files\KiCad\10.0\share\kicad\symbols' ../venv311/Scripts/python.exe t.py  # set_default_tool(KICAD10); Part('Device','R'...); generate_netlist(); generate_schematic(); generate_pcb(); then kicad-cli 10 sch erc + sch export netlist on t.kicad_sch
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/prior-art/skidl_test/`
+  - Artifact: `<scratchpad>/prior-art/skidl_test/`
 - **rjwalters/kicad-tools (kct 0.20.0) parsing across KiCad 7-10 and CLI capability probe**
   - Result: 26 symbols for every version; board summary identical for 7/8/9/10 (52.07x46.36 mm, 2 copper layers, 15 footprints, 14 nets, 59 segments, 1 zone, 211.0 mm); subcommands include route, route-auto, reason, optimize-placement, check (pure-Python DRC), pcb export-dsn/import-ses, mcp, ipc (status/connect/push-routes, KiCad 9+)
   - Command/code:

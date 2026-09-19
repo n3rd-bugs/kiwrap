@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "corpus") (type "KiCad") (uri "${KIPRJMOD}/corpus.pretty") (options "") (descr "corpus"))
+)

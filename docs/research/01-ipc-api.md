@@ -7,13 +7,13 @@
   - Sources: https://gitlab.com/kicad/code/kicad/-/raw/10.0/eeschema/api/api_handler_sch.cpp, https://gitlab.com/kicad/code/kicad/-/raw/10.0/api/proto/schematic/schematic_commands.proto, https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/
 - **[high, VERIFIED LOCALLY]** PCB operations that WORK over the IPC API in 10.0.0 (and 9.0.5 for the subset that existed then): read nets/footprints/pads/tracks/vias/zones/shapes/text/groups, create tracks/vias/zones (with fill), clone+place footprint instances carrying a full definition, move/rotate/update items, create new nets implicitly by assigning an unknown net name to an item, begin/push/drop commit, undo via run_action('common.Interactive.undo'), selection add/clear/get, hit-test/bounding-box, refill zones, save, save_as (copy), revert, get_as_string (full s-expression).
   - Evidence: live_test.py/live_test2.py/live_test3.py outputs: 'tracks now: 371 vias now: 7', 'update result: Track 1000000', 'cloned: C998 pads: 2', 'orientation after update: 90.0', 'API_NEW_NET in nets: True', 'zone created ... filled polygons after refill: {BL_B_Cu: 4}', 'run_action undo -> 1 ... tracks 371', 'save_as ok ... 666974', 'board as string length: 634213'.
-  - Sources: file:///C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/ipc-api/live_test_out.txt, file:///C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/ipc-api/live_test3_out.txt
+  - Sources: <scratchpad>/ipc-api/live_test_out.txt, <scratchpad>/ipc-api/live_test3_out.txt
 - **[high, VERIFIED LOCALLY]** Operations that do NOT exist in the 9/10 IPC API: run DRC (only InjectDrcError exists; KOT_PCB_MARKER is rejected by GetItems so DRC results cannot even be read), run ERC, import a netlist / create a board from a netlist, place a footprint from a library by LIB_ID (creating a FootprintInstance with only definition.id yields an EMPTY footprint with 0 pads; KiCad does not load the library), open/create/close documents, plot/export (Gerber/STEP/PDF/BOM), ParseAndCreateItemsFromString (registered but a stub returning an empty response in 10.0). All of these are being added in master for KiCad 11 (ImportNetlist, PlaceFootprintFromLibrary, PlaceSymbolFromLibrary, OpenDocument/CreateDocument/CloseDocument [headless only], RunBoardJobExport*, RunSchematicJobExport*, GetSchematicNetlist/Hierarchy, board/schematic rules) - but even master has no RunDRC/RunERC command.
   - Evidence: live_test2/3: 'R999 re-fetched: pads: 0 def id: : -> library NOT auto-loaded'; 'markers failed: none of the requested types are valid for a Board object'; handler list diff h10.txt vs hmaster.txt (44 new handlers in master); src10 api_handler_pcb.cpp handleParseAndCreateItemsFromString returns empty CreateItemsResponse; master board_commands.proto only has InjectDrcError; DrcMarker is only a type in board_rules.proto.
   - Sources: https://gitlab.com/kicad/code/kicad/-/raw/master/api/proto/board/board_commands.proto, https://gitlab.com/kicad/code/kicad/-/raw/master/api/proto/common/commands/project_commands.proto, https://gitlab.com/kicad/code/kicad/-/raw/10.0/pcbnew/api/api_handler_pcb.cpp
 - **[high, VERIFIED LOCALLY]** run_action works and is the only route to DRC/routing/netlist actions in 9/10, but action names are unstable and undocumented. Valid 10.0 names (extracted from _pcbnew.dll): common.Interactive.undo, pcbnew.DRCTool.runDRC (opens the DRC dialog, does not return results), pcbnew.EditorControl.importNetlist (opens dialog), common.Control.updatePcbFromSchematic, pcbnew.InteractiveRouter.Autoroute ('Attempt Finish Selected (Autoroute)': PNS attempts to route each selected pad; exists in 9.0 and 10.0), pcbnew.ZoneFiller.zoneFillAll. Wrong names return RAS_INVALID (e.g. 'common.Control.undo').
   - Evidence: pcbnew10_actions.txt (558 names); live_test: 'run_action undo -> RAS_INVALID' for common.Control.undo, then 'run_action -> 1 (RAS_OK)' for common.Interactive.undo with track count reverting 372->371; 'runDRC -> 1' opened dialog, ping still OK afterwards; pcb_actions.cpp 10.0 defines routerAutorouteSelected. kipy docstring: 'WARNING: This is an unstable API ... KiCad does not guarantee the stability of action names'.
-  - Sources: https://gitlab.com/kicad/code/kicad/-/raw/10.0/pcbnew/tools/pcb_actions.cpp, file:///C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/ipc-api/pcbnew10_actions.txt
+  - Sources: https://gitlab.com/kicad/code/kicad/-/raw/10.0/pcbnew/tools/pcb_actions.cpp, <scratchpad>/ipc-api/pcbnew10_actions.txt
 - **[high, VERIFIED LOCALLY]** A running KiCad GUI is REQUIRED in 9 and 10. There is no headless mode: kicad-cli 10.0.0 has only {fp,jobset,pcb,sch,sym,version}; 'kicad-cli api-server [--socket PATH] [file]' is a KiCad 11 feature (Jon Evans/craftyjon on the forum, May 26 2026: 'It's a new feature for V11'). In CI you would have to run pcbnew.exe under a virtual display; on Windows a normal desktop session is needed.
   - Evidence: kicad-cli.exe --help output; dev-docs: 'The IPC API in KiCad 9 and 10 only supports communication with a running instance of the KiCad GUI', 'Support for running in headless mode through kicad-cli was added for KiCad 11'; kipy README: 'It is not possible to use kicad-python to manipulate KiCad design files without KiCad running'.
   - Sources: https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/, https://forum.kicad.info/t/is-the-kicad-cli-api-server-option-going-to-be-in-kicad-v11-or-v10-x-x/69411, https://docs.kicad.org/master/en/cli/cli.html
@@ -21,7 +21,7 @@
   - Evidence: First 10.0 launch ignored config/kicad_common.json and created config/10.0/kicad_common.json with enable_server=false -> 'Connection refused'; after patching config/10.0/kicad_common.json the connection succeeded. 9.0: title 'Data Collection Opt In', enable_server reset to false; after patching generated file, connected. Source: KICAD_API_SERVER ctor checks Pgm().GetCommonSettings()->m_Api.enable_server; common_settings.cpp param 'api.enable_server'.
   - Sources: https://gitlab.com/kicad/code/kicad/-/raw/10.0/common/api/api_server.cpp, https://gitlab.com/kicad/code/kicad/-/raw/10.0/common/settings/common_settings.cpp
 - **[high, VERIFIED LOCALLY]** Socket/token mechanics: server listens at ipc://<TempDir>\kicad\api.sock on Windows (ipc:///tmp/kicad/api.sock on Linux/mac; nng maps ipc:// to a named pipe on Windows); if a socket already exists it falls back to api-<pid>.sock. Token is a random KIID per KiCad process; a client may send an empty token and KiCad returns its token in every response (kipy adopts it); a wrong token gets AS_TOKEN_MISMATCH. KICAD_API_SOCKET / KICAD_API_TOKEN env vars are only SET BY KICAD when it launches an IPC plugin; kipy reads them if present, otherwise uses the default path. Readiness took <15 s after launch on this machine; status codes include AS_NOT_READY and AS_BUSY.
-  - Evidence: live_test: 'socket path used: ipc://C:\Users\usama\AppData\Local\Temp\kicad\api.sock', 'token now: 58efb71e-...'; api_server.cpp Start() and handleApiEvent(); envelope.proto ApiStatusCode; kipy/kicad.py _default_socket_path/_default_kicad_token.
+  - Evidence: live_test: 'socket path used: ipc://%LOCALAPPDATA%\Temp\kicad\api.sock', 'token now: 58efb71e-...'; api_server.cpp Start() and handleApiEvent(); envelope.proto ApiStatusCode; kipy/kicad.py _default_socket_path/_default_kicad_token.
   - Sources: https://gitlab.com/kicad/code/kicad/-/raw/10.0/common/api/api_server.cpp, https://gitlab.com/kicad/code/kicad/-/raw/10.0/api/proto/common/envelope.proto
 - **[high, VERIFIED LOCALLY]** Busy semantics: API_HANDLER_EDITOR::checkForBusy returns AS_BUSY ('KiCad is busy and cannot respond to API requests right now') whenever PCB_EDIT_FRAME::CanAcceptApiCommands() is false: a modal dialog is open (frame disabled), a tool other than selection/point-editor is active, the router is routing, undo/redo is blocked, or ZONE_FILLER_TOOL is busy. refill_zones() is asynchronous (CallAfter zoneFillAll) so the very next mutating request can fail with AS_BUSY - observed: save_as failed right after refill_zones, succeeded on retry 2 s later. Interactive commands (InteractiveMoveItems, run_action of routing tools) make the editor busy until the user finishes.
   - Evidence: live_test_out.txt 'save_as failed: ApiError KiCad returned error: KiCad is busy...' then live_test2 'save_as ok'; pcb_edit_frame.cpp 10.0 interactiveOperationInProgress()/CanAcceptApiCommands(); api_handler_editor.cpp checkForBusy(); master RefillZones proto comment.
@@ -99,10 +99,10 @@ KiCad 7.0 / 8.0: no IPC API at all (only SWIG pcbnew.py and kicad-cli). KiCad 9.
   - Command/code:
 
 ```
-cd C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api; uv venv --python 3.11 .venv; uv pip install --python .venv\Scripts\python.exe kicad-python; .venv\Scripts\python.exe -c "import kipy, importlib.metadata as m; print(m.version('kicad-python'), m.version('protobuf'), m.version('pynng'))"
+cd <scratchpad>\ipc-api; uv venv --python 3.11 .venv; uv pip install --python .venv\Scripts\python.exe kicad-python; .venv\Scripts\python.exe -c "import kipy, importlib.metadata as m; print(m.version('kicad-python'), m.version('protobuf'), m.version('pynng'))"
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\.venv`
+  - Artifact: `<scratchpad>\ipc-api\.venv`
 - **Enumerate kipy API surface and all proto command messages**
   - Result: dir(kipy) = KiCad, board, board_types, client, common_types, errors, geometry, kicad, kicad_api_version, project, project_types, proto, util, wrapper. Board has 60 methods (create_items, update_items, begin/push/drop_commit, get_tracks/vias/zones/footprints/pads/nets/groups/barcodes, refill_zones, save/save_as/revert, hit_test, flip_items, interactive_move, get_as_string ...). editor_commands_pb2: 42 messages; board_commands_pb2: 41; project_commands_pb2: 7; base_commands_pb2: 12. FAILURES: import kipy.schematic -> ImportError 'cannot import name PageSettings from kipy.common_types'; kipy.board_jobs -> TypeError "couldn't resolve name '.kiapi.common.types.Units'"; kipy.board_rules -> ImportError CustomRuleConstraintType; kipy.wizards -> AttributeError WizardMetaInfo; schematic_commands_pb2 contains 0 messages.
   - Command/code:
@@ -111,7 +111,7 @@ cd C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-a
 .venv\Scripts\python.exe enum_api.py > enum_api_out.txt (script imports kipy.kicad/board/schematic/project/board_jobs/board_rules/wizards/server, lists classes+methods via inspect, and prints DESCRIPTOR.message_types_by_name of every *_pb2 command module)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\enum_api_out.txt`
+  - Artifact: `<scratchpad>\ipc-api\enum_api_out.txt`
 - **Inspect installed KiCad 10.0 binaries for API artifacts and compare 9.0 vs 10.0**
   - Result: api.v1.schema.json identical in 9.0 and 10.0 (plugin scopes: pcb, schematic, footprint, symbol, project_manager). kiapi.dll present in both (with nng.dll, libprotobuf.dll); 10.0 adds KOT_PCB_BARCODE. 558 TOOL_ACTION names extracted for 10.0 incl. common.Interactive.undo, pcbnew.DRCTool.runDRC, pcbnew.EditorControl.importNetlist, pcbnew.InteractiveRouter.Autoroute, common.Control.updatePcbFromSchematic. kicad-cli 10.0 --help: no api-server subcommand.
   - Command/code:
@@ -120,25 +120,25 @@ cd C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-a
 diff of C:/Program Files/KiCad/{9.0,10.0}/share/kicad/schemas/api.v1.schema.json; strings -n 6 kiapi.dll | grep -oE 'kiapi\.[a-z_]+\.[A-Za-z0-9_]+'; strings kiapi.dll | grep -oE 'KOT_[A-Z_]+'; strings _pcbnew.dll kicommon.dll | grep -oE '^(pcbnew|common)\.[A-Za-z]+\.[A-Za-z0-9_]+$' > pcbnew10_actions.txt
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\pcbnew10_actions.txt`
+  - Artifact: `<scratchpad>\ipc-api\pcbnew10_actions.txt`
 - **Attempt 1 to enable the API server via a hand-written config at KICAD_CONFIG_HOME root, launch pcbnew 10.0**
-  - Result: KiCad ignored the root file and created config\10.0\{kicad_common.json (enable_server=false), kicad.json, pcbnew.json, fp-lib-table, ...}; client got 'ConnectionError: Failed to connect to KiCad: Connection refused' at ipc://C:\Users\usama\AppData\Local\Temp\kicad\api.sock. Conclusion: KICAD_CONFIG_HOME gets a '<major.minor>' subfolder and the key is api.enable_server in kicad_common.json.
+  - Result: KiCad ignored the root file and created config\10.0\{kicad_common.json (enable_server=false), kicad.json, pcbnew.json, fp-lib-table, ...}; client got 'ConnectionError: Failed to connect to KiCad: Connection refused' at ipc://%LOCALAPPDATA%\Temp\kicad\api.sock. Conclusion: KICAD_CONFIG_HOME gets a '<major.minor>' subfolder and the key is api.enable_server in kicad_common.json.
   - Command/code:
 
 ```
 config\kicad_common.json = {"api":{"enable_server":true,"interpreter_path":"C:\\Program Files\\KiCad\\10.0\\bin\\pythonw.exe"},"meta":{"version":5}}; PowerShell: $env:KICAD_CONFIG_HOME="...\ipc-api\config"; Start-Process 'C:\Program Files\KiCad\10.0\bin\pcbnew.exe' -ArgumentList '"...\proj\pic_programmer.kicad_pcb"'; Start-Sleep 15; then kipy.KiCad(timeout_ms=3000).get_version()
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\config\10.0\kicad_common.json`
+  - Artifact: `<scratchpad>\ipc-api\config\10.0\kicad_common.json`
 - **Attempt 2: patch KiCad-generated config, relaunch pcbnew 10.0 on the copied pic_programmer demo, run full live test (connect, board info, add track+via in a commit, update, undo, selection, DRC probe, refill, save_as, save, get_as_string, schematic probe)**
-  - Result: Connected at ipc://C:\Users\usama\AppData\Local\Temp\kicad\api.sock; KiCad 10.0.0; kipy API version 10.0.6; check_version True; ping ok; kicad-cli path returned; token received '58efb71e-...'. DOCTYPE_PCB -> pic_programmer.kicad_pcb; SCHEMATIC/PROJECT/FOOTPRINT/SYMBOL -> 'no handler available for request of type kiapi.common.commands.GetOpenDocuments'. nets 112, footprints 63, tracks 370, vias 6, zones 1, pads 247, 20 enabled layers, 2 copper, 9 stackup layers, netclasses [Default, POWER]. Track+Via created (KIIDs returned), tracks 371 vias 7; update width -> 1000000 nm. run_action('common.Control.undo') -> RAS_INVALID (wrong name). Selection add -> 2. No DRC command (only InjectDrcError); run_action showDRCDialog -> RAS_INVALID. refill ok. save_as immediately after refill -> 'KiCad is busy and cannot respond to API requests right now'; save ok; get_as_string 634213 chars starting '(kicad_pcb (version 20260206)'.
+  - Result: Connected at ipc://%LOCALAPPDATA%\Temp\kicad\api.sock; KiCad 10.0.0; kipy API version 10.0.6; check_version True; ping ok; kicad-cli path returned; token received '58efb71e-...'. DOCTYPE_PCB -> pic_programmer.kicad_pcb; SCHEMATIC/PROJECT/FOOTPRINT/SYMBOL -> 'no handler available for request of type kiapi.common.commands.GetOpenDocuments'. nets 112, footprints 63, tracks 370, vias 6, zones 1, pads 247, 20 enabled layers, 2 copper, 9 stackup layers, netclasses [Default, POWER]. Track+Via created (KIIDs returned), tracks 371 vias 7; update width -> 1000000 nm. run_action('common.Control.undo') -> RAS_INVALID (wrong name). Selection add -> 2. No DRC command (only InjectDrcError); run_action showDRCDialog -> RAS_INVALID. refill ok. save_as immediately after refill -> 'KiCad is busy and cannot respond to API requests right now'; save ok; get_as_string 634213 chars starting '(kicad_pcb (version 20260206)'.
   - Command/code:
 
 ```
 python: d=json.load(open('config/10.0/kicad_common.json')); d['api']['enable_server']=True; json.dump(...). PowerShell: $env:KICAD_CONFIG_HOME="...\config"; Start-Process pcbnew.exe "...\proj\pic_programmer.kicad_pcb" (monitored 24 s; title 'pic_programmer - PCB Editor'). Then: .venv\Scripts\python.exe live_test.py (uses kipy.KiCad(timeout_ms=5000), get_version/check_version/ping/get_kicad_binary_path, get_open_documents for each DocumentType, Board.get_nets/footprints/tracks/vias/zones/pads/enabled_layers/stackup, begin_commit + create_items([Track,Via]) + push_commit, update_items, run_action('common.Control.undo'), add_to_selection, run_action('pcbnew.DRCTool.showDRCDialog'), refill_zones, save_as, save, get_as_string, raw GetOpenDocuments(DOCTYPE_SCHEMATIC))
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\live_test_out.txt`
+  - Artifact: `<scratchpad>\ipc-api\live_test_out.txt`
 - **Live test 2 on the same pcbnew 10.0 instance: correct undo name, library footprint placement by id, clone footprint, rotation, net creation via create_items, DRC markers, runDRC action, hit test, save_as retry, revert**
   - Result: undo: tracks 371->372->371, status RAS_OK(1). Library-id-only footprint: created but 0 pads and empty definition id (library not loaded). Net via create_items: NotImplementedError 'Missing type mapping for ...kiapi.board.types.Net' (kipy limitation). get_items(KOT_PCB_MARKER): 'none of the requested types are valid for a Board object'. runDRC -> RAS_OK (dialog opened, ping still fine, markers still not queryable). bbox Box2(pos=(9500000,9500000), size=(11000001,1000001)); hit True. save_as ok (666974 bytes). revert ok (63 footprints).
   - Command/code:
@@ -147,7 +147,7 @@ python: d=json.load(open('config/10.0/kicad_common.json')); d['api']['enable_ser
 .venv\Scripts\python.exe live_test2.py (run_action('common.Interactive.undo'); FootprintInstance with definition.id=Resistor_SMD:R_0805_2012Metric only; fps[0].clone(); create_items([Net()]); get_items(KOT_PCB_MARKER); run_action('pcbnew.DRCTool.runDRC'); get_item_bounding_box/hit_test; save_as with retry; revert)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\live_test2_out.txt`
+  - Artifact: `<scratchpad>\ipc-api\live_test2_out.txt`
 - **Live test 3 on pcbnew 10.0: verify footprint definitions survive clone, rotate via update, implicit net creation, zone creation + fill, probe every KiCadObjectType with get_items**
   - Result: C1 has 2 pads/29 shapes; cloned C998 has 2 pads (create response and re-fetch), board pads 247->249; orientation 90.0 after update; 'API_NEW_NET in nets: True'; zone API_ZONE created, filled polygons {BL_B_Cu: 4}. get_items accepted on 10.0.0: FOOTPRINT, PAD, SHAPE, TEXT, TEXTBOX, TRACE, VIA, ARC, ZONE, GROUP, BARCODE; rejected: REFERENCE_IMAGE, FIELD, GENERATOR, TABLE, TABLECELL, MARKER, DIMENSION and all KOT_SCH_*/KOT_WSG_*. Revert restored 63 footprints / 1 zone. pcbnew 10.0 (pid 74560) then terminated with Stop-Process.
   - Command/code:
@@ -156,7 +156,7 @@ python: d=json.load(open('config/10.0/kicad_common.json')); d['api']['enable_ser
 .venv\Scripts\python.exe live_test3.py (c1.clone() -> create_items; get_items_by_id; orientation=Angle.from_degrees(90) -> update_items; Track with Net(name='API_NEW_NET'); Zone with PolygonWithHoles outline on B.Cu net GND -> create_items -> refill_zones -> filled_polygons; loop over KiCadObjectType values calling get_items)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\live_test3_out.txt`
+  - Artifact: `<scratchpad>\ipc-api\live_test3_out.txt`
 - **Schematic editor probe: launch eeschema 10.0 standalone with the same config and send schematic/editor messages via raw protobuf**
   - Result: Server up (responds). GetVersion and Ping -> 'no handler available' (no COMMON handler in standalone eeschema). GetOpenDocuments(SCHEMATIC) -> documents{type: DOCTYPE_SCHEMATIC, board_filename: 'pic_programmer.kicad_sch'}. GetOpenDocuments(PCB), GetItems, GetSelection -> 'no handler available'. BeginCommit -> client 'Timed out' and eeschema.exe crashed (Windows event log id 1000/1001: eeschema.exe 10.0.0.49194, _eeschema.dll, exception 0xc0000005, WER minidump).
   - Command/code:
@@ -165,7 +165,7 @@ python: d=json.load(open('config/10.0/kicad_common.json')); d['api']['enable_ser
 PowerShell: $env:KICAD_CONFIG_HOME="...\config"; Start-Process 'C:\Program Files\KiCad\10.0\bin\eeschema.exe' -ArgumentList '"...\proj\pic_programmer.kicad_sch"'; .venv\Scripts\python.exe sch_test.py (GetVersion, Ping, GetOpenDocuments(SCHEMATIC/PCB), GetItems(KOT_SCH_SYMBOL/KOT_SCH_LINE), GetSelection, BeginCommit+CreateItems(schematic Line)+EndCommit, SaveDocumentToString, RunAction, SaveCopyOfDocument)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\sch_test_out.txt`
+  - Artifact: `<scratchpad>\ipc-api\sch_test_out.txt`
 - **Crash reproduction: 4 fresh eeschema 10.0 instances, one message each (HitTest, SaveDocument, CreateItems, BeginCommit), check process liveness after 2 s, terminate each**
   - Result: hittest -> Timed out, eeschema alive after: False (crash). savedoc -> ApiError 'no handler available for kiapi.common.commands.SaveDocument', alive: True. createitems -> Timed out, alive: False (crash). begincommit -> Timed out, alive: False (crash). All instances I started were terminated; none left running.
   - Command/code:
@@ -174,7 +174,7 @@ PowerShell: $env:KICAD_CONFIG_HOME="...\config"; Start-Process 'C:\Program Files
 PowerShell loop over @('hittest','savedoc','createitems','begincommit'): Start-Process eeschema.exe <sch>; Start-Sleep 10; .venv\Scripts\python.exe sch_crash_repro.py <mode>; Stop-Process eeschema
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\sch_crash_repro.py`
+  - Artifact: `<scratchpad>\ipc-api\sch_crash_repro.py`
 - **Cross-version test: kipy 0.8.0 (built against 10.0.6 protos) against KiCad 9.0.5 pcbnew with its own demo board and scratch config**
   - Result: KiCad 9.0.5 | kipy API 10.0.6 | check_version True; board nets 112 fps 63 tracks 370; Track created (371); get_items_by_id -> 'no handler available for kiapi.common.commands.GetItemsById'; get_groups -> 'none of the requested types are valid'; get_layer_name -> 'no handler available for kiapi.board.commands.GetBoardLayerName' (9.0.8 feature, this is 9.0.5); get_enabled_layers -> 20 (9.0.5 feature works); get_connected_items -> no handler; undo -> RAS_OK, tracks 370. save_as failed only because the script used a relative path resolved against the shell cwd (C:\Upwork\KiCad\proj9 does not exist; nothing was written there - verified the folder is still empty).
   - Command/code:
@@ -183,7 +183,7 @@ PowerShell loop over @('hittest','savedoc','createitems','begincommit'): Start-P
 config9\9.0\kicad_common.json generated by KiCad on first launch (first launch showed 'Data Collection Opt In' dialog and reset enable_server=false), then patched: api.enable_server=true, do_not_show_again.data_collection_prompt=true, update_check_prompt=true. PowerShell: wait until no pcbnew/eeschema/kicad process (another agent was using pcbnew 10.0); $env:KICAD_CONFIG_HOME="...\config9"; Start-Process 'C:\Program Files\KiCad\9.0\bin\pcbnew.exe' '"...\proj9\pic_programmer.kicad_pcb"'; Start-Sleep 15; .venv\Scripts\python.exe live_test9.py; Stop-Process pcbnew (pid 80692)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\live_test9.py`
+  - Artifact: `<scratchpad>\ipc-api\live_test9.py`
 - **Source-level comparison of registered API handlers across KiCad 9.0, 10.0 and master, plus proto/handler downloads**
   - Result: 9.0: 51 handlers; 10.0: 70 (adds AddEmbeddedFiles, SetEmbeddedFiles, GetEmbeddedFiles, FlipItems, GetBoardLayerByName, GetConnectedItems, GetItemsById, GetItemsByNet, GetItemsByNetClass, InjectDrcError, SetTitleBlockInfo, 8 variant commands); master: 100 (adds CloseAllDocuments, CloseDocument, CreateDocument, OpenDocument, GetPaths, GetDocumentModifiedState, GetPageSettings/SetPageSettings, GetBoardDesignRules/SetBoardDesignRules, GetCustomDesignRules/SetCustomDesignRules, GetBoardPlotSettings/SetBoardPlotSettings, ImportNetlist, PlaceFootprintFromLibrary, PlaceSymbolFromLibrary, GetSchematicHierarchy, GetSchematicNetlist, CrossProbeAnnounce, SyncSelection, HighlightNets, 15 RunBoardJobExport*, 7 RunSchematicJobExport*). master pcbnew/api also has api_handler_board/footprint/fp_libraries + headless_pcb_context files.
   - Command/code:
@@ -192,7 +192,7 @@ config9\9.0\kicad_common.json generated by KiCad on first launch (first launch s
 curl -sL https://gitlab.com/kicad/code/kicad/-/raw/{9.0,10.0,master}/{pcbnew/api/api_handler_pcb.cpp,common/api/api_handler_common.cpp,common/api/api_handler_editor.cpp,common/api/api_server.cpp,eeschema/api/api_handler_sch.cpp,api/proto/...}; grep -ohE 'registerHandler<[^,>]+' ... | sort -u > h9.txt/h10.txt/hmaster.txt; comm -13 h10.txt hmaster.txt
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\hmaster.txt`
+  - Artifact: `<scratchpad>\ipc-api\hmaster.txt`
 - **Verify PyPI wheel provenance and contents of kicad-python 0.8.0**
   - Result: sha256 3d43af4aa2515e88... matches PyPI; wheel uploaded 2026-08-30; contains kipy/schematic.py, kipy/server.py, kipy/board_jobs.py (dated 2026-08-07) and kipy/kicad_api_version.py=10.0.6 even though the 0.8.0 git tag tree lacks those files; schematic_commands_pb2.py is 907 bytes (empty descriptor).
   - Command/code:
@@ -201,7 +201,7 @@ curl -sL https://gitlab.com/kicad/code/kicad/-/raw/{9.0,10.0,master}/{pcbnew/api
 curl https://pypi.org/pypi/kicad-python/0.8.0/json; curl -o kicad_python-0.8.0-py3-none-any.whl <files.pythonhosted.org url>; sha256sum; unzip -l | grep -E 'schematic.py|server.py|board_jobs.py|kicad_api_version'
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\ipc-api\kicad_python-0.8.0-py3-none-any.whl`
+  - Artifact: `<scratchpad>\ipc-api\kicad_python-0.8.0-py3-none-any.whl`
 - **Check local toolchain availability for a hypothetical KiCad source build (not started)**
   - Result: VS2022 Community 17.9.34728 with MSVC 14.39.33519 and VS CMake tools present; VS2019 BuildTools (MSVC 14.29) present; CMake 'C:\Program Files\CMake', ninja (mingw64) present; vcpkg not installed, VCPKG_ROOT unset; 712 GB free. No build was attempted.
   - Command/code:

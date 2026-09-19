@@ -37,13 +37,18 @@ packages = ["src/kiwrap"]
 line-length = 110
 target-version = "py311"
 src = ["src", "tests", "conformance"]
+# spikes/ holds the frozen evidence scripts behind docs/VERIFICATION.md (plus two stray virtualenv
+# Scripts/ trees); they are not shipped code and are never linted, so `ruff check .` (CI) stays green.
+extend-exclude = ["spikes"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "PTH"]
 ignore = ["E501", "SIM108"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "conformance/tests"]
+testpaths = ["tests", "conformance/tests", "scripts/ci/tests_ci"]
+# T1-T9 certification files are named t<N>_<topic>.py so `kiwrap certify` can pick them by number.
+python_files = ["test_*.py", "t[0-9]*_*.py"]
 timeout = 600
 markers = [
     "kicad: needs at least one installed KiCad (skipped when none is discovered)",

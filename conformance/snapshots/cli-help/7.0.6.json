@@ -1,0 +1,486 @@
+{
+ "schema": 1,
+ "tree": {
+  "command": "",
+  "description": "",
+  "exit_code": 0,
+  "flags": [
+   "--version",
+   "--help"
+  ],
+  "positionals": [],
+  "subcommands": {
+   "fp": {
+    "command": "fp",
+    "description": "",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "export": {
+      "command": "fp export",
+      "description": "",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "svg": {
+        "command": "fp export svg",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--theme",
+         "--fp",
+         "--footprint",
+         "--black-and-white"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       }
+      }
+     },
+     "upgrade": {
+      "command": "fp upgrade",
+      "description": "",
+      "exit_code": 1,
+      "flags": [
+       "--help",
+       "--output",
+       "--force"
+      ],
+      "positionals": [
+       "input"
+      ],
+      "subcommands": {}
+     }
+    }
+   },
+   "pcb": {
+    "command": "pcb",
+    "description": "",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "export": {
+      "command": "pcb export",
+      "description": "",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "drill": {
+        "command": "pcb export drill",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--format",
+         "--drill-origin",
+         "--excellon-zeros-format",
+         "--excellon-units",
+         "--excellon-mirror-y",
+         "--excellon-min-header",
+         "--excellon-separate-th",
+         "--generate-map",
+         "--map-format",
+         "--gerber-precision"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "dxf": {
+        "command": "pcb export dxf",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--uc",
+         "--use-contours",
+         "--ou",
+         "--output-units"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "gerber": {
+        "command": "pcb export gerber",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--ibt",
+         "--include-border-title",
+         "--no-x2",
+         "--no-netlist",
+         "--subtract-soldermask",
+         "--disable-aperture-macros",
+         "--use-drill-file-origin",
+         "--precision",
+         "--no-protel-ext"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "gerbers": {
+        "command": "pcb export gerbers",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--ibt",
+         "--include-border-title",
+         "--no-x2",
+         "--no-netlist",
+         "--subtract-soldermask",
+         "--disable-aperture-macros",
+         "--use-drill-file-origin",
+         "--precision",
+         "--no-protel-ext",
+         "--cl",
+         "--common-layers",
+         "--board-plot-params"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "pdf": {
+        "command": "pcb export pdf",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--mirror",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--ibt",
+         "--include-border-title",
+         "--negative",
+         "--black-and-white",
+         "--theme"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "pos": {
+        "command": "pcb export pos",
+        "description": "Generate Position File",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--side",
+         "--format",
+         "--units",
+         "--bottom-negate-x",
+         "--use-drill-file-origin",
+         "--smd-only",
+         "--exclude-fp-th",
+         "--gerber-board-edge"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "step": {
+        "command": "pcb export step",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--drill-origin",
+         "--grid-origin",
+         "--no-virtual",
+         "--subst-models",
+         "--force",
+         "--board-only",
+         "--min-distance",
+         "--user-origin",
+         "--output"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "svg": {
+        "command": "pcb export svg",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--mirror",
+         "--theme",
+         "--negative",
+         "--black-and-white",
+         "--page-size-mode",
+         "--exclude-drawing-sheet"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       }
+      }
+     }
+    }
+   },
+   "sch": {
+    "command": "sch",
+    "description": "",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "export": {
+      "command": "sch export",
+      "description": "",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "dxf": {
+        "command": "sch export dxf",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--plot-one"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "hpgl": {
+        "command": "sch export hpgl",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--plot-one",
+         "--pen-size",
+         "--origin"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "netlist": {
+        "command": "sch export netlist",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--format"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "pdf": {
+        "command": "sch export pdf",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--plot-one"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "ps": {
+        "command": "sch export ps",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--plot-one"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "python-bom": {
+        "command": "sch export python-bom",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       },
+       "svg": {
+        "command": "sch export svg",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--plot-one"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       }
+      }
+     }
+    }
+   },
+   "sym": {
+    "command": "sym",
+    "description": "",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "export": {
+      "command": "sym export",
+      "description": "",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "svg": {
+        "command": "sym export svg",
+        "description": "",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--symbol",
+         "--black-and-white",
+         "--include-hidden-pins",
+         "--include-hidden-fields"
+        ],
+        "positionals": [
+         "input"
+        ],
+        "subcommands": {}
+       }
+      }
+     },
+     "upgrade": {
+      "command": "sym upgrade",
+      "description": "",
+      "exit_code": 1,
+      "flags": [
+       "--help",
+       "--output",
+       "--force"
+      ],
+      "positionals": [
+       "input"
+      ],
+      "subcommands": {}
+     }
+    }
+   },
+   "version": {
+    "command": "version",
+    "description": "",
+    "exit_code": 0,
+    "flags": [
+     "--help",
+     "--format"
+    ],
+    "positionals": [],
+    "subcommands": {}
+   }
+  }
+ },
+ "version": "7.0.6"
+}

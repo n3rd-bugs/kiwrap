@@ -1,0 +1,12 @@
+(version 1)
+
+# hand-written rule set for the kiwrap conformance corpus
+(rule "hv_clearance"
+	(constraint clearance (min 1.0mm))
+	(condition "A.NetClass == 'HV' || B.NetClass == 'HV'")
+)
+
+(rule "min_track_outer"
+	(layer outer)
+	(constraint track_width (min 0.15mm) (opt 0.25mm))
+)

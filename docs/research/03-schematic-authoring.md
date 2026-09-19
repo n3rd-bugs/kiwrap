@@ -111,7 +111,7 @@ cd "/c/Program Files/KiCad" && for v in 7.0 8.0 9.0 10.0; do find "$v/share/kica
 cd <scratch>/schematic-authoring && python gen_plain.py "$PWD/plain_v10/ledplain" 20260101 10.0 endpoint && python validate.py plain_v10/ledplain 10.0   # validate.py runs: kicad-cli sch erc --severity-all --exit-code-violations --format json; sch export netlist --format kicadsexpr; sch export svg; copy + sch upgrade --force; difflib
 ```
 
-  - Artifact: `C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/schematic-authoring/gen_plain.py (+ validate.py, plain_v10/ledplain/)`
+  - Artifact: `<scratchpad>/schematic-authoring/gen_plain.py (+ validate.py, plain_v10/ledplain/)`
 - **PWR_FLAG pin placed mid-wire vs at a wire endpoint (connectivity rule for pins)**
   - Result: midwire: ERC errors power_pin_not_driven + pin_not_connected (pin does not connect mid-segment); endpoint: zero violations. Labels placed mid-segment DID connect (net /LED_A).
   - Command/code:

@@ -108,10 +108,10 @@ SWIG: ExportSpecctraDSN(BOARD, path) headless OK on 7.0.6/8.0.1/9.0.5/10.0.0; Im
   - Command/code:
 
 ```
-cd C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/autorouting && curl -sL -o freerouting-2.4.1.jar https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar && curl -sL -o temurin-jre25.zip "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk" && unzip -q temurin-jre25.zip -d jre25 && "/c/Program Files/Eclipse Adoptium/jre-17.0.12.7-hotspot/bin/java.exe" -jar freerouting-2.4.1.jar -help; ./jre25/jdk-25.0.4.1+1-jre/bin/java.exe -jar freerouting-2.4.1.jar --user_data_path="$PWD/fr_userdata" -da -help
+cd <scratchpad>/autorouting && curl -sL -o freerouting-2.4.1.jar https://github.com/freerouting/freerouting/releases/download/v2.4.1/freerouting-2.4.1.jar && curl -sL -o temurin-jre25.zip "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk" && unzip -q temurin-jre25.zip -d jre25 && "/c/Program Files/Eclipse Adoptium/jre-17.0.12.7-hotspot/bin/java.exe" -jar freerouting-2.4.1.jar -help; ./jre25/jdk-25.0.4.1+1-jre/bin/java.exe -jar freerouting-2.4.1.jar --user_data_path="$PWD/fr_userdata" -da -help
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\freerouting-2.4.1.jar`
+  - Artifact: `<scratchpad>\autorouting\freerouting-2.4.1.jar`
 - **Create tiny 2-footprint/2-net board with pcbnew SWIG (KiCad 10 bundled python) and export Specctra DSN**
   - Result: saved tiny.kicad_pcb; ExportSpecctraDSN -> True (2321-byte DSN with (rule (width 200)(clearance 200)) and Via[0-1]_600:300_um); tracks before routing: 0
   - Command/code:
@@ -120,7 +120,7 @@ cd C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-a
 "/c/Program Files/KiCad/10.0/bin/python.exe" make_board.py "$PWD/k10"   # make_board.py: BOARD(), SetCopperLayerCount(2), 4 PCB_SHAPE Edge.Cuts segments 20x15mm, NETINFO_ITEM NET1/NET2, FootprintLoad(Resistor_SMD.pretty, R_0805_2012Metric) x2 at (5,7.5)/(15,7.5) mm, pad1->NET1 pad2->NET2, BuildListOfNets, SaveBoard, pcbnew.ExportSpecctraDSN(board, dsn)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\make_board.py`
+  - Artifact: `<scratchpad>\autorouting\make_board.py`
 - **Route tiny DSN with Freerouting headless, import SES via SWIG, count tracks, run kicad-cli DRC (KiCad 10)**
   - Result: Job COMPLETED in 0.24 s, SES 935 bytes; ImportSpecctraSES -> True; 6 F.Cu segments (0.2 mm), 0 vias, unconnected 0; DRC: 0 violations, 0 unconnected, exit 0
   - Command/code:
@@ -131,7 +131,7 @@ cd C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-a
 "/c/Program Files/KiCad/10.0/bin/kicad-cli.exe" pcb drc --format json --severity-all --exit-code-violations -o k10/drc.json k10/tiny_routed.kicad_pcb
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\k10`
+  - Artifact: `<scratchpad>\autorouting\k10`
 - **Repeat DSN->Freerouting->SES->DRC round trip with KiCad 7.0.6, 8.0.1, 9.0.5 bundled pythons**
   - Result: 8.0 and 9.0: import True, 6 segments, unconnected 0, DRC 0 unconnected (8.0 shows 2 lib_footprint_issues warnings only). 7.0: export True but ImportSpecctraSES(board, ses) TypeError (1-arg only) and ImportSpecctraSES(ses) -> False (GetBoard() is None); kicad-cli 7.0 has no 'pcb drc'.
   - Command/code:
@@ -140,7 +140,7 @@ cd C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-a
 for v in 7.0 8.0 9.0; do "/c/Program Files/KiCad/$v/bin/python.exe" make_board.py "$PWD/k$v" "C:/Program Files/KiCad/$v/share/kicad"; ./jre25/jdk-25.0.4.1+1-jre/bin/java.exe -jar freerouting-2.4.1.jar --user_data_path="$PWD/fr_userdata" -da -de "$PWD/k$v/tiny.dsn" -do "$PWD/k$v/tiny.ses" -mp 20 -mt 2 --gui.enabled=false; "/c/Program Files/KiCad/$v/bin/python.exe" import_ses.py k$v/tiny.kicad_pcb k$v/tiny.ses k$v/tiny_routed.kicad_pcb; "/c/Program Files/KiCad/$v/bin/kicad-cli.exe" pcb drc --format json --severity-all --exit-code-violations -o k$v/drc.json k$v/tiny_routed.kicad_pcb; done
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\k7.0`
+  - Artifact: `<scratchpad>\autorouting\k7.0`
 - **Fallback SES importer (S-expression parser creating PCB_TRACK/PCB_VIA via SWIG) validated on KiCad 7 plus SWIG DRC**
   - Result: items added: 6; unconnected 0; WriteDRCReport True; report: 2 lib_footprint_issues warnings, 0 unconnected pads
   - Command/code:
@@ -149,7 +149,7 @@ for v in 7.0 8.0 9.0; do "/c/Program Files/KiCad/$v/bin/python.exe" make_board.p
 "/c/Program Files/KiCad/7.0/bin/python.exe" ses_fallback_import.py k7.0/tiny.kicad_pcb k7.0/tiny.ses k7.0/tiny_routed.kicad_pcb && "/c/Program Files/KiCad/7.0/bin/python.exe" -c "import pcbnew; b=pcbnew.LoadBoard('k7.0/tiny_routed.kicad_pcb'); print(pcbnew.WriteDRCReport(b,'k7.0/drc.txt',pcbnew.EDA_UNITS_MILLIMETRES,True))"
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\ses_fallback_import.py`
+  - Artifact: `<scratchpad>\autorouting\ses_fallback_import.py`
 - **Freerouting embedded REST API: start server, drive session/job/input/start/poll/output/drc with urllib; dump OpenAPI endpoint list; MCP tools/list**
   - Result: REST: session 200, enqueue 200, settings 200, input 200, start 200, poll COMPLETED, output SES 935 B with statistics, /drc 200 (drc.v1 schema). 31 OpenAPI paths (no /v1/autoroute, no /drc/summary). MCP: 28 tools listed (serverVersion 2.4.1); without Profile-ID header: 'Authentication failed'.
   - Command/code:
@@ -162,7 +162,7 @@ curl -s -X POST http://127.0.0.1:37964/v1/mcp -H 'Content-Type: application/json
 # stopped with PowerShell Stop-Process on the java PIDs I started
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\api_client_test.py`
+  - Artifact: `<scratchpad>\autorouting\api_client_test.py`
 - **Medium board (TQFP-32 + 2x 1x10 headers + 8 R0603 + 4 C0603, 30 nets, 40x30 mm) generated with SWIG; routed with Freerouting (default vs neckdown/fanout off) and with KiCadRoutingTools; KiCad DRC and renders**
   - Result: Freerouting default: 46/46 routed in 3.0 s but 26 track_width DRC violations (0.15 mm neckdown). Freerouting with neckdown+fanout off: 46/46 in 3.5 s, 23 vias, DRC 0/0. KRT: 30/30 nets, 45 vias, 0.7 s router (4 s wall), DRC 0/0. Renders show both are sane; Freerouting cleaner (45-degree, fewer vias). (First attempt had my J1 header rotated off-board -> 8 legitimately unroutable nets; fixed.)
   - Command/code:
@@ -176,7 +176,7 @@ krtvenv/Scripts/python.exe krt/py_router/route.py med10/medium_krt_in.kicad_pcb 
 "/c/Program Files/KiCad/10.0/bin/kicad-cli.exe" pcb render --width 1000 --height 750 --side top --background opaque --quality basic -o med10/render_fr.png med10/medium_fr_nn_routed.kicad_pcb
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\med10`
+  - Artifact: `<scratchpad>\autorouting\med10`
 - **Install KiCadRoutingTools (clone + venv numpy/scipy/shapely/Pillow + prebuilt Rust router) and route the tiny board**
   - Result: grid_router v0.22.0 .pyd downloaded from release v0.22.1; 2/2 nets routed in 0.12 s; DRC 0 violations/0 unconnected; note it wrote 9 DRC constraint values into krt_tiny_routed.kicad_pro
   - Command/code:
@@ -185,7 +185,7 @@ krtvenv/Scripts/python.exe krt/py_router/route.py med10/medium_krt_in.kicad_pcb 
 git clone --depth 1 https://github.com/drandyhaas/KiCadRoutingTools.git krt && uv venv krtvenv --python 3.11 && uv pip install --python krtvenv/Scripts/python.exe numpy scipy shapely Pillow && (cd krt && ../krtvenv/Scripts/python.exe build_router.py) && krtvenv/Scripts/python.exe krt/py_router/route.py krt_tiny.kicad_pcb krt_tiny_routed.kicad_pcb --nets "*" && "/c/Program Files/KiCad/10.0/bin/kicad-cli.exe" pcb drc --format json --severity-all --exit-code-violations -o krt_tiny_drc.json krt_tiny_routed.kicad_pcb
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\krt`
+  - Artifact: `<scratchpad>\autorouting\krt`
 - **Intent-driven placement from scratch with KRT place_seed on a board with all 15 parts stacked at one point, then route + DRC + render**
   - Result: Seeded 15 parts, 0 unseated, ~1 s (quench crossings 101->67); routed 30/30 nets, 71 vias, 0.5 s; DRC: only silk warnings (silk_edge_clearance 1, silk_over_copper 2), 0 unconnected; render shows J1 west, J2 east, MCU centred with decaps adjacent, resistors in bottom zone
   - Command/code:
@@ -199,7 +199,7 @@ krtvenv/Scripts/python.exe krt/py_router/route.py place/seeded.kicad_pcb place/s
 "/c/Program Files/KiCad/10.0/bin/kicad-cli.exe" pcb render --width 1000 --height 750 --side top --background opaque --quality basic -o place/render_seeded_routed.png place/seeded_routed.kicad_pcb
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\place`
+  - Artifact: `<scratchpad>\autorouting\place`
 - **Install kipy (kicad-python 0.8.0) in a venv and enumerate IPC API protobuf commands for routing/placement/specctra**
   - Result: No Specctra/router/autoplacer RPCs; RunAction present with 'not an API' warning; InteractiveMoveItems, RefillZones, CreateItems/UpdateItems, Begin/EndCommit, board export jobs available
   - Command/code:
@@ -208,7 +208,7 @@ krtvenv/Scripts/python.exe krt/py_router/route.py place/seeded.kicad_pcb place/s
 uv venv kipyvenv --python 3.11 && uv pip install --python kipyvenv/Scripts/python.exe kicad-python && grep -E '^class [A-Z]' kipyvenv/Lib/site-packages/kipy/proto/board/board_commands_pb2.pyi kipyvenv/Lib/site-packages/kipy/proto/common/commands/editor_commands_pb2.pyi
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\kipyvenv`
+  - Artifact: `<scratchpad>\autorouting\kipyvenv`
 - **Launch pcbnew 10 GUI with isolated KICAD_CONFIG_HOME (API enabled, wizard suppressed) and test RunAction router/autoplacer actions via kipy; screenshots; process cleanup**
   - Result: KiCad 10.0.0 / API 10.0.6 connected. Router actions: RAS_OK but 0 tracks; screenshot shows interactive router started (stubs at J1.1/U1.1) waiting for mouse. Autoplacer: RAS_OK, all 15 footprints back inside the outline in ~5 s (crude grid placement). First two launches were blocked by the 'KiCad Setup' wizard until lib tables + first_run_shown were added. User's %APPDATA% kicad_common.json api.enable_server remained False.
   - Command/code:
@@ -221,7 +221,7 @@ PowerShell SendKeys ESC x3 to pcbnew; kipyvenv/Scripts/python.exe ipc/autoplace.
 PowerShell: Stop-Process on my pcbnew PID (no save)
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\ipc`
+  - Artifact: `<scratchpad>\autorouting\ipc`
 - **Check whether standalone SWIG pcbnew rewrites kicad_common.json (using the isolated config home)**
   - Result: kicad_common.json mtime and working_dir unchanged -> standalone SWIG does not write settings (GUI apps do)
   - Command/code:
@@ -230,7 +230,7 @@ PowerShell: Stop-Process on my pcbnew PID (no save)
 cd swigwd && KICAD_CONFIG_HOME="$PWD/../kicad_cfg" "/c/Program Files/KiCad/10.0/bin/python.exe" -c "import pcbnew; b=pcbnew.LoadBoard('tiny.kicad_pcb'); pcbnew.SaveBoard('tiny2.kicad_pcb', b); pcbnew.FootprintLoad(r'C:\Program Files\KiCad\10.0\share\kicad\footprints\Resistor_SMD.pretty','R_0805_2012Metric'); pcbnew.ExportSpecctraDSN(b,'tiny2.dsn')"; stat -c %y ../kicad_cfg/10.0/kicad_common.json
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\swigwd`
+  - Artifact: `<scratchpad>\autorouting\swigwd`
 - **Freerouting -drc standalone mode and exit codes; settings key names extracted from jar classes**
   - Result: -drc wrote ./fr_drc.json in CWD (30 unconnectedItems, 0 violations), did not route, exit 2; normal route exit 0. Keys: router.automatic_neckdown, router.neck_width_um, router.copper_to_edge_clearance_um, router.strict_drc, router.ignore_net_classes, router.job_timeout, router.result_json, router.fanout.enabled
   - Command/code:
@@ -240,7 +240,7 @@ cd swigwd && KICAD_CONFIG_HOME="$PWD/../kicad_cfg" "/c/Program Files/KiCad/10.0/
 unzip -q -o freerouting-2.4.1.jar 'app/freerouting/settings/*' -d jarx && python -c "<regex over RouterSettings.class for copper|edge|neck|strict|fanout|result_json|ignore_net|timeout>"
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\fr_drc.json`
+  - Artifact: `<scratchpad>\autorouting\fr_drc.json`
 - **Source-level checks on GitLab: action names across KiCad tags, Specctra import/export behaviour, first-run wizard conditions**
   - Result: All four tags define the 4 actions; FromSESSION removes non-locked tracks and applies SES placement; wizard shows when kicad_common.json missing, global lib tables invalid, or privacy prompts not acknowledged
   - Command/code:
@@ -251,4 +251,4 @@ curl -sL https://gitlab.com/kicad/code/kicad/-/raw/10.0.0/pcbnew/specctra_import
 curl -sL https://gitlab.com/kicad/code/kicad/-/raw/10.0.0/common/startwizard/startwizard_provider_{settings,libraries,privacy}.cpp | grep -A6 NeedsUserInput
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\autorouting\specctra_import.cpp`
+  - Artifact: `<scratchpad>\autorouting\specctra_import.cpp`

@@ -1,0 +1,34 @@
+** Drc report for conformance/corpus/9.0/headless_board/swig_test.kicad_pcb **
+** Created on 2026-09-18 T **
+
+** Found 6 DRC violations **
+[tracks_crossing]: Tracks crossing
+    Rule: netclass 'Default'; error
+    @(7.1750 mm, 10.0000 mm): Track [VCC] on F.Cu, length 14.8479 mm
+    @(22.0000 mm, 9.1750 mm): Track [GND] on F.Cu, length 8.1505 mm
+[shorting_items]: Items shorting two nets (nets SIG and VCC)
+    Local override; error
+    @(8.8250 mm, 10.0000 mm): Track [SIG] on F.Cu, length 13.2008 mm
+    @(7.1750 mm, 10.0000 mm): Track [VCC] on F.Cu, length 14.8479 mm
+[shorting_items]: Items shorting two nets (nets SIG and VCC)
+    Local override; error
+    @(8.8250 mm, 10.0000 mm): Pad 2 [SIG] of R1 on F.Cu
+    @(7.1750 mm, 10.0000 mm): Track [VCC] on F.Cu, length 14.8479 mm
+[shorting_items]: Items shorting two nets (nets VCC and GND)
+    Local override; error
+    @(7.1750 mm, 10.0000 mm): Track [VCC] on F.Cu, length 14.8479 mm
+    @(22.0000 mm, 9.1750 mm): Pad 2 [GND] of R2 on F.Cu
+[solder_mask_bridge]: Front solder mask aperture bridges items with different nets
+    Rule: board setup solder mask min width; error
+    @(7.1750 mm, 10.0000 mm): Track [VCC] on F.Cu, length 14.8479 mm
+    @(8.8250 mm, 10.0000 mm): Pad 2 [SIG] of R1 on F.Cu
+[solder_mask_bridge]: Front solder mask aperture bridges items with different nets
+    Rule: board setup solder mask min width; error
+    @(7.1750 mm, 10.0000 mm): Track [VCC] on F.Cu, length 14.8479 mm
+    @(22.0000 mm, 9.1750 mm): Pad 2 [GND] of R2 on F.Cu
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

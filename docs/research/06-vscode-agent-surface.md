@@ -136,7 +136,7 @@ code --version; Get-Command node,claude -ErrorAction SilentlyContinue; uv --vers
 cd <scratch>/vscode-agent-surface && uv venv --python 3.11 .venv && uv pip install --python .venv/Scripts/python.exe "mcp[cli]"
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\.venv`
+  - Artifact: `<scratchpad>\vscode-agent-surface\.venv`
 - **Download VS Code 1.138 API typings and grep exact MCP / LM tool / custom editor / diagnostics API names and signatures.**
   - Result: All APIs present with signatures quoted in findings (McpStdioServerDefinition(label, command, args?, env?, version?), McpHttpServerDefinition(label, uri, headers?, version?), registerTool<T>(name, tool), LanguageModelDataPart.image(Uint8Array, mime), PreparedToolInvocation.confirmationMessages {title, message}).
   - Command/code:
@@ -145,7 +145,7 @@ cd <scratch>/vscode-agent-surface && uv venv --python 3.11 .venv && uv pip insta
 curl -sL -o vscode.d.ts https://raw.githubusercontent.com/microsoft/vscode/release/1.138/src/vscode-dts/vscode.d.ts && grep -n 'registerMcpServerDefinitionProvider\|class McpStdioServerDefinition\|class McpHttpServerDefinition\|export function registerTool\|class LanguageModelDataPart\|registerCustomEditorProvider\|createDiagnosticCollection\|registerTreeDataProvider\|registerTaskProvider\|prepareInvocation\|confirmationMessages' vscode.d.ts; sed -n '20405,20560p;21000,21060p;21140,21240p' vscode.d.ts
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\vscode.d.ts`
+  - Artifact: `<scratchpad>\vscode-agent-surface\vscode.d.ts`
 - **Write an MCP stdio server wrapping kicad-cli (version, render PNG as ImageContent, DRC as structuredContent, SVG as resource_link) and drive it with the mcp 2.x Client over stdio.**
   - Result: negotiated protocol_version 2026-07-28; tools listed with annotations; kicad_version -> '10.0.0'; render_board_png -> ImageContent image/png, base64 66100 chars, 49,574 decoded bytes, PNG magic OK, saved roundtrip.png and visually confirmed board render; run_drc -> structuredContent {violations: 2, unconnected_items: 0, exit_code: 0}; export_pcb_svg -> ResourceLink file:///.../board.svg. Total 4.5 s. First attempt failed with InvalidSignature for `-> dict` (needs dict[str, Any]).
   - Command/code:
@@ -154,7 +154,7 @@ curl -sL -o vscode.d.ts https://raw.githubusercontent.com/microsoft/vscode/relea
 .venv/Scripts/python.exe kicad_probe_client.py   # spawns kicad_probe_server.py via StdioServerParameters; demo board copied from C:/Program Files/KiCad/10.0/share/kicad/demos/ecc83
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\kicad_probe_server.py`
+  - Artifact: `<scratchpad>\vscode-agent-surface\kicad_probe_server.py`
 - **Legacy-client compatibility probe: raw JSON-RPC initialize with protocolVersion 2025-06-18 against the 2.x server, then tools/list, tools/call, and server/discover.**
   - Result: initialize accepted (protocolVersion '2025-06-18', capabilities object, instructions); tools/list returned 4 tools with no extra keys; tools/call kicad_version(major='9.0') -> '9.0.5' with structuredContent {result:'9.0.5'}; server/discover after legacy init -> -32601 Method not found.
   - Command/code:
@@ -163,7 +163,7 @@ curl -sL -o vscode.d.ts https://raw.githubusercontent.com/microsoft/vscode/relea
 .venv/Scripts/python.exe legacy_probe.py
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\legacy_probe.py`
+  - Artifact: `<scratchpad>\vscode-agent-surface\legacy_probe.py`
 - **Streamable HTTP transport: run the same server with --http, call it with the Client over http://127.0.0.1:8765/mcp, and POST a raw server/discover.**
   - Result: HTTP negotiated 2026-07-28; kicad_version(7.0) -> 7.0.6, (8.0) -> 8.0.1; raw POST without _meta -> {-32600 'Bad Request: Missing session ID'} (SDK default stateful HTTP manager; use stateless_http=True). Server processes stopped; verified no kicad_probe_server processes remain and no other python processes were touched.
   - Command/code:
@@ -172,22 +172,22 @@ curl -sL -o vscode.d.ts https://raw.githubusercontent.com/microsoft/vscode/relea
 (.venv/Scripts/python.exe kicad_probe_server.py --http &); .venv/Scripts/python.exe http_client.py; curl -X POST http://127.0.0.1:8765/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -H 'Mcp-Method: server/discover' -d '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{}}'; then Stop-Process on PIDs 94264/89116 only
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\http_client.py`
+  - Artifact: `<scratchpad>\vscode-agent-surface\http_client.py`
 - **Claude Code project-scope .mcp.json discovery using the CLI bundled in the installed VS Code extension, with an isolated config dir (no user settings touched).**
   - Result: `claude --version` 2.1.276; `mcp list` found the project server as '⏸ Pending approval'; with enableAllProjectMcpServers in the isolated USER settings.json it reported '✔ Connected' (server spawned and health-checked); the same key in project .claude/settings.json did not change the non-interactive check; headless -p returned is_error 'Not logged in' (expected, isolated config; user credentials intentionally not used). Note: a first .mcp.json written via bash heredoc was rejected as invalid JSON - my escaping error, not Claude's.
   - Command/code:
 
 ```
-CLI=C:/Users/usama/.vscode/extensions/anthropic.claude-code-2.1.276-win32-x64/resources/native-binary/claude.exe; cd fakeproj; # .mcp.json = {mcpServers:{kicad-probe:{type:stdio, command:<venv python>, args:[kicad_probe_server.py], env:{KICAD_ROOT:...}}}}; CLAUDE_CONFIG_DIR=$PWD/../claude_cfg $CLI mcp list; $CLI mcp get kicad-probe; echo '{"enableAllProjectMcpServers": true}' > ../claude_cfg/settings.json; $CLI mcp list; $CLI -p 'Call kicad_version...' --allowedTools mcp__kicad-probe__kicad_version --output-format json
+CLI=%USERPROFILE%/.vscode/extensions/anthropic.claude-code-2.1.276-win32-x64/resources/native-binary/claude.exe; cd fakeproj; # .mcp.json = {mcpServers:{kicad-probe:{type:stdio, command:<venv python>, args:[kicad_probe_server.py], env:{KICAD_ROOT:...}}}}; CLAUDE_CONFIG_DIR=$PWD/../claude_cfg $CLI mcp list; $CLI mcp get kicad-probe; echo '{"enableAllProjectMcpServers": true}' > ../claude_cfg/settings.json; $CLI mcp list; $CLI -p 'Call kicad_version...' --allowedTools mcp__kicad-probe__kicad_version --output-format json
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\fakeproj\.mcp.json`
+  - Artifact: `<scratchpad>\vscode-agent-surface\fakeproj\.mcp.json`
 - **Inspect installed extension manifests: Claude Code extension and ms-python (real languageModelTools example, Python-backend pattern).**
   - Result: Claude Code ext: engines vscode ^1.94.0, contributes only configuration/jsonValidation/commands/keybindings/viewsContainers/views/walkthroughs/menus, activation onStartupFinished + onWebviewPanel:claudeVSCodePanel, bundles resources/native-binary/claude.exe (236 MB). ms-python: engines ^1.95.0, contributes languageModelTools (get_python_environment_details with toolReferenceName/canBeReferencedInPrompt) and ships python_files/; black-formatter extension observed running bundled/tool/lsp_server.py under Python - the TS-shell-spawns-Python pattern in action.
   - Command/code:
 
 ```
-python -c "import json; p=json.load(open(r'C:/Users/usama/.vscode/extensions/anthropic.claude-code-2.1.276-win32-x64/package.json')); print(p['engines'], list(p['contributes']))"; same for ms-python.python-2026.4.0-win32-x64; Get-CimInstance Win32_Process -Filter "Name='python.exe'"
+python -c "import json; p=json.load(open(r'%USERPROFILE%/.vscode/extensions/anthropic.claude-code-2.1.276-win32-x64/package.json')); print(p['engines'], list(p['contributes']))"; same for ms-python.python-2026.4.0-win32-x64; Get-CimInstance Win32_Process -Filter "Name='python.exe'"
 ```
 
 - **Run VS Code's embedded Node to confirm extension-host runtime version without a system Node.**
@@ -195,7 +195,7 @@ python -c "import json; p=json.load(open(r'C:/Users/usama/.vscode/extensions/ant
   - Command/code:
 
 ```
-$env:ELECTRON_RUN_AS_NODE=1; & 'C:\Users\usama\AppData\Local\Programs\Microsoft VS Code\Code.exe' -e "console.log(process.version, process.versions.electron)"
+$env:ELECTRON_RUN_AS_NODE=1; & '%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe' -e "console.log(process.version, process.versions.electron)"
 ```
 
 - **Schematic vision path: export PDF and SVG with kicad-cli 10, rasterize PDF to PNG with PyMuPDF.**
@@ -206,7 +206,7 @@ $env:ELECTRON_RUN_AS_NODE=1; & 'C:\Users\usama\AppData\Local\Programs\Microsoft 
 uv pip install --python .venv/Scripts/python.exe pymupdf; kicad-cli sch export pdf --output demo/sch.pdf demo/ecc83/ecc83-pp.kicad_sch; kicad-cli sch export svg --output demo/svg_out demo/ecc83/ecc83-pp.kicad_sch; python: fitz.open('demo/sch.pdf')[0].get_pixmap(dpi=110).save('demo/sch_page1.png')
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\demo\sch_page1.png`
+  - Artifact: `<scratchpad>\vscode-agent-surface\demo\sch_page1.png`
 - **Compare kicad-cli subcommand availability across installed KiCad 7/8/9/10.**
   - Result: 7.0.6: pcb export, sch export only. 8.0.1: + pcb drc, sch erc. 9.0.5: + pcb render, jobset. 10.0.0: + pcb import, pcb upgrade, sch upgrade.
   - Command/code:
@@ -231,4 +231,4 @@ curl -sL https://registry.npmjs.org/@modelcontextprotocol/server | python -c '..
 Write tool -> configs/README.md, configs/all-clients.md, ext-skeleton/package.json, ext-skeleton/src/extension.ts, skill-example/kicad-flow/SKILL.md
 ```
 
-  - Artifact: `C:\Users\usama\AppData\Local\Temp\claude\c--Upwork-KiCad\48a8df66-7213-479f-ab2e-a63b89135016\scratchpad\vscode-agent-surface\configs\all-clients.md`
+  - Artifact: `<scratchpad>\vscode-agent-surface\configs\all-clients.md`
