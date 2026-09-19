@@ -27,7 +27,12 @@ Dialects handled (all verified against the demo projects shipped with KiCad 7.0.
 * `(attr smd exclude_from_bom dnp …)` bare flags and `locked` either as a bare flag (7/8) or as
   `(locked yes)` (9+);
 * `(fp_arc (start) (mid) (end))` three-point arcs (≥ 20210925) with the pre-7 `(start=centre)
-  (end) (angle)` form accepted as well; `fp_poly` point lists containing `(arc …)` entries.
+  (end) (angle)` form accepted as well; `fp_poly` point lists containing `(arc …)` entries;
+* a footprint's placement as `(at x y [rot])` (7-10) or, on boards the 10.99 nightly saves
+  (stamp 20260616+, `FIRST_FP_AFFINE_TRANSFORM`), as `(transform (translate x y) (rotate r)
+  (scale 1 1))`; the rotation value is the same in both forms and pad / text angles stay
+  absolute (verified on an api-server-saved board with rotated and flipped parts: the
+  positions agree with `pcb export pos`).
 
 Geometry conventions (pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr_parser.cpp, tag 10.0):
 footprint items are stored footprint-relative and become board coordinates through
@@ -148,6 +153,24 @@ def _at(node: Node) -> tuple[Vec2, float]:
     x = atoms[0].as_float() if len(atoms) > 0 else 0.0
     y = atoms[1].as_float() if len(atoms) > 1 else 0.0
     rot = atoms[2].as_float() if len(atoms) > 2 and atoms[2].kind == "number" else 0.0
+    return Vec2(x, y), rot
+
+
+def _footprint_at(node: Node) -> tuple[Vec2, float]:
+    """A footprint's origin and rotation from `(at …)` or the nightly's `(transform …)` form
+    (module docstring); `(at …)` wins when both are present, as in KiCad's parser."""
+    if node.find("at") is not None:
+        return _at(node)
+    transform = node.find("transform")
+    if transform is None:
+        return Vec2(0.0, 0.0), 0.0
+    translate = transform.find("translate")
+    ta = translate.atoms if translate is not None else []
+    x = ta[0].as_float() if len(ta) > 0 else 0.0
+    y = ta[1].as_float() if len(ta) > 1 else 0.0
+    rot_node = transform.find("rotate")
+    ra = rot_node.atoms if rot_node is not None else []
+    rot = ra[0].as_float() if ra and ra[0].kind == "number" else 0.0
     return Vec2(x, y), rot
 
 
@@ -761,7 +784,7 @@ def _parse_pad(node: Node, fp_pos: Vec2, fp_rot: float, nets: _NetTable) -> Pad:
 def _parse_footprint(node: Node, nets: _NetTable) -> Footprint:
     atoms = node.atoms
     fpid = atoms[0].value if atoms else ""
-    position, rotation = _at(node)
+    position, rotation = _footprint_at(node)
     layer = node.get("layer") or "F.Cu"
     attributes: list[str] = []
     attr = node.find("attr")

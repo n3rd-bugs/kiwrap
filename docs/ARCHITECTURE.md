@@ -510,9 +510,16 @@ are gone. The SWIG driver (§3, §14) leaves the critical path and becomes a leg
 
 | KiCad | Schematic read/write | Board read/write | Checks and exports |
 |---|---|---|---|
-| 11 / nightly (`ipc.headless`) | headless IPC (`kiwrap.backends.ipc`) with the file engine as the lossless bridge | headless IPC; file engine | kicad-cli (job exports over headless IPC are unhandled on 10.99.0-4083 — T5) |
-| 10.0.x (co-primary) | file engine only (no schematic API; #24966 until 10.0.7) | file engine + SWIG driver (legacy) + GUI IPC live sessions (PCB only, D2) | kicad-cli |
-| 9 / 8 / 7 | file engine | file engine + SWIG driver | kicad-cli where it exists |
+| 11 / nightly (`ipc.headless`) | headless IPC (`kiwrap.backends.ipc.sch_writes`: symbols, wires, labels, power, edit, delete, annotate, footprints — verified 2026-09-20, ERC 0 / netlist exact on the api-server's files) with the file engine as the lossless bridge and for what the nightly cannot do headless (hierarchical sheet creation: `SaveDocument` fails after `CreateItems(SheetSymbol)`) | headless IPC (`pcb_writes`: `ImportNetlist` sync, place, zones + `RefillZones`, tracks, vias) and the file engine (`board.setup` — .kicad_pro / .kicad_dru have no API) | kicad-cli (job exports over headless IPC verified — G6 closed) |
+| 10.0.x (co-primary) | file engine only (`kiwrap.formats.schematic_writer`; no schematic API; #24966 until 10.0.7) | file engine (`kiwrap.formats.board_writer` + `netlist_sync`) + SWIG driver (legacy) + GUI IPC live sessions (PCB only, D2) | kicad-cli |
+| 9 / 8 / 7 | file engine | file engine + SWIG driver | kicad-cli where it exists (9 has no zone refill: pours stay unfilled, `degraded: refill_unavailable`) |
+
+The end-to-end proof is `tests/test_e2e_authoring.py`: one MCP stdio conversation per install
+(kw_project → kw_lib_search → kw_sch_add_symbol × 11 over two sheets → kw_sch_connect /
+kw_sch_add_item → kw_sch_check → kw_sch_annotate → kw_sch_assign_footprints → kw_pcb_setup →
+kw_pcb_sync → kw_pcb_place → kw_pcb_route → kw_pcb_zones → kw_pcb_drc → kw_fab_export) reaching
+ERC 0 / parity 0 / DRC must-fix 0 / `exported` on 10.99 (ipc11 writes) and 10.0.6 (file writes),
+and the same schematic/board numbers on 9.0.9 with a forced export (no refill).
 
 **Data-first feedback (replaces "render and look" in §11).** The agent's loop is structured data:
 `kw_pcb_get`, `kw_sch_get`, `kw_pcb_check`, `kw_sch_stats`, `kw_sch_diff` (typed `outputSchema`,

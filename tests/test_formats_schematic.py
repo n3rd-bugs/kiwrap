@@ -247,7 +247,9 @@ def test_connectivity_and_netlist(flat: SchematicFile):
     assert [(p.reference, p.number) for p in conn.no_connect_pins] == [("U2", "3")]
     # R2 pins are alone: weakly driven single pins get unconnected- names without a unit letter
     assert "unconnected-(R2-Pad1)" in names and "unconnected-(R2-Pad2)" in names
-    assert {(p.reference, p.number) for p in conn.unconnected_pins} >= {("R2", "1"), ("R2", "2"), ("U2", "3")}
+    # unconnected_pins = KiCad's pin_not_connected: nothing touches the pin end. The NC-marked
+    # U2.3 is not one (the marker touches it), nor is R1.2 (a power symbol's pin sits on it).
+    assert {(p.reference, p.number) for p in conn.unconnected_pins} == {("R2", "1"), ("R2", "2")}
     # the free end of the NET_B stub and the free end of the OUT stub are dangling
     assert sorted(w.position.as_tuple() for w in conn.dangling_wire_ends) == [(90.0, 90.0), (200.0, 200.0)]
     assert [n.name for n in conn.label_only_nets] == ["/OUT"]

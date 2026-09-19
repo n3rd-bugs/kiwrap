@@ -39,6 +39,9 @@ Documented keys (all of these must exist for every supported version, see the JS
                                                 `job_settings.document` is empty is AS_UNHANDLED by design; the
                                                 first T5 snapshot sent that and misread it as "absent" (UPSTREAM G6)
     ipc.schematic_update_shared_lib_symbol_hangs bool  UpdateItems on a 2nd instance of one lib symbol never replies (10.99.0-4083)
+    ipc.footprint_update_rotation_noise bool     UpdateItems(FootprintInstance) with a CHANGED orientation re-derives the
+                                                children's library coordinates through the inverse transform: 1 nm noise
+                                                -> DRC lib_footprint_mismatch (10.99.0-4083, UPSTREAM G16); flips / moves clean
     ipc.single_fixed_pipe           bool        Windows 9/10
     formats.sch / formats.pcb / formats.sym / formats.pro  int  epoch stamps written by this version
     formats.pcb_layer_ids_v2        bool        board layer ids renumbered (B.Cu 31 -> 2) + 4-word layerselection (>= 9.0)

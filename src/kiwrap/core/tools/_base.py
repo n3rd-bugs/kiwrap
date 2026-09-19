@@ -148,6 +148,40 @@ def to_kiwrap_error(exc: BaseException) -> KiwrapError:
             fix="read data.stderr; kw_help(topic='E_KICAD_FAILED') lists the exit codes",
             data=_cli_data(exc),
         )
+    if "LibError" in names:
+        # kiwrap.formats.libs teaching errors (E_LIB_NOT_FOUND / E_LIB_UNSUPPORTED / E_LIB) keep
+        # their code, why, fix and candidates
+        return KiwrapError(
+            str(getattr(exc, "code", "E_LIB") or "E_LIB"),
+            str(getattr(exc, "message", None) or exc),
+            why=str(getattr(exc, "why", "") or ""),
+            fix=str(getattr(exc, "fix", "") or ""),
+            candidates=[str(c) for c in (getattr(exc, "candidates", None) or [])],
+            data=dict(getattr(exc, "data", None) or {}),
+        )
+    if "WriterError" in names:
+        # the schematic writer's teaching errors: a stable `code` (E_SYMBOL_NOT_FOUND -> the
+        # library tools' E_LIB_NOT_FOUND, everything else a caller mistake), `fix`, `candidates`
+        code = str(getattr(exc, "code", "") or "")
+        candidates = [str(c) for c in (getattr(exc, "candidates", None) or [])]
+        fix = str(getattr(exc, "fix", "") or "")
+        if code in ("E_SYMBOL_NOT_FOUND", "E_LIB_SYMBOL", "E_LIB_RESOLVER"):
+            return KiwrapError(
+                "E_LIB_NOT_FOUND",
+                str(exc),
+                why="the lib_id names no symbol in the library tables of the target KiCad",
+                fix=fix or "search with kw_lib_search(kind='symbol', query=<name>) and use the id it returns",
+                candidates=candidates,
+                data={"writer_code": code},
+            )
+        return KiwrapError(
+            "E_BAD_ARGS",
+            str(exc),
+            why="the schematic writer refused the request",
+            fix=fix or "follow the message; kw_help(topic=<tool name>) lists the accepted values",
+            candidates=candidates,
+            data={"writer_code": code} if code else {},
+        )
     if isinstance(exc, ValueError) and not isinstance(exc, UnicodeError):
         # a backend refusing an argument value (e.g. `severity_flags('bogus')`) is the caller's mistake
         return KiwrapError(

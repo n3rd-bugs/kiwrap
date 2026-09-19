@@ -31,7 +31,10 @@ __all__ = ["NetlistComparison", "compare_netlists", "netlist_from_connectivity",
 
 
 def netlist_from_file(
-    source: SchematicFile | Hierarchy | str, *, kicad_version: str = "", pin_function_style: str = "name_number"
+    source: SchematicFile | Hierarchy | str,
+    *,
+    kicad_version: str = "",
+    pin_function_style: str = "name_number",
 ) -> Netlist:
     """Build the netlist of a root schematic (path, `SchematicFile` or `Hierarchy`).
     `pin_function_style`: "name_number" (KiCad 10+) or "name" (module docstring)."""
@@ -62,7 +65,9 @@ def netlist_from_connectivity(
     pin_function_style: str = "name_number",
 ) -> Netlist:
     if pin_function_style not in PIN_FUNCTION_STYLES:
-        raise ValueError(f"pin_function_style must be one of {PIN_FUNCTION_STYLES}, got {pin_function_style!r}")
+        raise ValueError(
+            f"pin_function_style must be one of {PIN_FUNCTION_STYLES}, got {pin_function_style!r}"
+        )
     components: dict[str, Component] = {}
     if hierarchy is not None:
         for inst, sym in hierarchy.symbols():

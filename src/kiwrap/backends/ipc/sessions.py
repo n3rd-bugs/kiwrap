@@ -45,7 +45,10 @@ Shape of the implementation:
   (identified by kiwrap's own record and the `--socket <kiwrap temp dir>` argv, never by image
   name) and removes the stale `~*.lck` of that project after the kill is confirmed. The
   `CloseAllDocuments` in `close()` still matters: it is what releases the project lock on an
-  orderly teardown; a killed server leaves the lock for the sweep.
+  orderly teardown; a server `close()` had to kill has its lock removed by `stop()` once the
+  process is confirmed dead, and `release_project()` (the mutating tools' prologue) runs the
+  sweep first so a kiwrap process that died with a server open does not leave the project
+  refused with E_FILE_LOCKED.
 - `SessionPool` (finding 14): `pooled_session()` keeps one server per (install, file) alive
   across tool calls instead of paying the start-up + load on every read (the jetson baseboard
   demo: 22 s per kw_pcb_get), closes it after `KIWRAP_IPC_IDLE_S` seconds idle (default 120),
@@ -327,7 +330,15 @@ def _command_line(pid: int) -> str:
         return ""
 
 
-def _write_record(temp_dir: Path, pid: int, argv: list[str], socket_path: Path, file: Path | None) -> Path:
+def _write_record(
+    temp_dir: Path,
+    pid: int,
+    argv: list[str],
+    socket_path: Path,
+    file: Path | None,
+    *,
+    started: float | None = None,
+) -> Path:
     d = _records_dir(temp_dir)
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{pid}.json"
@@ -337,7 +348,7 @@ def _write_record(temp_dir: Path, pid: int, argv: list[str], socket_path: Path, 
         "argv": argv,
         "socket": str(socket_path),
         "file": str(file) if file is not None else None,
-        "started": time.time(),
+        "started": time.time() if started is None else started,
     }
     with contextlib.suppress(OSError):
         path.write_text(json.dumps(payload), encoding="utf-8")
@@ -396,15 +407,18 @@ def sweep_orphans(temp_dir: Path | None = None) -> list[int]:
 
 def _remove_stale_lock(info: dict[str, Any], pid: int) -> None:
     """Delete the `~<name>.kicad_pro.lck` a dead kiwrap server left in the project directory of
-    the file it had open - only when the lock is not newer than that server's start (a KiCad GUI
-    that took the project over afterwards rewrites the lock; that one stays)."""
+    the file it had open - only when the lock was written around that server's start (the server
+    takes the lock while it pre-loads the file): a KiCad GUI that took the project over
+    afterwards rewrites the lock, one that held the project before the server started predates
+    it; both stay."""
     file = info.get("file")
     started = float(info.get("started") or 0)
     if not file:
         return
     for lck in Path(file).parent.glob("~*.lck"):
         try:
-            if started and lck.stat().st_mtime > started + 60:
+            mtime = lck.stat().st_mtime
+            if started and not (started - 5 <= mtime <= started + 60):
                 continue
             lck.unlink()
             log.info("removed stale %s left by dead api-server %s", lck.name, pid)
@@ -427,6 +441,7 @@ class _ApiServerProcess:
     ready_line: str | None = None
     in_job: bool = False  # Windows: assigned to the kill-on-close Job Object
     record: Path | None = None  # `<temp>/api-servers/<pid>.json`, for sweep_orphans()
+    started_epoch: float = 0.0  # `time.time()` at start(), the record's `started`
     _stdout_q: queue.Queue[str] = field(default_factory=queue.Queue, repr=False)
     _stderr_q: queue.Queue[str] = field(default_factory=queue.Queue, repr=False)
 
@@ -475,8 +490,14 @@ class _ApiServerProcess:
         )
         if sys.platform.startswith("win"):
             self.in_job = _assign_to_job(self.process)
+        self.started_epoch = time.time()
         self.record = _write_record(
-            self.socket_path.parent.parent, self.process.pid, self.argv, self.socket_path, self.file
+            self.socket_path.parent.parent,
+            self.process.pid,
+            self.argv,
+            self.socket_path,
+            self.file,
+            started=self.started_epoch,
         )
         for stream, sink in ((self.process.stdout, self._stdout_q), (self.process.stderr, self._stderr_q)):
             threading.Thread(target=_drain, args=(stream, sink), daemon=True).start()
@@ -578,6 +599,13 @@ class _ApiServerProcess:
                             stream.close()
                 with contextlib.suppress(OSError):
                     self.socket_path.unlink()
+                # A server that was killed instead of closed (CloseAllDocuments failed or timed
+                # out: the wedged-server case) never released KiCad's `~<name>.kicad_pro.lck`;
+                # it is removed here, while the record still exists, so that no E_FILE_LOCKED
+                # asks a human to delete a file (reviewer finding, 2026-09-20).
+                _remove_stale_lock(
+                    {"file": str(self.file) if self.file else None, "started": self.started_epoch}, proc.pid
+                )
                 if self.record is not None:
                     with contextlib.suppress(OSError):
                         self.record.unlink()
@@ -719,7 +747,10 @@ class HeadlessSession:
         stale lock stays behind and every later kicad-cli/edit tool refuses the project with
         E_FILE_LOCKED. Verified 2026-09-19 on 10.99.0-4083 (scratchpad integrator/probe_close.py):
         the lock exists while a .kicad_sch, .kicad_pcb or .kicad_pro is open, `CloseAllDocuments`
-        answers AS_OK in ~17 ms and removes it, and nothing is left after `stop()`.
+        answers AS_OK in ~17 ms and removes it, and nothing is left after `stop()`. When the
+        release fails (a wedged server that has to be killed), `stop()` deletes the lock the dead
+        process left, provided it is not newer than the server's start (a GUI that took the
+        project over meanwhile keeps its own lock).
         """
         server, self._server = self._server, None
         kicad, self._kicad = self._kicad, None
@@ -873,21 +904,42 @@ def close_all() -> int:
 # --- pool ------------------------------------------------------------------------------------------
 
 
-def _file_stamp(file: Path | None) -> tuple[int, int] | None:
+#: a pooled server on one of these pre-loads the whole sheet tree, so its stamp covers every
+#: `.kicad_sch` next to the file (a child sheet edited on disk must drop the entry too)
+_TREE_SUFFIXES = (".kicad_sch", ".kicad_pro")
+
+
+def _file_stamp(file: Path | None) -> tuple[Any, ...] | None:
+    """(mtime_ns, size) of `file`; for a schematic / project also of every `*.kicad_sch` in its
+    directory (the server holds the hierarchy: a child sheet changed outside this process while
+    the root is unchanged must not be answered from the stale load - reviewer finding, 2026-09-20)."""
     if file is None:
         return None
     try:
         st = file.stat()
     except OSError:
         return None
-    return (st.st_mtime_ns, st.st_size)
+    stamp: tuple[Any, ...] = (st.st_mtime_ns, st.st_size)
+    if file.suffix.lower() in _TREE_SUFFIXES:
+        siblings: list[tuple[str, int, int]] = []
+        try:
+            for sheet in sorted(file.parent.glob("*.kicad_sch")):
+                try:
+                    sst = sheet.stat()
+                except OSError:
+                    continue
+                siblings.append((sheet.name, sst.st_mtime_ns, sst.st_size))
+        except OSError:
+            pass
+        stamp = (*stamp, tuple(siblings))
+    return stamp
 
 
 @dataclass
 class _PoolEntry:
     key: tuple[str, str]
     session: HeadlessSession
-    stamp: tuple[int, int] | None
+    stamp: tuple[Any, ...] | None
     lock: threading.RLock = field(default_factory=threading.RLock)  # re-entrant: nested use by one thread
     timer: threading.Timer | None = None
     last_used: float = field(default_factory=time.monotonic)
@@ -1064,6 +1116,11 @@ def release_project(directory: str | Path, *, timeout_s: float = 60.0) -> dict[s
     so their `~<name>.kicad_pro.lck` goes away, and report the NON-pooled live sessions still bound
     to files there (a read in flight in another thread), which the caller answers with E_BUSY."""
     directory = Path(directory).resolve()
+    # A kiwrap process that was hard-killed (MCP host TerminateProcess, pytest-timeout os._exit)
+    # took its servers down through the Job Object / PDEATHSIG, but their `~<name>.kicad_pro.lck`
+    # stayed: sweep the recorded dead servers first so the prologue's refuse_if_editor_open()
+    # does not refuse the project with E_FILE_LOCKED for a lock only a human could delete.
+    sweep_orphans()
     closed = SESSION_POOL.close_project(directory, timeout_s=timeout_s)
     busy = [
         str(s.file)

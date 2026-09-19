@@ -1,12 +1,15 @@
 # kiwrap — an AI-agent-facing wrapper over KiCad
 
-**Status: Phase 1a implemented — 2026-09-19.** KiCad 11 (nightly) is the primary target
+**Status: Phase 1b implemented — 2026-09-20.** KiCad 11 (nightly) is the primary target
 (decision D16): a headless IPC backend on `kicad-cli api-server` gives structured, data-first
-feedback (D17) — board/schematic items, nets, connectivity, ratsnest — with file-tier and
-kicad-cli fallbacks on KiCad 10.0.x, 9 and 8. 823 tests pass across five installed KiCads. A
+feedback (D17) — board/schematic items, nets, connectivity, ratsnest — and now authors
+schematics and boards (symbols, wires, labels, power, hierarchical sheets, annotation,
+footprint assignment, board setup, netlist sync, placement, zones, routing primitives) with
+file-tier and kicad-cli fallbacks on KiCad 10.0.x, 9 and 8. An agent conversation over MCP
+stdio builds a two-sheet LDO + 555 blinker from nothing to gerbers with ERC 0 / parity 0 /
+DRC 0 on the 10.99 nightly (ipc11) and 10.0.6 (file), tests/test_e2e_authoring.py. A
 source-build bench of the fork exists for the CLI/IPC additions listed in
-[docs/UPSTREAM.md](docs/UPSTREAM.md). Schematic/board authoring, netlist sync, placement and
-routing tools are next.
+[docs/UPSTREAM.md](docs/UPSTREAM.md). Autorouting (Freerouting) and the VS Code extension are next.
 
 kiwrap lets an AI agent (Claude Code inside VS Code; Windows only — decision D18)
 do end-to-end electronics development on KiCad — spec → schematic → ERC → board → placement →
@@ -23,12 +26,17 @@ uv run pytest -q                 # ~5 min with four KiCads installed; ~1 min wit
 uv run kiwrap serve              # MCP server over stdio (Claude Code picks it up from .mcp.json)
 ```
 
-Tools (15): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
-`kw_sch_get` (symbols with pin nets, wires, labels, hierarchy, netlist), `kw_sch_stats`,
-`kw_sch_check` (ERC + netlist), `kw_sch_diff` (KiCad 11), `kw_pcb_get` (footprints, pads, tracks,
-vias, zones, nets, connectivity), `kw_pcb_check` (courtyard overlaps, off-board, unrouted /
-ratsnest), `kw_pcb_drc`, `kw_fab_export`, and the secondary renders `kw_sch_render` /
-`kw_pcb_render`. Every read names its provider (`ipc11`, `file`, `cli`) and any degradation. The
+Tools (28): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
+`kw_lib_search` / `kw_lib_info` (FTS index over the sym-/fp-lib-tables), the schematic authoring
+tools `kw_sch_add_symbol` (absolute pin endpoints back), `kw_sch_connect`, `kw_sch_add_item`
+(power, PWR_FLAG, labels, sheets), `kw_sch_edit`, `kw_sch_annotate`, `kw_sch_assign_footprints`,
+the reads `kw_sch_get` (symbols with pin nets, wires, labels, hierarchy, netlist), `kw_sch_stats`,
+`kw_sch_check` (ERC + netlist), `kw_sch_diff` (KiCad 11), the board authoring tools
+`kw_pcb_setup`, `kw_pcb_sync` (KiCad's netlist, parity-checked), `kw_pcb_place`, `kw_pcb_zones`,
+`kw_pcb_route` (track / via primitives with per-net DRC deltas), the reads `kw_pcb_get`
+(footprints, pads, tracks, vias, zones, nets, connectivity), `kw_pcb_check` (courtyard overlaps,
+off-board, unrouted / ratsnest), `kw_pcb_drc`, `kw_fab_export`, and the secondary renders
+`kw_sch_render` / `kw_pcb_render`. Every tool names its provider (`ipc11`, `file`, `cli`) and any degradation. The
 agent-facing protocol is in [AGENTS.md](AGENTS.md) and the skill in
 [.claude/skills/kiwrap-flow/SKILL.md](.claude/skills/kiwrap-flow/SKILL.md).
 

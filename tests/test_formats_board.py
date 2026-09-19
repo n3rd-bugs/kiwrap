@@ -333,6 +333,27 @@ def test_v10_name_only_nets(tmp_path: Path):
     assert BoardFile.load(p, project_rules=False).design_rules.project_rules is None
 
 
+def test_nightly_transform_placement_reads_like_at():
+    """The 10.99 nightly (stamp 20260616+) saves a footprint's placement as `(transform (translate
+    x y) (rotate r) (scale 1 1))` instead of `(at x y r)`; the reader takes either (module
+    docstring), so boards the api-server saved keep their positions in kw_pcb_get / the placement
+    checks. Pad angles stay absolute in both forms."""
+    transform = "\t\t(transform\n\t\t\t(translate 10 20)\n\t\t\t(rotate 90)\n\t\t\t(scale 1 1)\n\t\t)\n"
+    text = BOARD_V9.replace("(version 20241229)", "(version 20260901)").replace(
+        "\t\t(at 10 20 90)\n", transform
+    )
+    assert "(translate 10 20)" in text
+    b = BoardFile.loads(text)
+    r1 = b.footprint("R1")
+    assert r1.position == Vec2(10, 20) and r1.rotation == 90
+    assert r1.pad("1").position == Vec2(10, 21) and r1.pad("2").position == Vec2(10, 19)
+    box = r1.courtyard_front[0].bbox
+    assert (box.min_x, box.min_y, box.max_x, box.max_y) == (9, 18, 11, 22)
+    # `(at …)` wins when both are present, as in KiCad's parser
+    both = text.replace(transform, "\t\t(at 1 2 0)\n" + transform)
+    assert BoardFile.loads(both).footprint("R1").position == Vec2(1, 2)
+
+
 def test_rejects_non_board():
     with pytest.raises(ValueError):
         BoardFile.loads("(kicad_sch (version 1))")

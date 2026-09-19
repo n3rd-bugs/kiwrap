@@ -1,0 +1,59 @@
+{
+  "board": {
+    "design_settings": {
+      "defaults": {},
+      "rule_severities": {},
+      "rules": {}
+    },
+    "layer_presets": [],
+    "viewports": []
+  },
+  "boards": [],
+  "cvpcb": {
+    "equivalence_files": []
+  },
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "meta": {
+    "filename": "top.kicad_pro",
+    "version": 3
+  },
+  "net_settings": {
+    "classes": [],
+    "meta": {
+      "version": 4
+    },
+    "net_colors": null,
+    "netclass_assignments": null,
+    "netclass_patterns": []
+  },
+  "pcbnew": {
+    "last_paths": {},
+    "page_layout_descr_file": ""
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "022b4d83-3c4d-42a2-ba65-6e09b39b91cd",
+      "Root"
+    ],
+    [
+      "ff77e24e-3432-49d7-8955-58cfbb0d0031",
+      "source"
+    ],
+    [
+      "f9998a07-584f-4661-8641-c61d3bbda48c",
+      "amp_a"
+    ],
+    [
+      "90a634bf-a722-4598-a0dd-c52e322a5a90",
+      "amp_b"
+    ]
+  ],
+  "text_variables": {}
+}

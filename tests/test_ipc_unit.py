@@ -776,6 +776,142 @@ def test_kill_tree_and_stop_on_a_plain_process(tmp_path):
     sessions._kill_tree(999999999)  # unknown pid: never raises
 
 
+def test_stop_removes_the_lock_a_killed_server_left(tmp_path, monkeypatch):
+    """A server that had to be killed (CloseAllDocuments failed: the wedged-server case) never
+    released KiCad's `~<name>.kicad_pro.lck`; `stop()` removes the lock written around the
+    server's start once the process is confirmed dead, and leaves a lock a GUI wrote later."""
+    import sys
+
+    monkeypatch.setattr(sessions, "_assign_to_job", lambda process: False)
+    project = tmp_path / "proj"
+    project.mkdir()
+    board = project / "p.kicad_pcb"
+    board.write_text("(kicad_pcb)", encoding="utf-8")
+    proc = sessions._ApiServerProcess(
+        kicad_cli=Path(sys.executable),
+        socket_path=tmp_path / "sock" / "s.sock",
+        env=None,
+        cwd=tmp_path,
+        file=board,
+    )
+    monkeypatch.setattr(
+        sessions._ApiServerProcess,
+        "argv",
+        property(lambda self: [sys.executable, "-c", "import time; time.sleep(60)"]),
+    )
+    proc.start()
+    assert proc.alive and proc.started_epoch > 0
+    lock = project / "~p.kicad_pro.lck"
+    lock.write_text('{"hostname": "h", "username": "u", "token": 1}', encoding="utf-8")  # as the server does
+    later = project / "~other.kicad_pro.lck"
+    later.write_text("{}", encoding="utf-8")
+    future = proc.started_epoch + 120
+    import os
+
+    os.utime(later, (future, future))  # a GUI that took another project over afterwards
+    record = proc.record
+    assert record is not None and record.exists()
+    proc.stop()
+    assert proc.process is None
+    assert not lock.exists(), "the dead server's lock must go with the process"
+    assert later.exists()
+    assert record is not None and not record.exists()
+    later.unlink()
+
+
+def test_release_project_sweeps_dead_servers_locks(tmp_path, monkeypatch):
+    """Crash recovery: a record of a dead kiwrap server (the Job Object took it with a
+    hard-killed parent) plus its `~<name>.kicad_pro.lck` must not survive the mutation
+    prologue's `release_project()` - otherwise every later mutating tool is E_FILE_LOCKED."""
+    import os
+    import time
+
+    from kiwrap.platform import current
+
+    temp = tmp_path / "temp"
+    monkeypatch.setattr(sessions, "current", lambda: type("P", (), {"temp_dir": temp})())
+    project = tmp_path / "p"
+    project.mkdir()
+    (project / "p.kicad_sch").write_text("(kicad_sch)", encoding="utf-8")
+    lock = project / "~p.kicad_pro.lck"
+    lock.write_text('{"hostname": "x", "username": "kiwrap", "token": 1}', encoding="utf-8")
+    dead = 4_000_000_000 - 1
+    assert not sessions._pid_alive(dead)
+    record = sessions._write_record(
+        temp,
+        dead,
+        ["kicad-cli", "api-server"],
+        temp / "x.sock",
+        project / "p.kicad_sch",
+        started=time.time() - 30,
+    )
+    record.write_text(record.read_text(encoding="utf-8").replace(str(os.getpid()), "1"), encoding="utf-8")
+    info = sessions.release_project(project)
+    assert info == {"closed": [], "busy": []}
+    assert not lock.exists() and not record.exists()
+    assert current().temp_dir  # the real platform is untouched by the monkeypatch
+
+
+def test_pool_stamp_covers_the_sheet_tree(tmp_path: Path):
+    """A pooled root-schematic session must be dropped when a CHILD sheet changes on disk
+    (the server holds the whole hierarchy); a board stamp is the file's own."""
+    import os
+
+    root = tmp_path / "top.kicad_sch"
+    child = tmp_path / "blinker.kicad_sch"
+    root.write_text("(kicad_sch)", encoding="utf-8")
+    child.write_text("(kicad_sch)", encoding="utf-8")
+    before = sessions._file_stamp(root)
+    assert before is not None and before == sessions._file_stamp(root)
+    child.write_text("(kicad_sch (changed))", encoding="utf-8")
+    later = child.stat().st_mtime + 5
+    os.utime(child, (later, later))
+    assert sessions._file_stamp(root) != before
+    assert sessions._file_stamp(tmp_path / "x.kicad_pro") is None  # missing file
+    board = tmp_path / "b.kicad_pcb"
+    board.write_text("(kicad_pcb)", encoding="utf-8")
+    st = board.stat()
+    assert sessions._file_stamp(board) == (st.st_mtime_ns, st.st_size)
+
+
+def test_ipc_pin_types_are_spelled_like_the_file_tokens():
+    """Receipts must not depend on the provider: the IPC twins / readers spell electrical pin
+    types with KiCad's file tokens (`power_in`, `power_out`, `tri_state`), the same words the
+    file writer, kw_lib_info and kw_sch_stats use."""
+    from kipy.proto.common.types.base_types_pb2 import ElectricalPinType
+
+    from kiwrap.formats.schematic import parse_lib_symbols
+    from kiwrap.formats.sexpr import loads
+
+    got = {name: readers.pin_type_token(value) for name, value in ElectricalPinType.items()}
+    assert got["EPT_POWER_INPUT"] == "power_in" and got["EPT_POWER_OUTPUT"] == "power_out"
+    assert got["EPT_TRISTATE"] == "tri_state" and got["EPT_OPEN_COLLECTOR"] == "open_collector"
+    assert got["EPT_BIDIRECTIONAL"] == "bidirectional" and got["EPT_NO_CONNECT"] == "no_connect"
+    file_tokens = {
+        "input",
+        "output",
+        "bidirectional",
+        "tri_state",
+        "passive",
+        "free",
+        "unspecified",
+        "power_in",
+        "power_out",
+        "open_collector",
+        "open_emitter",
+        "no_connect",
+    }
+    assert {v for k, v in got.items() if k != "EPT_UNKNOWN"} == file_tokens
+    # the file side speaks the same words (a library symbol's pins as the file writer reports them)
+    lib = loads(
+        '(lib_symbols (symbol "X" (symbol "X_1_1"'
+        ' (pin power_in line (at 0 0 0) (length 2.54) (name "V") (number "1"))'
+        ' (pin tri_state line (at 0 0 0) (length 2.54) (name "T") (number "2")))))'
+    )
+    types = {p.number: p.type for p in parse_lib_symbols(lib)["X"].pins}
+    assert types == {"1": "power_in", "2": "tri_state"} and set(types.values()) <= file_tokens
+
+
 def test_oldest_kicad_with_skips_nightlies():
     assert sessions.oldest_kicad_with("ipc.headless") == "11.0.0"
     assert sessions.oldest_kicad_with("ipc.available") == "9.0.5"

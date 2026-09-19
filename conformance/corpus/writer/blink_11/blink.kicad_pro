@@ -1,0 +1,47 @@
+{
+  "board": {
+    "design_settings": {
+      "defaults": {},
+      "rule_severities": {},
+      "rules": {}
+    },
+    "layer_presets": [],
+    "viewports": []
+  },
+  "boards": [],
+  "cvpcb": {
+    "equivalence_files": []
+  },
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "meta": {
+    "filename": "blink.kicad_pro",
+    "version": 4
+  },
+  "net_settings": {
+    "classes": [],
+    "meta": {
+      "version": 4
+    },
+    "net_colors": null,
+    "netclass_assignments": null,
+    "netclass_patterns": []
+  },
+  "pcbnew": {
+    "last_paths": {},
+    "page_layout_descr_file": ""
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "89d79024-5c35-4941-9a66-229a5eb5d68a",
+      "Root"
+    ]
+  ],
+  "text_variables": {}
+}

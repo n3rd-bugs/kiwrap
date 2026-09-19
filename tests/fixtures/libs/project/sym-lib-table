@@ -1,0 +1,6 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "Hidden") (type "KiCad") (uri "${KIPRJMOD}/../Test.kicad_sym") (options "") (descr "project row shadows the hidden global row"))
+	(lib (name "Proj") (type "KiCad") (uri "${KIPRJMOD}/../Test.kicad_sym") (options "") (descr "project-only library"))
+	(lib (name "TextVar") (type "KiCad") (uri "${MYLIBS}/Test.kicad_sym") (options "") (descr "project text variable"))
+)

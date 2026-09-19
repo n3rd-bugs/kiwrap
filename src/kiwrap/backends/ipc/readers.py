@@ -85,6 +85,22 @@ def _enum_name(enum: Any, value: int, prefix: str) -> str:
     return name[len(prefix) :].lower() if name.startswith(prefix) else name.lower()
 
 
+#: proto `ElectricalPinType` names (without `EPT_`, lower-cased) whose spelling differs from the
+#: KiCad file token the file writer, kw_lib_info and kw_sch_stats report; everything else
+#: (input, output, bidirectional, passive, free, unspecified, open_collector, open_emitter,
+#: no_connect) is spelled alike
+_PIN_TYPE_TOKENS = {"tristate": "tri_state", "power_input": "power_in", "power_output": "power_out"}
+
+
+def pin_type_token(value: int) -> str:
+    """`ElectricalPinType` -> the KiCad file token (`power_in`, `tri_state`, ...), so receipts are
+    provider-independent (reviewer finding, 2026-09-20)."""
+    from kipy.proto.common.types.base_types_pb2 import ElectricalPinType
+
+    name = _enum_name(ElectricalPinType, value, "EPT_")
+    return _PIN_TYPE_TOKENS.get(name, name)
+
+
 def layer_name(value: int) -> str:
     """`BoardLayer` enum -> KiCad's canonical layer name: `BL_F_Cu` -> `F.Cu`, `BL_In1_Cu` -> `In1.Cu`,
     `BL_Edge_Cuts` -> `Edge.Cuts`, `BL_User_1` -> `User.1`, `BL_Margin` -> `Margin`."""
@@ -172,7 +188,6 @@ def _enabled_only(names: Iterable[str], enabled: frozenset[str] | None) -> tuple
 
 def _pad_model(pad: Any, polygon: tuple[Point, ...] = (), enabled: frozenset[str] | None = None) -> PadModel:
     from kipy.proto.board.board_types_pb2 import PadStackShape, PadType
-    from kipy.proto.common.types.base_types_pb2 import ElectricalPinType
 
     stack = pad.pad_stack
     shape, size, rounding = "unknown", (0.0, 0.0), 0.0
@@ -198,7 +213,7 @@ def _pad_model(pad: Any, polygon: tuple[Point, ...] = (), enabled: frozenset[str
         layers=_enabled_only((layer_name(layer) for layer in stack.layers), enabled),
         polygon=polygon,
         pin_name=pad.symbol_pin.name,
-        pin_type=_enum_name(ElectricalPinType, pad.symbol_pin.type, "EPT_") if pad.symbol_pin.type else "",
+        pin_type=pin_type_token(pad.symbol_pin.type) if pad.symbol_pin.type else "",
     )
 
 
@@ -607,7 +622,6 @@ def _symbol_pins(sym_proto: Any, pin_nets: dict[tuple[str, str], str], sheet_key
     """Pins of one symbol INSTANCE with absolute positions; `pin_nets` is keyed by
     (sheet KIID path, pin KIID) because the same pin KIID is on a different net in every instance
     of a shared sheet file."""
-    from kipy.proto.common.types.base_types_pb2 import ElectricalPinType
     from kipy.proto.schematic.schematic_types_pb2 import SchematicPin
 
     unit = sym_proto.unit.unit
@@ -634,7 +648,7 @@ def _symbol_pins(sym_proto: Any, pin_nets: dict[tuple[str, str], str], sheet_key
                 name=pin.name,
                 number=pin.number,
                 position=(nm_to_mm(ox + tx), nm_to_mm(oy + ty)),
-                electrical_type=_enum_name(ElectricalPinType, pin.electrical_type, "EPT_"),
+                electrical_type=pin_type_token(pin.electrical_type),
                 net=pin_nets.get((sheet_key, pin.id.value), ""),
             )
         )
@@ -813,7 +827,9 @@ def read_schematic(
                     id=p.id.value,
                     ref=ref,
                     value=p.value_field.text.text,
-                    lib_id=f"{lib.library_nickname}:{lib.entry_name}" if lib.library_nickname else lib.entry_name,
+                    lib_id=f"{lib.library_nickname}:{lib.entry_name}"
+                    if lib.library_nickname
+                    else lib.entry_name,
                     unit=int(p.unit.unit),
                     position=pos,
                     rotation=float(_orientation_degrees(p.transform.orientation)),

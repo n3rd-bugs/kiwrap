@@ -175,7 +175,10 @@ def erc_report(*violations: Violation, version: str = "10.0.0") -> Report:
 
 
 def drc_report(
-    *violations: Violation, unconnected: tuple[Violation, ...] = (), version: str = "10.0.0"
+    *violations: Violation,
+    unconnected: tuple[Violation, ...] = (),
+    parity: tuple[Violation, ...] = (),
+    version: str = "10.0.0",
 ) -> Report:
     return Report(
         kind="drc",
@@ -183,6 +186,7 @@ def drc_report(
         kicad_version=version,
         violations=tuple(violations),
         unconnected=unconnected,
+        schematic_parity=parity,
     )
 
 

@@ -407,6 +407,13 @@ def _item_box(item: Mapping[str, Any]) -> list[float] | None:
     return [min(xs), min(ys), max(xs), max(ys)]
 
 
+def sheet_key(sheet: Any) -> str:
+    """A sheet instance path in canonical form: `/a/b/` for `/a/b/`, `a/b`, `/a/b`; `/` for the
+    root (`""`, `/`)."""
+    inner = str(sheet).strip("/")
+    return f"/{inner}/" if inner else "/"
+
+
 def boxes_intersect(a: Sequence[float], b: Sequence[float]) -> bool:
     return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
 
@@ -432,7 +439,7 @@ def matches(item: Mapping[str, Any], f: Filters) -> bool:
             return False
     if f.sheets:
         sheet = item.get("sheet") or item.get("path")
-        if sheet is not None and str(sheet) not in f.sheets and str(sheet).split("/")[-1] not in f.sheets:
+        if sheet is not None and sheet_key(sheet) not in {sheet_key(x) for x in f.sheets}:
             return False
     if f.bbox_mm:
         box = _item_box(item)

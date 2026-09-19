@@ -1085,6 +1085,28 @@ def test_sch_get_kinds_filters_and_detail(tmp_path: Path):
     assert sh["file"] == "sub.kicad_sch" and sh["pins"] == [{"name": "SIG", "x_mm": 100.0, "y_mm": 55.0}]
 
 
+def test_sch_get_sheets_filter_accepts_stem_file_name_and_path(tmp_path: Path):
+    """`sheets=['sub']` (the spelling every writer takes), `['sub.kicad_sch']` and `['/sub/']`
+    select the same items; a spelling that names no sheet is E_BAD_ARGS with the hierarchy
+    paths as candidates instead of an empty page."""
+    h, _, project = harness(tmp_path)
+    kinds = ["symbols", "wires", "no_connects"]
+    by_path = h.ok("kw_sch_get", project=project, kinds=kinds, sheets=["/sub/"])["data"]
+    assert by_path["counts"] == {"no_connect": 1, "symbol": 1, "wire": 1}
+    for spelling in ("sub", "sub.kicad_sch", "sub/", "/sub"):
+        d = h.ok("kw_sch_get", project=project, kinds=kinds, sheets=[spelling])["data"]
+        assert d["counts"] == by_path["counts"], spelling
+        assert d["filters"]["sheets"] == ["/sub/"], spelling
+    root = h.ok("kw_sch_get", project=project, kinds=["symbols"], sheets=["demo"])["data"]
+    assert root["filters"]["sheets"] == ["/"] and all(i["sheet"] == "/" for i in root["items"])
+    assert (
+        h.ok("kw_sch_get", project=project, kinds=["symbols"], sheets=["demo.kicad_sch"])["data"]["total"]
+        == root["total"]
+    )
+    sc = h.fail("kw_sch_get", "E_BAD_ARGS", project=project, kinds=kinds, sheets=["blinker"])
+    assert sc["candidates"] == ["/", "/sub/"] and "blinker" in sc["message"]
+
+
 def test_sch_get_netlist_prefers_kicad_cli_over_the_file_walk(tmp_path: Path):
     h, backend, project = harness(tmp_path, net=cli_netlist())
     sc = h.ok("kw_sch_get", project=project, kinds=["netlist"])
@@ -1166,7 +1188,9 @@ def test_pcb_check_actionable_items(tmp_path: Path):
     assert off["refs"] == ["C1"] and off["severity"] == "must_fix" and off["pads"] == ["1"]
     assert off["courtyard_bbox_mm"] == [58.5, 3.5, 61.5, 6.5] and off["outside_by_mm"] == 11.5
     assert "pad 1 outside the board outline by 11.5 mm" in off["description"] and "move C1" in off["fix"]
-    assert "kw_pcb_setup" not in off["fix"] and "kw_pcb_route" not in d["items"][3]["fix"]
+    # the fixes name the tools that exist now: kw_pcb_place / kw_pcb_setup(outline) and kw_pcb_route
+    assert "kw_pcb_place" in off["fix"] and "kw_pcb_setup(outline=...)" in off["fix"]
+    assert "kw_pcb_route" in d["items"][3]["fix"] and "planned" not in d["items"][3]["fix"]
     crt = d["items"][1]  # J1: only the courtyard overhangs -> review, does not break ok
     assert crt["refs"] == ["J1"] and crt["severity"] == "review" and crt["outside_by_mm"] == 1.0
     assert crt["courtyard_bbox_mm"] == [-1.0, 20.0, 5.0, 30.0] and "by design" in crt["fix"]
@@ -1317,7 +1341,9 @@ def test_sch_stats_counts_lists_and_per_sheet(tmp_path: Path):
     h, _, project = harness(tmp_path, net=cli_netlist())
     sc = h.ok("kw_sch_stats", project=project)
     d = sc["data"]
-    assert d["ok"] is False and sc["next_suggested"] == "kw_sch_check"
+    assert (
+        d["ok"] is False and sc["next_suggested"] == "kw_sch_edit"
+    )  # a dangling wire end to delete / extend
     assert (d["components"], d["power_symbols"], d["symbols_total"], d["sheets"]) == (2, 1, 3, 1)
     assert d["nets"] == 2 and d["single_node_nets"] == ["VCC"]
     assert (d["dangling_ends"], d["unconnected_pins"], d["label_only_nets"]) == (1, 1, 1)

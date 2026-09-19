@@ -369,10 +369,58 @@ regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`
   `SCH_COMMIT::Push`; `handleApiRequestString` does not catch it, `Reply()` never runs and the
   nng thread waits forever. Minimal repro `patches/repro/g13_repro.py`; issue draft
   `docs/upstream/drafts/g13-issue.md`; live guard test
-  `tests/test_kipy_packaging.py::test_hang_guard_matches_the_live_repro`. Workaround: no update
-  helper in `backends.ipc.writes`; edits of symbol instances go through the file engine;
-  `close()` still terminates the process. **Action:** file the issue with the repro (no MR from
-  us unless assigned); expect a fast fix because it is a hang, not a feature. Effort 0.5 d.
+  `tests/test_kipy_packaging.py::test_hang_guard_matches_the_live_repro`. **Workaround
+  (2026-09-20, `backends.ipc.sch_writes`):** the hang is triggered by echoing the instance
+  `definition` back in `UpdateItems`; with the definition stripped, units 1, 1, 2, 3 of ecc83 U1
+  update in 45 ms each and the server stays alive, so the IPC twins always strip it and
+  multi-unit edits DO run over IPC. The guard (`Unsupported(fallback="file")`) remains for a
+  caller that sends the definition; `close()` still terminates the process. **Action:** file the
+  issue with the repro (no MR from us unless assigned); expect a fast fix because it is a hang,
+  not a feature. Effort 0.5 d.
+- Three more nightly facts recorded while building the twins (10.99.0-4083): echoing the
+  definition also forks a `<Name>_1` library symbol (`lib_name`) for later placements of the
+  same lib_id; `PlaceSymbolFromLibrary` leaves `body_style 0` on the instance (the twins
+  normalise it to 1 with a follow-up `UpdateItems`; kicad-cli reads 0 as style 1); a
+  `SheetSymbol` is accepted by `CreateItems` but `SaveDocument` then fails and `SaveCopyOfDocument`
+  drops it, so sheet creation is file-engine only (`sch_add_sheet` raises `Unsupported`).
+- kicad-python 0.9.0.dev0 (`kipy`): `ZoneConnectionSettings.thermal_spokes` returns a wrapper
+  over a COPY of the proto, so `zone.connection.thermal_spokes.width = …` never reaches the
+  zone; a `Zone()` created through the API then fills with 0-width spokes and every pad reports
+  `starved_thermal`. The twin writes the proto fields directly (verified: the same GND pour that
+  gives 3 `starved_thermal` errors with kipy's defaults is DRC-clean with 0.5 mm gap / spokes).
+- Nightly DRC `lib_footprint_mismatch` (review) has two distinct causes (2026-09-20): (a)
+  `UpdateItems(FootprintInstance)` with a CHANGED orientation leaves 1 nm noise in the
+  footprint's library coordinates → gap **G16** below (guarded: `kw_pcb_place` sends rotating
+  placements to the file engine on affected builds; moves and flips are exact); (b) the
+  nightly's own `ImportNetlist` instantiation of some footprints differs from the library file
+  - `Package_TO_SOT_SMD:SOT-223-3_TabPin2` comes back with the `${REFERENCE}` F.Fab text
+  rotation 90 → 0 and the F.SilkS `fp_poly` closing point dropped (4 → 3 points), while
+  R_0603 / PinHeader import identically. (b) is cosmetic (the copper is exact), stays `review`,
+  and is not worth a guard; the e2e asserts that placement adds no mismatch beyond the sync's.
+
+### G16 — `UpdateItems` with a changed footprint orientation leaves 1 nm noise (priority 3 as a bug report)
+
+- Verified on 10.99.0-4083 (scratchpad phase1b/fixer/t13_rot.py, t13_rot2.py, 2026-09-20), key
+  `ipc.footprint_update_rotation_noise` (true on the matrix's `10.99.0` entry, false on `11.0.0`).
+  A `FootprintInstance` sent to `UpdateItems` with `orientation` different from the board's
+  (0 → 90, 0 → 45, 0 → 180; also together with a flip) comes back with its silkscreen /
+  courtyard lines' library coordinates off by 1 nm (`0.237257` for `0.237258`, `1.379999` for
+  `1.38`), so `kicad-cli pcb drc` on the saved board reports `lib_footprint_mismatch` for that
+  footprint from then on (rotating back to 0 does not remove it). Moving, flipping
+  (`FlipItems`) or locking a footprint that is ALREADY rotated (by the file writer) is exact,
+  as is a no-op `UpdateItems`; the file writer's `place(..., rotation=90)` on the same board is
+  clean. Mechanism (source, 10.99): `FOOTPRINT::Deserialize` sets the new position /
+  orientation on a fresh footprint, then `DeserializeDefinition` re-creates every child from the
+  proto's ABSOLUTE coordinates (serialised at the old orientation) and each `PCB_SHAPE`
+  re-derives its library coordinates through `TRANSFORM_TRS::InverseApply` (double maths,
+  `KiROUND`) - the same rotation through the editor (`SetOrientation` → `OnFootprintTransformed`)
+  rebakes from the untouched library coordinates instead. Stripping `definition` from the proto
+  (the G13 workaround) is not an option here: it clears every pad. **Workaround:**
+  `kw_pcb_place` skips ipc11 for a placement whose `rotation` differs from the footprint's
+  current one when the key is set (`ipc11_guarded`, the file engine answers); moves / flips /
+  locks stay on ipc11. **Action:** bug report with the repro; expect `Deserialize` to rotate the
+  children from the library coordinates (or `UpdateItems` to apply a delta rotation). Effort
+  0.5 d.
 
 ### G14 — kicad-python packaging and launcher (priority 1, Python only, no KiCad build)
 
@@ -466,6 +514,7 @@ Summary table (priority = order of work; "P" = priority):
 | 1 | G14 kicad-python protoc fix + `env=` | Python | 1 d | high | — |
 | 2 | G3 ERC JSON ×100 (#25582) | bug fix | 1 d | high | `cli.erc_json_pos_scale == 1` |
 | 2 | G13 UpdateItems hang | bug report | 0.5 d | — | `ipc.schematic_update_shared_lib_symbol_hangs == false` |
+| 3 | G16 UpdateItems rotation noise (`lib_footprint_mismatch`) | bug report | 0.5 d | — | `ipc.footprint_update_rotation_noise == false` |
 | 2 | G2 DRC/ERC jobs over IPC | feature | 3–5 d | medium | `ipc.has_drc_job`, `ipc.has_erc_job` |
 | — | G6 job handlers headless — **closed, not a gap** (probe artifact) | — | 0 | — | `ipc.headless_jobs` (true) |
 | 3 | G11 library queries headless | fix | 0.5–1 d | high | `ipc.headless_library_queries` |

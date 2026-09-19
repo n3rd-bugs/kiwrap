@@ -190,6 +190,8 @@ class SheetPinRef:
 class WireEnd:
     path: str
     position: Vec2
+    names_path: str = ""  # the `/name/…/` form of `path` (what every other list reports as `sheet`)
+    wire_uuid: str = ""  # the dangling wire (segment) itself, so the agent can delete / extend it
 
 
 @dataclass
@@ -234,7 +236,13 @@ class DerivedNet:
 class Connectivity:
     nets: list[DerivedNet]
     dangling_wire_ends: list[WireEnd]
-    unconnected_pins: list[PinRef]  # pins on a net with no other pin (NC-marked ones included)
+    #: pins KiCad's ERC reports as `pin_not_connected` (`CONNECTION_GRAPH::ercCheckNoConnects`:
+    #: the pin's wire cluster holds no other pin and no label / sheet pin / hierarchical label -
+    #: a pin nothing touches, or one whose only connection is a wire to nowhere; a pin resting on
+    #: a wire's interior counts as untouched). A pin whose only neighbour is a power symbol's pin
+    #: is connected. NC-type pins are exempt (KiCad skips them), hidden pins connect by name,
+    #: NC-marked pins are `no_connect_pins`.
+    unconnected_pins: list[PinRef]
     no_connect_pins: list[PinRef]  # pins on a subgraph with a no-connect MARKER (not NC-type pins)
     label_only_nets: list[DerivedNet]
     warnings: list[str]
@@ -457,8 +465,10 @@ def _build_sheet(
     child_paths: dict[str, str],
     warnings: list[str],
     aliases: Mapping[str, Sequence[str]] | None = None,
+    unconnected_pins: list[PinRef] | None = None,
 ) -> tuple[list[_Subgraph], list[WireEnd], int]:
-    """Union-find over one sheet instance's items; returns its subgraphs and dangling wire ends."""
+    """Union-find over one sheet instance's items; returns its subgraphs and dangling wire ends.
+    Pins nothing touches (`Connectivity.unconnected_pins`) are appended to `unconnected_pins`."""
     sch = inst.file
     items: list[_Item] = []
     uf = _UnionFind()
@@ -551,12 +561,22 @@ def _build_sheet(
                     uf.union(it.id, w.id)
         elif it.kind == "pin":
             p = it.points[0]
-            if len(point_map.get(_key(p), [])) == 1 and any(_line_through(p, w.payload) for w in wires):
-                pr: PinRef = it.payload
+            alone = len(point_map.get(_key(p), [])) == 1
+            pr: PinRef = it.payload
+            if alone and any(_line_through(p, w.payload) for w in wires):
                 warnings.append(
                     f"{inst.names_path}: pin {pr.reference}.{pr.number} at ({p.x}, {p.y}) rests on the interior "
                     "of a wire — KiCad does not connect it (wires connect at their end points only)"
                 )
+            # hidden pins (legacy invisible power pins) connect implicitly by name, never by position
+            if (
+                alone
+                and unconnected_pins is not None
+                and pr.in_netlist
+                and pr.type != "no_connect"
+                and not pr.pin.hidden
+            ):
+                unconnected_pins.append(pr)
 
     dangling: list[WireEnd] = []
     for w in wires:
@@ -564,7 +584,7 @@ def _build_sheet(
             if len(point_map.get(_key(p), [])) == 1 and not any(
                 _line_through(p, o.payload) for o in wires if o is not w
             ):
-                dangling.append(WireEnd(inst.path, p))
+                dangling.append(WireEnd(inst.path, p, inst.names_path, getattr(w.payload, "uuid", "") or ""))
 
     groups: dict[int, list[_Item]] = {}
     for it in items:
@@ -683,18 +703,37 @@ def _strong_names(sg: _Subgraph) -> set[str]:
 # ----------------------------------------------------------------------------------------------
 
 
+def _lonely_pins(subgraphs: list[_Subgraph], unconnected: list[PinRef]) -> None:
+    """KiCad's `pin_not_connected` at the subgraph level (`CONNECTION_GRAPH::ercCheckNoConnects`):
+    a component pin whose wire cluster holds no other pin (a power symbol's pin counts, verified
+    - the pin touches it) and no label / sheet pin / hierarchical label is reported even when a
+    wire runs from it to nowhere (a wire has no driver priority, so it is not a connection).
+    Adds to `unconnected` the pins the point rule in `_build_sheet` did not already list."""
+    seen = {(p.path, p.reference, p.number) for p in unconnected}
+    for sg in subgraphs:
+        if sg.no_connect or sg.labels or sg.sheet_pins or len(sg.pins) != 1:
+            continue
+        pr = sg.pins[0]
+        key = (pr.path, pr.reference, pr.number)
+        if pr.in_netlist and pr.type != "no_connect" and not pr.pin.hidden and key not in seen:
+            unconnected.append(pr)
+            seen.add(key)
+
+
 def pin_connectivity(source: SchematicFile | Hierarchy) -> Connectivity:
     """Derive nets from a schematic file (treated as a single root sheet) or a whole hierarchy."""
     hierarchy = source if isinstance(source, Hierarchy) else Hierarchy.single(source)
     warnings: list[str] = []
     all_subgraphs: list[_Subgraph] = []
     dangling: list[WireEnd] = []
+    unconnected: list[PinRef] = []
     bus_entries = 0
     by_inst: dict[str, list[_Subgraph]] = {}
     aliases = hierarchy.bus_aliases()
     for inst in hierarchy.instances:
         child_paths = {c.sheet.uuid: c.path for c in hierarchy.children(inst) if c.sheet is not None}
-        sgs, dang, be = _build_sheet(inst, child_paths, warnings, aliases)
+        sgs, dang, be = _build_sheet(inst, child_paths, warnings, aliases, unconnected)
+        _lonely_pins(sgs, unconnected)
         all_subgraphs.extend(sgs)
         dangling.extend(dang)
         bus_entries += be
@@ -895,7 +934,7 @@ def pin_connectivity(source: SchematicFile | Hierarchy) -> Connectivity:
             net.is_bus = net.is_bus or r.is_bus
             net.subgraphs += 1
     ordered = sorted(nets.values(), key=lambda n: n.name)
-    unconnected = [p for n in ordered for p in n.pins if len(n.netlist_pins) <= 1 and p.in_netlist]
+    unconnected.sort(key=lambda p: (p.path, p.reference, p.number))
     nc_pins = [p for n in ordered if n.no_connect for p in n.pins]
     return Connectivity(
         nets=ordered,

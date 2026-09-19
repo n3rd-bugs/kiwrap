@@ -54,3 +54,15 @@ Windows writes CRLF, the generators write LF); T1 reads them byte for byte.
 
 All kicad-cli runs that produced or validated these files used a throw-away
 `KICAD_CONFIG_HOME`; `%APPDATA%\kicad` was hashed before and after and never changed.
+
+### `writer/` — schematic authoring engine fixtures (Phase 1b)
+
+| Folder | Files | Origin |
+|---|---|---|
+| `writer/libs` | `Test.kicad_sym` | hand-written 10.0-format library: `T2` (two asymmetric pins), `T2D` (`extends "T2"`, own Footprint/Datasheet/ki_fp_filters), `MU` (three units incl. a power unit), `VCC` (power symbol). Drives `tests/test_sch_writer.py` without KiCad |
+| `writer/blink_<era>` (8, 9, 10, 11) | `blink.kicad_sch`, `.kicad_pro`, `erc_<ver>.json`, `netlist_<ver>.net` | `tests/_sch_designs.build_blink` written by `kiwrap.formats.schematic_writer` at that era's epoch with that install's libraries embedded, then validated by the same kicad-cli (8.0.9 / 9.0.9 / 10.0.6 / 10.99.0): 0 ERC errors, 0 warnings, the intended netlist. Regenerate with `conformance/corpus/writer/generate.py` |
+| `writer/hier_<era>` (10, 11) | `top.kicad_sch`, `amp.kicad_sch`, `source.kicad_sch`, `.kicad_pro`, ERC JSON, netlist | `build_hierarchy`: root + `source` + `amp.kicad_sch` placed twice with a 3-unit LM358 per instance (U1/U2, R1/R2 per-instance references), hierarchical labels + sheet pins, global labels; same validation |
+
+`conformance/tests/t8_sch_writer.py` rebuilds the designs at every installed KiCad's epoch, and
+additionally loads each committed era fixture with every kicad-cli whose era is the same or
+newer (the cross-version load matrix of `spikes/schematic-authoring/dialects/matrix.txt`).

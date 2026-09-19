@@ -37,9 +37,9 @@ STAGE_INPUTS: dict[str, tuple[str, ...]] = {
 NEXT_SUGGESTED: dict[str, str | None] = {
     "created": "kw_sch_check",
     "sch_written": "kw_sch_check",
-    "erc_clean": "kw_pcb_drc",
-    "synced": "kw_pcb_drc",
-    "placed": "kw_pcb_drc",
+    "erc_clean": "kw_pcb_sync",
+    "synced": "kw_pcb_place",
+    "placed": "kw_pcb_route",
     "routed": "kw_pcb_drc",
     "drc_clean": "kw_fab_export",
     "exported": None,

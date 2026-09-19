@@ -23,7 +23,14 @@ from pydantic import BaseModel, Field
 
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project, ProjectState
-from kiwrap.core.state.stages import downgrade_below, record_stage, sha256_file
+from kiwrap.core.state.stages import (
+    STAGE_INPUTS,
+    STAGES,
+    downgrade_below,
+    record_stage,
+    sha256_file,
+    stage_index,
+)
 from kiwrap.core.tools._base import MUTATING, ToolContext, ToolSpec, mutation, to_kiwrap_error
 
 DRC_MUST_FIX = (
@@ -44,6 +51,39 @@ MAX_VIOLATIONS = 500
 
 def install_for(ctx: ToolContext, state: ProjectState) -> Any:
     return ctx.services.install(state.target_kicad)
+
+
+def board_has_copper_zones(ctx: ToolContext, project: Project) -> bool:
+    """True when the board has a copper zone (a net, not a rule area) - then a DRC is only
+    meaningful against a fresh fill (reviewer finding, 2026-09-20). Unknown counts as False."""
+    try:
+        model = ctx.services.file_read_board(project.board)
+    except KiwrapError as err:
+        if err.code == "E_UNSUPPORTED":
+            return False
+        raise
+    for zone in getattr(model, "zones", None) or []:
+        if getattr(zone, "is_rule_area", False) or getattr(zone, "keepout", False):
+            continue
+        net = getattr(zone, "net", None)
+        name = net if isinstance(net, str) else getattr(net, "name", "")
+        if name:
+            return True
+    return False
+
+
+def involves_zone(violation: dict[str, Any]) -> bool:
+    return any(str(i.get("description") or "").startswith("Zone") for i in violation.get("items", []))
+
+
+def rehash_board_stages_upto(project: Project, state: ProjectState, keep: str) -> None:
+    """Re-record the input hashes of every board-derived stage up to `keep` after kiwrap itself
+    (here: kicad-cli's `--refill-zones --save-board`) rewrote the board, so `check_external_edit`
+    keeps the stage. Same rule as `kiwrap.core.tools._author.rehash_board_stages`, which cannot
+    be imported here (that module imports this one)."""
+    for stage in STAGES[: stage_index(keep) + 1]:
+        if stage in state.hashes and "pcb" in STAGE_INPUTS[stage]:
+            record_stage(project, state, stage, advance=False)
 
 
 def pos_dict(pos: Any) -> dict[str, float] | None:
@@ -119,6 +159,93 @@ def classify_drc(v: Any, *, must_fix: tuple[str, ...], review: tuple[str, ...], 
     if v.severity == "error":
         return "must_fix"
     return "review" if v.type in must_fix or v.severity == "warning" else "cosmetic"
+
+
+# ---- what to run after a failing validator ---------------------------------------------------------
+
+#: ERC violation type -> the schematic tool that fixes it (first match in this order wins)
+ERC_FIX_TOOLS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("power_pin_not_driven",), "kw_sch_add_item"),  # a pwr_flag item on the undriven net
+    (
+        (
+            "pin_not_connected",
+            "unconnected_wire_endpoint",
+            "wire_dangling",
+            "label_dangling",
+            "isolated_pin_label",
+            "pin_not_driven",
+        ),
+        "kw_sch_connect",
+    ),
+    (("no_connect_connected", "no_connect_dangling"), "kw_sch_edit"),
+    (
+        (
+            "unannotated",
+            "duplicate_reference",
+            "extra_units",
+            "different_unit_footprint",
+            "different_unit_net",
+        ),
+        "kw_sch_annotate",
+    ),
+    (
+        ("lib_symbol_issues", "lib_symbol_mismatch", "footprint_link_issues", "missing_footprint"),
+        "kw_sch_assign_footprints",
+    ),
+)
+#: DRC violation type -> the board tool that fixes it
+DRC_FIX_TOOLS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (
+        (
+            "schematic_parity",
+            "footprint",
+            "net_conflict",
+            "missing_footprint",
+            "extra_footprint",
+            "footprint_type_mismatch",
+        ),
+        "kw_pcb_sync",
+    ),
+    (
+        (
+            "courtyards_overlap",
+            "copper_edge_clearance",
+            "footprints_overlap",
+            "silk_overlap",
+            "silk_over_copper",
+        ),
+        "kw_pcb_place",
+    ),
+    (
+        (
+            "unconnected_items",
+            "clearance",
+            "shorting_items",
+            "tracks_crossing",
+            "track_width",
+            "via_dangling",
+            "track_dangling",
+            "hole_clearance",
+            "via_hole_larger_than_pad",
+            "drill_out_of_range",
+            "via_diameter",
+            "annular_width",
+        ),
+        "kw_pcb_route",
+    ),
+    (("starved_thermal", "isolated_copper", "zone_has_empty_net", "copper_sliver"), "kw_pcb_zones"),
+)
+
+
+def fix_tool_for(types: list[str], table: tuple[tuple[tuple[str, ...], str], ...], fallback: str) -> str:
+    """The tool that fixes the first listed violation type (a failing validator must never suggest
+    itself: an agent following `next_suggested` would loop on the check - reviewer finding,
+    2026-09-20)."""
+    seen = {str(t) for t in types}
+    for names, tool in table:
+        if seen & set(names):
+            return tool
+    return fallback
 
 
 # ---- kw_sch_check ---------------------------------------------------------------------------------
@@ -202,7 +329,8 @@ def sch_check(ctx: ToolContext, args: SchCheckArgs) -> Receipt:
         m.receipt.warnings.extend(receipt_warnings)
         m.receipt.data = data
         if not ok:
-            m.receipt.next_suggested = "kw_sch_check"
+            error_types = [v["type"] for v in violations if v["severity"] == "error"]
+            m.receipt.next_suggested = fix_tool_for(error_types, ERC_FIX_TOOLS, "kw_sch_connect")
         return m.receipt
 
 
@@ -227,12 +355,17 @@ class PcbDrcArgs(BaseModel):
     schematic_parity: bool = Field(
         default=False, description="also check footprint/net parity against the schematic"
     )
-    refill_zones: bool = Field(
-        default=False,
-        description="refill copper zones before checking (needs the cli.drc_refill_flags capability; else E_UNSUPPORTED)",
+    refill_zones: bool | None = Field(
+        default=None,
+        description=(
+            "refill copper zones before checking (needs the cli.drc_refill_flags capability; else E_UNSUPPORTED). "
+            "Default (null): refill when the board has copper zones and this KiCad can - a DRC against a stale "
+            "fill reports tracks added since the last fill as clearance errors against the pour"
+        ),
     )
-    save_board: bool = Field(
-        default=False, description="with refill_zones: write the refilled zones back to the board"
+    save_board: bool | None = Field(
+        default=None,
+        description="with refill_zones: write the refilled zones back to the board (default: yes when refilling by default)",
     )
     severity: Severity = Field(
         default="all",
@@ -252,15 +385,39 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
         install = install_for(ctx, m.state)
         caps = ctx.services.caps(install)
         config = ctx.services.config_root(install)
+        refill = args.refill_zones
+        save = args.save_board
+        stale_zones = False
+        if refill is None:
+            zones = board_has_copper_zones(ctx, project)
+            refill = zones and caps.has("cli.drc_refill_flags")
+            if zones and not refill:
+                stale_zones = True
+                m.receipt.degraded.append("zones_stale")
+                m.receipt.warnings.append(
+                    "the board has copper zones but this KiCad cannot refill them headless (cli.drc_refill_flags): "
+                    "the check runs against the fill on disk; track-vs-zone clearance items are listed as review"
+                )
+            if save is None:
+                save = refill
+        save = bool(save) and bool(refill)
+        board_sha_before = sha256_file(project.board)
         report = ctx.services.run_drc(
             install,
             config,
             project.board,
             schematic_parity=args.schematic_parity,
-            refill_zones=args.refill_zones,
-            save_board=args.save_board and args.refill_zones,
+            refill_zones=bool(refill),
+            save_board=save,
             severity=args.severity,
         )
+        if sha256_file(project.board) != board_sha_before:
+            # kicad-cli rewrote the board (refill_zones + save_board): re-hash the board-derived
+            # stages up to the current one so the next call does not take kiwrap's own save for
+            # an external edit and drop the project back to erc_clean (kw_pcb_author does the
+            # same after its refills; reviewer finding, 2026-09-20).
+            rehash_board_stages_upto(project, m.state, m.state.stage)
+            m.receipt.changed["updated"].append(project.board.name)
         must_fix_t = _table(caps, "rules.drc_must_fix", DRC_MUST_FIX)
         review_t = _table(caps, "rules.drc_review", DRC_REVIEW)
         cosmetic_prefix = _text(caps, "rules.drc_cosmetic_prefix", DRC_COSMETIC_PREFIX)
@@ -273,6 +430,9 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
             d["class"] = classify_drc(
                 v, must_fix=must_fix_t, review=review_t, cosmetic_prefix=cosmetic_prefix
             )
+            if stale_zones and d["class"] == "must_fix" and v.type == "clearance" and involves_zone(d):
+                d["class"] = "review"
+                d["note"] = "against a stale zone fill; re-check with refill_zones=true on a KiCad 10+"
             buckets[d["class"]].append(d)
         must_fix = len(buckets["must_fix"])
         ok = must_fix == 0
@@ -292,8 +452,8 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
             "violations_truncated": max(0, len(all_v) - MAX_VIOLATIONS),
             "options": {
                 "schematic_parity": args.schematic_parity,
-                "refill_zones": args.refill_zones,
-                "save_board": args.save_board,
+                "refill_zones": bool(refill),
+                "save_board": save,
             },
         }
         m.validator_delta(
@@ -315,8 +475,6 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
                     else ""
                 )
             )
-        if args.refill_zones and args.save_board:
-            m.receipt.changed["updated"].append(project.board.name)
         if ok:
             record_stage(project, m.state, "drc_clean")
         else:
@@ -325,7 +483,10 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
         m.receipt.provider_used = ctx.services.provider(install)
         m.receipt.data = data
         if not ok:
-            m.receipt.next_suggested = "kw_pcb_drc"
+            must_types = [v["type"] for v in buckets["must_fix"]]
+            if any(not getattr(x, "excluded", False) for x in report.schematic_parity):
+                must_types = ["schematic_parity", *must_types]
+            m.receipt.next_suggested = fix_tool_for(must_types, DRC_FIX_TOOLS, "kw_pcb_route")
         return m.receipt
 
 

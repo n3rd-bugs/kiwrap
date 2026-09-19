@@ -401,6 +401,7 @@
    "ipc.headless_libraries_need_load": "docs",
    "ipc.headless_jobs": "docs",
    "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
+   "ipc.footprint_update_rotation_noise": "docs",
    "cli.drc_error_limit": "docs",
    "cli.drc_extended_error_limit": "docs",
    "cli.drc_extended_error_types": "docs",
@@ -712,6 +713,7 @@
    "ipc.headless_libraries_need_load": "verified",
    "ipc.headless_jobs": "verified",
    "ipc.schematic_update_shared_lib_symbol_hangs": "verified",
+   "ipc.footprint_update_rotation_noise": "verified",
    "cli.drc_error_limit": "verified",
    "cli.drc_extended_error_limit": "verified",
    "cli.drc_extended_error_types": "verified",
@@ -3809,6 +3811,7 @@
     "ipc.headless_libraries_need_load": true,
     "ipc.headless_jobs": true,
     "ipc.schematic_update_shared_lib_symbol_hangs": true,
+    "ipc.footprint_update_rotation_noise": true,
     "formats.pro": 4
    }
   },
@@ -3897,6 +3900,7 @@
     "ipc.headless_libraries_need_load": true,
     "ipc.headless_jobs": true,
     "ipc.schematic_update_shared_lib_symbol_hangs": false,
+    "ipc.footprint_update_rotation_noise": false,
     "cli.has_ratsnest_export": false,
     "ipc.has_get_ratsnest": false
    }

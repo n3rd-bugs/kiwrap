@@ -32,10 +32,15 @@ from kiwrap.core.tools._base import ToolContext, ToolSpec, make_callable, to_kiw
 from kiwrap.platform import current
 
 INSTRUCTIONS = (
-    "kiwrap drives installed KiCad binaries. Flow: kw_env -> kw_project(create) -> kw_sch_check -> "
-    "kw_pcb_drc -> kw_fab_export. Data first: after every change query structured state (kw_sch_get / "
-    "kw_sch_stats / kw_pcb_get / kw_pcb_check) and act on it; renders (kw_sch_render / kw_pcb_render) are "
-    "secondary. Never edit .kicad_* files by hand (stages downgrade with external_edit). "
+    "kiwrap drives installed KiCad binaries. Flow: kw_env -> kw_project(create) -> kw_sch_add_symbol (returns "
+    "absolute pin endpoints) -> kw_sch_connect (by ref+pin) / kw_sch_add_item (power, PWR_FLAG, no-connect, "
+    "labels, sheets) -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints "
+    "-> kw_pcb_setup -> kw_pcb_sync (gated on erc_clean) -> kw_pcb_place with kw_pcb_check / kw_pcb_get feedback "
+    "-> kw_pcb_zones / kw_pcb_route -> kw_pcb_drc -> kw_fab_export. Every mutation runs its validator (ERC / DRC / "
+    "placement checks) and puts the numbers in the receipt (validators[], stage, next_suggested, snapshot). "
+    "Data first: after every change query structured state (kw_sch_get / kw_sch_stats / kw_pcb_get / "
+    "kw_pcb_check) and act on it; renders (kw_sch_render / kw_pcb_render) are secondary. Never edit .kicad_* "
+    "files by hand (stages downgrade with external_edit); never guess library ids or pin positions. "
     "Positions are millimetres. Errors are isError results with {code, message, why, fix, candidates, example}; "
     "kw_help(topic=<code or tool>) explains each. kw_snapshot(restore) is undo."
 )
@@ -51,6 +56,18 @@ REPORT_TOOLS = {
     "kw_sch_diff",
     "kw_pcb_get",
     "kw_pcb_check",
+    # authoring receipts embed their validator's violations / the placement items
+    "kw_sch_add_symbol",
+    "kw_sch_connect",
+    "kw_sch_add_item",
+    "kw_sch_edit",
+    "kw_sch_annotate",
+    "kw_sch_assign_footprints",
+    "kw_pcb_setup",
+    "kw_pcb_sync",
+    "kw_pcb_place",
+    "kw_pcb_zones",
+    "kw_pcb_route",
 }
 MAX_RESULT_CHARS = 60_000
 
@@ -121,7 +138,9 @@ def register_tools(mcp: MCPServer, ctx: ToolContext, specs: tuple[ToolSpec, ...]
 def build_server(
     storage_home: Path | None = None, *, services: Services | None = None, context: ToolContext | None = None
 ) -> MCPServer:
-    """Create the server with every catalog tool (`ALL_TOOLS`) registered in catalog order."""
+    """Create the server with every catalog tool (`ALL_TOOLS`) registered in catalog order (setup,
+    then per stage: the authoring tools, the data-first reads, the validator, the render; the
+    catalog is the single source of the order, so `tools/list` is identical across processes)."""
     ctx = context or build_context(storage_home, services)
     mcp = KiwrapServer(name="kiwrap", version=__version__, instructions=INSTRUCTIONS)
     register_tools(mcp, ctx)

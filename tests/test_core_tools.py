@@ -45,6 +45,9 @@ ERROR_CODES = (
     "E_EXTERNAL_EDIT",
     "E_TIMEOUT",
     "E_INTERNAL",
+    "E_LIB_NOT_FOUND",
+    "E_LIB_UNSUPPORTED",
+    "E_LIB",
 )
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH (snapshots)")
@@ -109,11 +112,24 @@ def test_catalog_is_deterministic_and_annotated():
         "kw_snapshot",
         "kw_job",
         "kw_help",
+        "kw_lib_search",
+        "kw_lib_info",
+        "kw_sch_add_symbol",
+        "kw_sch_connect",
+        "kw_sch_add_item",
+        "kw_sch_edit",
+        "kw_sch_annotate",
+        "kw_sch_assign_footprints",
         "kw_sch_get",
         "kw_sch_check",
         "kw_sch_stats",
         "kw_sch_diff",
         "kw_sch_render",
+        "kw_pcb_setup",
+        "kw_pcb_sync",
+        "kw_pcb_place",
+        "kw_pcb_zones",
+        "kw_pcb_route",
         "kw_pcb_get",
         "kw_pcb_check",
         "kw_pcb_drc",
@@ -294,7 +310,7 @@ def test_sch_check_ok_advances_to_erc_clean(h: Harness):
     assert sc["ok"] and sc["stage"] == "erc_clean" and sc["provider_used"] == "cli:10.0.0"
     assert sc["validators"] == [{"name": "erc", "before": None, "after": 0, "detail": {"warnings": 0}}]
     assert sc["data"]["netlist"]["components"] == 1 and sc["data"]["netlist"]["nets"] == 1
-    assert sc["next_suggested"] == "kw_pcb_drc" and sc["snapshot"]
+    assert sc["next_suggested"] == "kw_pcb_sync" and sc["snapshot"]
     run = next(c for c in h.backend.calls if c[0] == "run_erc")
     assert run[1]["units"] == "mm" and run[1]["schematic"].endswith("demo.kicad_sch")
 
@@ -305,7 +321,8 @@ def test_sch_check_errors_and_warnings(h: Harness):
         violation("pin_not_connected", "error", 12.7, 25.4), violation("lib_symbol_mismatch", "warning")
     )
     sc = h.ok("kw_sch_check", project=proj)
-    assert not sc["ok"] and sc["stage"] == "created" and sc["next_suggested"] == "kw_sch_check"
+    # a failing check suggests the FIXING tool, never itself (pin_not_connected -> a wire)
+    assert not sc["ok"] and sc["stage"] == "created" and sc["next_suggested"] == "kw_sch_connect"
     v = sc["data"]["violations"][0]
     assert v["pos"] == {"x_mm": 12.7, "y_mm": 25.4} and v["items"][0]["uuid"].startswith("1111")
     assert sc["data"]["errors"] == 1 and sc["data"]["warnings"] == 1
@@ -391,7 +408,47 @@ def test_pcb_drc_failure_downgrades(h: Harness):
     assert h.ok("kw_project", action="status", project=proj)["data"]["stage"] == "drc_clean"
     h.backend.drc = drc_report(violation("clearance", "error", sheet=None))
     sc = h.ok("kw_pcb_drc", project=proj)
-    assert sc["stage"] == "erc_clean"
+    assert sc["stage"] == "erc_clean" and sc["next_suggested"] == "kw_pcb_route"
+    h.backend.drc = drc_report(
+        violation("copper_edge_clearance", "error", sheet=None), violation("clearance", "error", sheet=None)
+    )
+    assert h.ok("kw_pcb_drc", project=proj)["next_suggested"] == "kw_pcb_place"
+    h.backend.drc = drc_report(parity=(violation("footprint_type_mismatch", "error", sheet=None),))
+    assert h.ok("kw_pcb_drc", project=proj, schematic_parity=True)["next_suggested"] == "kw_pcb_sync"
+    h.backend.erc = erc_report(violation("power_pin_not_driven", "error"))
+    assert h.ok("kw_sch_check", project=proj)["next_suggested"] == "kw_sch_add_item"
+
+
+def test_pcb_drc_saving_refill_is_not_an_external_edit(h: Harness):
+    """kw_pcb_drc(refill_zones, save_board) lets kicad-cli rewrite the board: the board-derived
+    stage hashes must follow, or the next call downgrades the project to erc_clean with
+    `external_edit` (reviewer finding: kw_fab_export was then gated out)."""
+    proj = h.create()
+    h.ok("kw_sch_check", project=proj)
+    h.ok("kw_pcb_drc", project=proj)
+    assert h.ok("kw_project", action="status", project=proj)["data"]["stage"] == "drc_clean"
+    board = h.work / "demo" / "demo.kicad_pcb"
+    real_run_drc = h.backend.run_drc
+
+    def run_drc_that_saves(install: Any, config: Any, board_path: Path, **kw: Any) -> Any:
+        if kw.get("save_board"):
+            Path(board_path).write_text(
+                Path(board_path).read_text(encoding="utf-8") + "\n(zone (filled_polygon))\n", encoding="utf-8"
+            )
+        return real_run_drc(install, config, board_path, **kw)
+
+    h.ctx.services.run_drc = run_drc_that_saves  # type: ignore[method-assign]
+    sha_before = __import__("hashlib").sha256(board.read_bytes()).hexdigest()
+    sc = h.ok("kw_pcb_drc", project=proj, refill_zones=True, save_board=True)
+    assert (
+        sc["stage"] == "drc_clean" and sc["changed"]["updated"] == ["demo.kicad_pcb"] and sc["degraded"] == []
+    )
+    assert __import__("hashlib").sha256(board.read_bytes()).hexdigest() != sha_before
+    status = h.ok("kw_project", action="status", project=proj)
+    assert status["data"]["stage"] == "drc_clean" and "external_edit" not in status["degraded"], status
+    # a DRC that does not save leaves the receipt's changed list empty
+    sc = h.ok("kw_pcb_drc", project=proj)
+    assert sc["changed"]["updated"] == [] and sc["stage"] == "drc_clean"
 
 
 def test_pcb_drc_refill_unsupported(h: Harness):
@@ -406,7 +463,9 @@ def test_pcb_drc_refill_unsupported(h: Harness):
 
 def test_old_dialect_project_gets_no_impossible_suggestion(tmp_path: Path):
     """Finding: a KiCad 7 project kept suggesting kw_sch_check, which fails identically every time."""
-    backend = FakeBackend(installs=[FakeInstall("7.0.6"), FakeInstall("10.0.0")], caps={"7.0.6": CAPS_7, "10.0.0": CAPS_10})
+    backend = FakeBackend(
+        installs=[FakeInstall("7.0.6"), FakeInstall("10.0.0")], caps={"7.0.6": CAPS_7, "10.0.0": CAPS_10}
+    )
     h = Harness(tmp_path, backend)
     proj = h.create("old", target_kicad="7")
     sc = h.ok("kw_project", action="status", project=proj)
@@ -518,7 +577,9 @@ def test_fab_export_clean_only_deletes_kiwrap_output(h: Harness, tmp_path: Path)
     (docs / "pdf" / "thesis.pdf").write_text("precious")
     # default for an explicit out_dir is clean=false: nothing is deleted, output written alongside
     sc = h.ok("kw_fab_export", project=proj, targets=["pdf"], out_dir=str(docs))
-    assert (docs / "pdf" / "thesis.pdf").read_text() == "precious" and (docs / "pdf" / ".kiwrap-export").is_file()
+    assert (docs / "pdf" / "thesis.pdf").read_text() == "precious" and (
+        docs / "pdf" / ".kiwrap-export"
+    ).is_file()
     # explicit clean=true on a directory that kiwrap did not write is refused
     (docs / "svg").mkdir()
     (docs / "svg" / "logo.svg").write_text("<svg/>")
@@ -647,12 +708,17 @@ def test_mutation_prologue_releases_own_ipc_sessions_and_reports_busy_reads(h: H
     sc = h.ok("kw_sch_check", project=proj)
     assert calls == [Path(proj).resolve()] and not lck.exists() and sc["ok"] is True
 
-    h.ctx.services.ipc_release_project = lambda directory: {"closed": [], "busy": [str(Path(proj, "demo.kicad_pcb"))]}
+    h.ctx.services.ipc_release_project = lambda directory: {
+        "closed": [],
+        "busy": [str(Path(proj, "demo.kicad_pcb"))],
+    }
     sc = h.fail("kw_sch_check", "E_BUSY", project=proj)
     assert sc["candidates"] == ["demo.kicad_pcb"] and "retry" in sc["fix"]
 
     def unsupported(directory):
-        raise KiwrapError("E_UNSUPPORTED", "no IPC backend in this build", data={"service": "ipc_release_project"})
+        raise KiwrapError(
+            "E_UNSUPPORTED", "no IPC backend in this build", data={"service": "ipc_release_project"}
+        )
 
     h.ctx.services.ipc_release_project = unsupported
     assert h.ok("kw_sch_check", project=proj)["ok"] is True  # a build without IPC just skips the step
@@ -774,6 +840,47 @@ def test_every_error_code_is_producible(h: Harness):
     assert to_kiwrap_error(TimeoutError("slow")).code == "E_TIMEOUT"
     assert to_kiwrap_error(ValueError("unknown severity")).code == "E_BAD_ARGS"
     assert to_kiwrap_error(RuntimeError("?")).code == "E_INTERNAL"
+
+
+def test_writer_and_library_errors_keep_their_teaching_shape(h: Harness):
+    """An unknown lib_id in kw_sch_add_symbol is the library tools' E_LIB_NOT_FOUND with the
+    resolver's candidates and a search-first fix - not a generic E_BAD_ARGS pointing at the
+    schema (WriterError is a ValueError; reviewer finding, 2026-09-20)."""
+    from kiwrap.formats.libs import NotFound
+    from kiwrap.formats.schematic_writer import SchematicWriter, WriterError
+
+    err = to_kiwrap_error(
+        WriterError(
+            "E_SYMBOL_NOT_FOUND", "cannot resolve 'Device:Resistor'", fix="search first", candidates=["R"]
+        )
+    )
+    assert err.code == "E_LIB_NOT_FOUND" and err.candidates == ["R"] and err.fix == "search first"
+    assert err.data["writer_code"] == "E_SYMBOL_NOT_FOUND"
+    other = to_kiwrap_error(WriterError("E_REF_TAKEN", "R1 is taken", fix="pass ref=None"))
+    assert (
+        other.code == "E_BAD_ARGS"
+        and other.fix == "pass ref=None"
+        and other.data["writer_code"] == "E_REF_TAKEN"
+    )
+    lib = to_kiwrap_error(
+        NotFound("no symbol R_0603 in Device", fix="search with kw_lib_search first", candidates=["R"])
+    )
+    assert lib.code == "E_LIB_NOT_FOUND" and lib.candidates == ["R"] and "kw_lib_search" in lib.fix
+
+    class Resolver:
+        def symbol(self, lib_id: str):
+            raise NotFound(
+                f"no symbol {lib_id}", fix="search with kw_lib_search first", candidates=["R", "R_Small"]
+            )
+
+    w = SchematicWriter(h.work, epoch={"sch": 20260306, "sym": 20251024}, lib_resolver=Resolver())
+    w.load(h.work / "x.kicad_sch")
+    with pytest.raises(WriterError) as info:
+        w.add_symbol("Device:Resistor", None, None, (0, 0))
+    assert info.value.code == "E_SYMBOL_NOT_FOUND" and info.value.candidates == ["R", "R_Small"]
+    mapped = to_kiwrap_error(info.value)
+    assert mapped.code == "E_LIB_NOT_FOUND" and mapped.candidates == ["R", "R_Small"]
+    assert "kw_lib_search" in mapped.fix
 
 
 def test_build_context_uses_storage_home(tmp_path: Path):

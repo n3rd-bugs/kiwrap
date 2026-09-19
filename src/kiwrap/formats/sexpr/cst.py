@@ -823,6 +823,9 @@ def dumps(node: Node) -> str:
 
 
 def dump(node: Node, path: str | Path) -> None:
-    """Write UTF-8 with the tree's own line endings (no translation)."""
-    with Path(path).open("w", encoding="utf-8", newline="") as fh:
-        fh.write(dumps(node))
+    """Write UTF-8 with the tree's own line endings (no translation), atomically: a temp file next
+    to `path` is replaced over it, so a kill mid-write leaves the previous file intact
+    (`kiwrap.formats.fileio.atomic_write_text`)."""
+    from kiwrap.formats.fileio import atomic_write_text
+
+    atomic_write_text(path, dumps(node), newline="")

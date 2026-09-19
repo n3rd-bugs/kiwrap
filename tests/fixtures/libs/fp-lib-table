@@ -1,0 +1,6 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "Test") (type "KiCad") (uri "${KIWRAP_TEST_LIBS}/Test.pretty") (options "") (descr "test footprints"))
+	(lib (name "Legacy9") (type "KiCad") (uri "${KICAD9_FOOTPRINT_DIR}/Resistor_SMD.pretty") (options "") (descr "old versioned var"))
+	(lib (name "Tilde") (type "KiCad") (uri "~/no-such-dir.pretty") (options "") (descr "home-relative"))
+)

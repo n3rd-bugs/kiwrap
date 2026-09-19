@@ -1,0 +1,11 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "Test") (type "KiCad") (uri "${KIWRAP_TEST_LIBS}/Test.kicad_sym") (options "") (descr "test symbols"))
+	(lib (name "Hidden") (type "KiCad") (uri "${KIWRAP_TEST_LIBS}/Test.kicad_sym") (options "") (descr "hidden row") (hidden))
+	(lib (name "Off") (type "KiCad") (uri "${KIWRAP_TEST_LIBS}/Test.kicad_sym") (options "") (descr "disabled row") (disabled))
+	(lib (name "Old") (type "Legacy") (uri "${KIWRAP_TEST_LIBS}/old.lib") (options "") (descr "legacy row"))
+	(lib (name "Gone") (type "KiCad") (uri "${KIWRAP_TEST_LIBS}/missing.kicad_sym") (options "") (descr "missing file"))
+	(lib (name "Unset") (type "KiCad") (uri "${NO_SUCH_VAR_KIWRAP}/x.kicad_sym") (options "") (descr "unresolved var"))
+	(lib (name "Nested") (type "Table") (uri "nested/sym-lib-table") (options "") (descr "nested table"))
+	(lib (name "NestedOff") (type "Table") (uri "nested/sym-lib-table") (options "") (descr "disabled nested") (disabled))
+)

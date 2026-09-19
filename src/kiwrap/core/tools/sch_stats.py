@@ -44,10 +44,10 @@ def norm_connectivity(c: Any) -> dict[str, Any]:
         x, y = _xy(dr)
         dangling.append(
             {
-                "sheet": pick(dr, "sheet", "names_path", "sheet_path", "path", default="/"),
+                "sheet": pick(dr, "sheet", "names_path", "sheet_path", "path", default="/") or "/",
                 "x_mm": x,
                 "y_mm": y,
-                "uuid": pick(dr, "uuid", "id"),
+                "uuid": pick(dr, "uuid", "wire_uuid", "id") or None,
             }
         )
     dangling.sort(key=lambda d: (d["sheet"], d["x_mm"] or 0.0, d["y_mm"] or 0.0, d["uuid"] or ""))
@@ -206,12 +206,20 @@ def sch_stats(ctx: ToolContext, args: SchStatsArgs) -> Receipt:
         }
         data["ok"] = not (conn["dangling_ends"] or conn["unconnected_pins"] or conn["label_only_nets"])
 
+    if data.get("dangling_ends") or data.get("unconnected_pins"):
+        # a wire to nowhere is deleted / extended with kw_sch_edit or kw_sch_connect; an
+        # unconnected pin needs a wire, a label, a power symbol or a no_connect item
+        next_tool = "kw_sch_edit" if data.get("dangling_ends") else "kw_sch_connect"
+    elif data.get("label_only_nets"):
+        next_tool = "kw_sch_connect"
+    else:
+        next_tool = "kw_sch_check"
     return Receipt(
         provider_used=outcome.provider_used(install),
         degraded=degraded,
         warnings=warnings,
         stage=state.stage,
-        next_suggested="kw_sch_check",
+        next_suggested=next_tool,
         data=data,
     )
 

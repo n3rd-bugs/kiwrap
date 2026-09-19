@@ -18,6 +18,7 @@ and properties).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -344,6 +345,56 @@ def norm_rules(board_rec: dict[str, Any]) -> dict[str, Any] | None:
         "copper_layers": copper,
         "netclasses": dict(sorted(classes.items())),
     }
+
+
+#: `.kicad_pro` netclass keys (KiCad's `NETCLASS` JSON, mm) -> the tool's names
+_NETCLASS_KEYS = {
+    "clearance": "clearance_mm",
+    "track_width": "track_width_mm",
+    "via_diameter": "via_size_mm",
+    "via_drill": "via_drill_mm",
+    "microvia_diameter": "microvia_size_mm",
+    "microvia_drill": "microvia_drill_mm",
+    "diff_pair_width": "diff_pair_width_mm",
+    "diff_pair_gap": "diff_pair_gap_mm",
+    "diff_pair_via_gap": "diff_pair_via_gap_mm",
+}
+
+
+def project_netclasses(pro_path: Path | None) -> dict[str, dict[str, Any]]:
+    """`{name: {clearance_mm, track_width_mm, via_size_mm, via_drill_mm, ..., nets: [patterns],
+    priority}}` from the project's `net_settings` (`classes` + `netclass_patterns`): the
+    assignment kw_pcb_setup wrote, readable back on every provider (neither reader carries
+    netclasses; reviewer finding, 2026-09-20). Empty when the file is missing or unreadable."""
+    if pro_path is None or not pro_path.is_file():
+        return {}
+    try:
+        doc = json.loads(pro_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    ns = doc.get("net_settings") if isinstance(doc, dict) else None
+    if not isinstance(ns, dict):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for cls in ns.get("classes") or []:
+        if not isinstance(cls, dict) or not cls.get("name"):
+            continue
+        entry: dict[str, Any] = {}
+        for key, name in _NETCLASS_KEYS.items():
+            val = cls.get(key)
+            if isinstance(val, (int, float)):
+                entry[name] = round(float(val), 4)
+        if isinstance(cls.get("priority"), int):
+            entry["priority"] = cls["priority"]
+        entry["nets"] = []
+        out[str(cls["name"])] = entry
+    for pat in ns.get("netclass_patterns") or []:
+        if not isinstance(pat, dict):
+            continue
+        nc_name, pattern = pat.get("netclass"), pat.get("pattern")
+        if nc_name and pattern is not None:
+            out.setdefault(str(nc_name), {"nets": []})["nets"].append(str(pattern))
+    return dict(sorted(out.items()))
 
 
 def norm_unrouted(u: Any) -> dict[str, Any]:
@@ -889,6 +940,8 @@ def pcb_get(ctx: ToolContext, args: PcbGetArgs) -> Receipt:
             warnings.append("no board outline (Edge.Cuts) found")
     if "rules" in args.kinds:
         data["rules"] = norm_rules(r)
+        if data["rules"] is not None and not data["rules"].get("netclasses"):
+            data["rules"]["netclasses"] = project_netclasses(project.pro_path)
     if "connectivity" in args.kinds:
         conn = read_connectivity(
             ctx,

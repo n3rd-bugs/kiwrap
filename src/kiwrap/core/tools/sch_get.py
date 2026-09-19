@@ -20,6 +20,7 @@ placed N times yields N items per wire/symbol, one per instance (reviewer findin
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -48,6 +49,7 @@ from kiwrap.core.tools._data import (
     prune,
     rec,
     ref_key,
+    sheet_key,
 )
 from kiwrap.core.tools.pcb_get import ProviderArg, ipc_session
 
@@ -386,6 +388,50 @@ def _flatten_hierarchy(hier: Any) -> dict[str, list[dict[str, Any]]]:
     return _sort(lists)
 
 
+def resolve_sheet_filters(
+    requested: tuple[str, ...], lists: dict[str, list[dict[str, Any]]], root_sch: Path
+) -> tuple[str, ...]:
+    """The `sheets` filter accepts an instance path (`/blinker/`), a sheet name, a file stem
+    (`blinker`, the spelling every writer takes) or a file name (`blinker.kicad_sch`); each is
+    turned into the instance path(s) it names (a file placed twice gives every instance). A
+    spelling that names no sheet is E_BAD_ARGS with the hierarchy paths as candidates instead of
+    an empty page (reviewer finding, 2026-09-20)."""
+    known: dict[str, set[str]] = {"/": {"/"}}
+    root_stem = root_sch.name.removesuffix(".kicad_sch")
+    for spelling in (root_stem, root_sch.name):
+        known.setdefault(spelling, set()).add("/")
+    for sh in lists.get("sheets", []):
+        path = sheet_key(sh.get("path") or "/")
+        known.setdefault(path, set()).add(path)
+        for spelling in (
+            str(sh.get("name") or ""),
+            str(sh.get("file") or ""),
+            str(sh.get("file") or "").removesuffix(".kicad_sch"),
+        ):
+            if spelling:
+                known.setdefault(spelling, set()).add(path)
+    resolved: list[str] = []
+    unknown: list[str] = []
+    for want in requested:
+        text = str(want)
+        hits = known.get(text) or known.get(sheet_key(text)) or known.get(text.strip("/"))
+        if not hits:
+            unknown.append(text)
+            continue
+        resolved.extend(h for h in sorted(hits) if h not in resolved)
+    if unknown:
+        paths = sorted({p for hits in known.values() for p in hits})
+        raise KiwrapError(
+            "E_BAD_ARGS",
+            f"no sheet named {', '.join(repr(u) for u in unknown)} in this schematic",
+            why="sheets are addressed by instance path, sheet name, file stem or file name",
+            fix="pass one of the candidates (kw_sch_get(kinds=['hierarchy']) lists every instance path)",
+            candidates=paths,
+            example="sheets=['/blinker/'] or sheets=['blinker']",
+        )
+    return tuple(resolved)
+
+
 def schematic_items(sch: Any) -> dict[str, list[dict[str, Any]]]:
     """Every list kind, normalised and deterministically ordered, from an IPC `SchematicModel`,
     a reader-contract record, or the file reader's `Hierarchy`."""
@@ -491,7 +537,9 @@ def read_netlist(
                 ctx.services.netlist_from_file(
                     ctx.services.file_read_schematic(sch),
                     # `(pinfunction "<name>_<number>")` on KiCad 10+, the bare name before
-                    pin_function_style="name_number" if caps.has("cli.netlist_pinfunction_suffix") else "name",
+                    pin_function_style="name_number"
+                    if caps.has("cli.netlist_pinfunction_suffix")
+                    else "name",
                 )
             ),
         },
@@ -515,7 +563,8 @@ class SchGetArgs(BaseModel):
     refs: list[str] | None = Field(default=None, description="only these reference designators")
     nets: list[str] | None = Field(default=None, description="only symbols/labels/wires on these nets")
     sheets: list[str] | None = Field(
-        default=None, description="only items on these sheets (path or file name)"
+        default=None,
+        description="only items on these sheets: instance path ('/blinker/'), sheet name, file stem or file name",
     )
     bbox_mm: list[float] | None = Field(
         default=None, description="[x1, y1, x2, y2] in mm (sheet coordinates)"
@@ -567,6 +616,8 @@ def sch_get(ctx: ToolContext, args: SchGetArgs) -> Receipt:
     model = outcome.value
     degraded, warnings = external_tags(external) + list(outcome.degraded), list(outcome.warnings)
     lists = schematic_items(model)
+    if filters.sheets:
+        filters = replace(filters, sheets=resolve_sheet_filters(filters.sheets, lists, project.root_sch))
     if outcome.provider_name == planner.FILE and (
         filters.nets or any(k in args.kinds for k in ("wires", "labels", "junctions"))
     ):

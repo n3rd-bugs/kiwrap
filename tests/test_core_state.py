@@ -122,7 +122,12 @@ def test_downgrade_below_and_next_suggested(tmp_path: Path):
     assert st.stage == "erc_clean" and "drc_clean" not in st.hashes
     downgrade_below(st, "erc_clean")
     assert st.stage == "sch_written"
-    assert [next_suggested(s) for s in STAGES][:3] == ["kw_sch_check", "kw_sch_check", "kw_pcb_drc"]
+    assert [next_suggested(s) for s in STAGES][:4] == [
+        "kw_sch_check",
+        "kw_sch_check",
+        "kw_pcb_sync",
+        "kw_pcb_place",
+    ]
 
 
 def test_record_stage_does_not_go_backwards(tmp_path: Path):
@@ -308,7 +313,9 @@ def test_snapshot_never_touches_a_users_repository(tmp_path: Path):
     (p.dir / "inner.kicad_prl").write_text("{}")
     sha = snap.create(p.dir, "[kiwrap] kw_project create x")
     assert sha and snap.head(outer) is None
-    own = subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=p.dir, capture_output=True, text=True)
+    own = subprocess.run(
+        ["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=p.dir, capture_output=True, text=True
+    )
     assert own.returncode != 0 and own.stdout.strip() == ""  # the user's own repo got no commit
     tracked = snap._git(p.dir, "ls-files").stdout.split()
     assert sorted(tracked) == ["inner.kicad_pcb", "inner.kicad_pro", "inner.kicad_sch"]

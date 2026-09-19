@@ -1,0 +1,5 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "Inner") (type "KiCad") (uri "../Test.kicad_sym") (options "") (descr "from the nested table, relative to it"))
+	(lib (name "Deeper") (type "Table") (uri "../nested/sym-lib-table") (options "") (descr "cycle: already loaded"))
+)

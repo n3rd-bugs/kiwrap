@@ -20,6 +20,13 @@ file provider is an estimate. `diff` is cli-only (`sch diff --format json`, veri
 installed nightly: exit 0 identical / 5 differences, JSON `{docType, path, changes[]}`, see
 `kw_sch_diff`); its Unsupported fallback is "kw_sch_get on both files and compare".
 
+The authoring operations (`schematic.write`, `board.sync`, `board.place`, `board.zones`,
+`board.route_primitives`) are ipc11 -> file: the KiCad 11 twins in `kiwrap.backends.ipc.writes`
+commit through the headless api-server, the file writers (`kiwrap.formats.schematic_writer` /
+`board_writer`) patch the CST losslessly; `board.setup` is file only (rules and netclasses live
+in the .kicad_pro / .kicad_dru, which no IPC command writes). The tools in
+`kiwrap.core.tools._author` add the G13 hang guard on top of the predicates.
+
 Predicates read capability keys through `Capabilities.has()` and, for `cli.*` keys that older
 cached records may lack, fall back to the probed `cli.subcommands` list (both are `--help`
 derived facts, so they agree whenever both exist).
@@ -193,6 +200,86 @@ OPERATIONS: dict[str, Operation] = {
         "diff",
         (Provider(CLI, _SCH_DIFF, note="kicad-cli sch diff --format json"),),
         fallback="kw_sch_get on both files + compare",
+    ),
+    # ---- authoring (mutations; docs/ARCHITECTURE.md §7, §8, §10) ---------------------------------
+    # ipc11 twins live in kiwrap.backends.ipc.writes and answer with the file writers' dataclasses;
+    # the file provider is the lossless CST writer and is always available. The receipt's
+    # `provider_used` tells the agent which one wrote the file.
+    "schematic.write": Operation(
+        "schematic.write",
+        (
+            Provider(
+                IPC11,
+                _HEADLESS_SCH,
+                note=(
+                    "PlaceSymbolFromLibrary / CreateItems / UpdateItems commits over the headless "
+                    "api-server (one undo step each). Skipped by the tools on a build with "
+                    "ipc.schematic_update_shared_lib_symbol_hangs whenever the write touches a second "
+                    "unit of a multi-unit symbol (G13 hang guard) - the file engine answers instead"
+                ),
+            ),
+            Provider(FILE, note="kiwrap.formats.schematic_writer: lossless CST patch of the .kicad_sch"),
+        ),
+    ),
+    "board.setup": Operation(
+        "board.setup",
+        (
+            Provider(
+                FILE,
+                note=(
+                    "kiwrap.formats.board_writer: layers / rules / outline in the .kicad_pcb, netclasses "
+                    "in the .kicad_pro, custom rules in the .kicad_dru"
+                ),
+            ),
+        ),
+    ),
+    "board.sync": Operation(
+        "board.sync",
+        (
+            Provider(
+                IPC11,
+                _HEADLESS,
+                note=(
+                    "ImportNetlist over the headless api-server when the presence probe says it is "
+                    "handled headless; else Unsupported(fallback='file')"
+                ),
+            ),
+            Provider(
+                FILE,
+                note=(
+                    "kiwrap.formats.board_writer.sync: footprints from the fp-lib-table, pad nets from "
+                    "the netlist nodes, positions kept, new parts off-board in a grid"
+                ),
+            ),
+        ),
+        fallback="kw_pcb_drc(schematic_parity=true) lists what differs",
+    ),
+    "board.place": Operation(
+        "board.place",
+        (
+            Provider(IPC11, _HEADLESS, note="UpdateItems commit moving the footprints"),
+            Provider(FILE, note="kiwrap.formats.board_writer.place"),
+        ),
+    ),
+    "board.zones": Operation(
+        "board.zones",
+        (
+            Provider(IPC11, _HEADLESS, note="CreateItems(Zone) commit + RefillZones"),
+            Provider(
+                FILE,
+                note=(
+                    "kiwrap.formats.board_writer.add_zone; the fill comes from kicad-cli pcb drc "
+                    "--refill-zones --save-board (cli.drc_refill_flags)"
+                ),
+            ),
+        ),
+    ),
+    "board.route_primitives": Operation(
+        "board.route_primitives",
+        (
+            Provider(IPC11, _HEADLESS, note="CreateItems(Track / Via) / DeleteItems commits"),
+            Provider(FILE, note="kiwrap.formats.board_writer.add_track / add_via / delete"),
+        ),
     ),
 }
 

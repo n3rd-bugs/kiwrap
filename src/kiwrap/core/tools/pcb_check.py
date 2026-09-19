@@ -124,8 +124,9 @@ def norm_off_board(o: Any) -> dict[str, Any]:
         "outside_by_mm": by,
         "description": f"{ref}{part} is {reason}",
         "fix": (
-            f"move {ref} inboard by at least {by or '?'} mm: its copper is outside the outline and DRC "
-            "copper_edge_clearance will fail (or fix the Edge.Cuts outline in KiCad; an outline tool is planned)"
+            f"move {ref} inboard by at least {by or '?'} mm with kw_pcb_place: its copper is outside the "
+            "outline and DRC copper_edge_clearance will fail (or enlarge the Edge.Cuts outline with "
+            "kw_pcb_setup(outline=...))"
             if copper
             else f"review: only the courtyard of {ref} overhangs the outline (by {by or '?'} mm); KiCad DRC has "
             "no rule for it - edge connectors and switches do this by design, otherwise move it inboard"
@@ -188,7 +189,10 @@ def norm_unrouted_item(u: dict[str, Any]) -> dict[str, Any]:
         "b": b,
         "length_mm": u["length_mm"],
         "description": f"net {u['net']}: {_end_label(a)} -> {_end_label(b)} ({u['length_mm']} mm)",
-        "fix": "route it (routing tools are planned; route in KiCad for now) or accept it until routing",
+        "fix": (
+            f"route it with kw_pcb_route: a track op from a ({_end_label(a)}) to b ({_end_label(b)}) on net "
+            f"{u['net']!r} (points a/b carry the pad coordinates in mm), or accept it until routing"
+        ),
     }
 
 

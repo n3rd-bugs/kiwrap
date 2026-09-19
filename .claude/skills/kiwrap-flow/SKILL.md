@@ -1,73 +1,127 @@
 ---
 name: kiwrap-flow
-description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_sch_stats/kw_sch_get -> kw_sch_check -> kw_pcb_check/kw_pcb_get -> kw_pcb_drc -> kw_fab_export), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors. Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, gerbers or fabrication outputs.
+description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones / kw_pcb_route -> kw_pcb_drc -> kw_fab_export), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors. Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
 ---
 
 # kiwrap flow (data first)
 
 KiCad is the judge. Every tool returns a **Receipt** (`structuredContent`):
-`ok, changed{added,updated,removed}, validators[{name,before,after}], provider_used, degraded[],
-snapshot, stage, next_suggested, warnings[], image_info, data{...}`. Never claim success without
-the validator numbers from the receipt and a structured query of the result.
+`ok, changed{added,updated,removed}, validators[{name,before,after,detail}], provider_used,
+degraded[], snapshot, stage, next_suggested, warnings[], data{...}`. Every mutating tool runs
+its validator before it returns (ERC for schematic tools, DRC / parity / placement checks for
+board tools) and the numbers are in the receipt. Never claim success without them and a
+structured query of the result.
 
 ## The protocol in one line
 
-**After every mutation, query structured state; never reason from an image when a structured
-query exists.** Schematic: `kw_sch_stats` then `kw_sch_get`. Board: `kw_pcb_check` then
+**Write with the kw_* tools, read the receipt's validators, query structured state, fix from
+refs + mm, repeat.** Schematic: `kw_sch_stats` then `kw_sch_get`. Board: `kw_pcb_check` then
 `kw_pcb_get`. Renders (`kw_sch_render`, `kw_pcb_render`) are secondary - for the human, not for
-your decisions.
+your decisions. Never guess a library id or a pin position; never edit `.kicad_*` files by hand.
 
-## 1. `kw_env(refresh?)`
+## 1. `kw_env(refresh?)` and `kw_project(action="create", dir, name, target_kicad?, board_size_mm?)`
 
 Installed KiCads (newest first) with capability summaries. **KiCad 11 first**: prefer the newest
-(10.99 nightly / 11.0), then 10.0.x. `kw_env(refresh=true)` after installing/removing KiCad.
+(10.99 nightly / 11.0), then 10.0.x. `kw_project create` writes `<name>.kicad_pro`, an empty root
+`<name>.kicad_sch` and `<name>.kicad_pcb` in the target's format and starts the snapshot history;
+pass `board_size_mm=[w, h]` for a rectangular outline (or set it later with `kw_pcb_setup`).
+`action="status"` returns stage, hashes, epochs, external edits and `next_suggested`.
 
-## 2. `kw_project(action="create", dir, name, target_kicad?, board_size_mm?)`
+## 2. Parts: search before you place
 
-Writes `<name>.kicad_pro`, an empty root `<name>.kicad_sch` and `<name>.kicad_pcb` stamped in the
-target KiCad's format, initialises the snapshot history and stamps `target_kicad` into
-`<dir>/.kiwrap/state.json`. Pass `board_size_mm=[w, h]` to get a rectangular outline (without one
-DRC reports `invalid_outline`). `action="status"` returns stage, hashes, epochs, external edits and
-`next_suggested`.
+`kw_lib_search(kind="symbol" | "footprint", query, filters?, limit?)` and
+`kw_lib_info(id)` (when listed) give real `lib_id`s (`Device:R`, `power:GND`,
+`Regulator_Linear:AMS1117-3.3`) and `fpid`s (`Resistor_SMD:R_0603_1608Metric`) with pin / pad
+counts and footprint filters. A guessed id costs an `E_BAD_ARGS` / `lib_symbol_issues` round trip.
 
-## 3. Schematic feedback: `kw_sch_stats` -> `kw_sch_get` -> `kw_sch_check`
+## 3. Schematic authoring
 
-- `kw_sch_stats(project, provider?, list_limit?)` - cheap numbers: `components`, `power_symbols`,
-  `sheets`, `nets`, `single_node_nets`, `dangling_ends`, `unconnected_pins`, `label_only_nets`,
-  `missing_footprint`, `per_sheet`; `data.lists` holds the offenders with `sheet` + `x_mm/y_mm`.
-  `ok` = no dangling end, no unconnected pin, no label-only net. Fix from the lists, re-run.
-- `kw_sch_get(project, kinds?, refs?, nets?, sheets?, bbox_mm?, detail?, cursor?, limit?, provider?)`
-  - `kinds` default `["symbols", "hierarchy"]`; items are flat in `data.items` with `kind` =
-  symbol | wire | label | junction | no_connect | sheet; `data.hierarchy` and `data.netlist`
-  are singletons. A symbol carries `pins[]` with **absolute** `x_mm/y_mm`, `net` and `type` -
-  use them to place wires and labels, never guess pin positions.
-- `kw_sch_check(project, severity?, netlist?)` - KiCad ERC (positions in mm) + netlist summary.
-  `data.ok` = zero errors. Fix errors from `data.violations[*]` (`type`, `description`,
-  `pos.x_mm/y_mm`, `items[*].uuid`), re-run until ok. Passing -> stage `erc_clean`.
-- `kw_sch_diff(a, b, kinds?, types?, refs?)` - KiCad-computed diff of two `.kicad_sch` files
-  (KiCad 11 line); `data.changes[]` with `kind`, `type`, `ref`, `bbox_mm`, `properties` (positions
-  also as `before_mm` / `after_mm`). On 10.x it is `E_UNSUPPORTED`: run `kw_sch_get` on both
-  projects and compare the items yourself.
+1. `kw_sch_add_symbol(project, lib_id, at_mm, ref?, value?, rotation?, mirror?, unit?, fields?,
+   footprint?, sheet?, erc?)` - returns `data.uuid`, `data.ref` and **`data.pins[]` with absolute
+   `x_mm/y_mm`** (the verified 12-orientation transform; you never compute pin geometry). Place
+   parts on a 2.54 mm rhythm (`at_mm` snaps to 1.27 mm) and leave room for wires. Use
+   `erc=false` while batch-placing; the first symbol alone is `pin_not_connected` until wired.
+2. `kw_sch_connect(project, endpoints=[{ref, pin} | {at_mm}], style, net?, route?, sheet?, erc?)`
+   - `style="wire"` (default) draws L-routed wires between consecutive endpoints (`route`
+   hv | vh | direct; intermediate `{at_mm}` points are corners), split at pins and junction
+   sites, snapped to the grid, junctions added; `net` adds a local label on the first endpoint.
+   The corner is not obstacle-aware: a route over another pin is refused (E_BAD_ARGS names the
+   pin) - use the other route or explicit `{at_mm}` corners; `data.connected_pins` lists pins
+   the wire ends on besides the endpoints.
+   `style="label"` / `"global_label"` puts a label `net` on every endpoint (the way to join
+   distant pins without long wires); `style="power"` puts a power symbol `net` on every endpoint.
+3. `kw_sch_add_item(project, item={type, ...}, sheet?, erc?)` - `power` (`net` at `at_mm` or on
+   `ref` + `pin`), `pwr_flag` (a PWR_FLAG on every power-input net nothing drives: regulator
+   outputs, VBUS - otherwise ERC `power_pin_not_driven`), `no_connect` (every unused pin),
+   `label` / `global_label` / `hierarchical_label` (`text`; `kind` = the ERC shape input |
+   output | bidirectional | tri_state | passive - give a hierarchical label the kind of its
+   sheet pin), `sheet` (`text` name, `file`, `at_mm`, `size_mm`, `pins[{name, side, kind}]` -
+   hierarchical sheets get their own file and instance path; the receipt's `data.pins[]` carries
+   the sheet pins' absolute `x_mm/y_mm` to wire to), `sheet_pin`, `text`. Address a child sheet
+   in every schematic tool with `sheet="<file stem>"` (`"blinker"` for `blinker.kicad_sch`); a
+   net through a sheet pin is named after the child's hierarchical label (`/blinker/BLINK`).
+4. Feedback: the receipt's `data.erc` (ok / errors / warnings / violations with `type`,
+   `pos.x_mm/y_mm`, `items[].uuid`), then `kw_sch_stats` (`dangling_ends`, `unconnected_pins`,
+   `label_only_nets`, `missing_footprint` with positions) and `kw_sch_get` (symbols with pins +
+   nets, wires, labels, netlist). `kw_sch_check` is the formal gate: `data.ok` = zero ERC errors
+   -> stage `erc_clean`. Note: a power symbol placed on a pin (`style="power"`) connects in KiCad
+   (the netlist proves it) even if the file estimate lists that pin as unconnected.
+5. `kw_sch_edit(project, ops=[...], if_match?, sheet?, erc?)` - `move` (`at_mm`), `rotate`,
+   `mirror`, `property` (`name` + `value`), `value`, `footprint`, `dnp`, `delete` by `ref`
+   (symbols) or `uuid` (any item; `kw_sch_get` lists uuids). All-or-nothing. Moving a wired symbol
+   breaks the wires - reconnect with `kw_sch_connect`. `if_match` = the sheet's sha256 from an
+   earlier receipt's `data.sheets`; a mismatch is `E_EXTERNAL_EDIT` (re-read, retry).
+6. `kw_sch_annotate(project, scheme="global" | "sheet", start_per_sheet?, reset?)` gives every
+   `R?` (and duplicate) a number (`data.mapping`); references you set yourself are kept unless
+   `reset=true` (KiCad's default); then `kw_sch_assign_footprints(project, mapping?, rules?, overwrite?,
+   suggest?)` - `rules=[{ref_prefix | lib_id | value, fpid}]` for the bulk, `mapping={ref: fpid}`
+   for the rest; `data.unresolved[]` carries `suggestions[]` from the library index (the symbol's
+   footprint filters) - pick one and call again. `ok` = nothing unresolved -> `kw_pcb_sync`.
 
-## 4. Board feedback: `kw_pcb_check` -> `kw_pcb_get` -> `kw_pcb_drc`
+## 4. Board authoring
 
-- `kw_pcb_check(project, checks?, refs?, nets?, bbox_mm?, cursor?, limit?, provider?)` - actionable
-  items: `courtyard_overlap` (review), `off_board` (pad copper outside the outline = must_fix;
-  a courtyard-only overhang = review with `courtyard_bbox_mm` / `outside_by_mm` - edge connectors
-  do this by design and KiCad DRC has no rule for it), `unrouted` (info; pad pairs with mm
-  endpoints), plus `drc_summary` (the last `kw_pcb_drc`, with `fresh` and `capped`). Each item
-  has `refs`, `pos`, `description`, `fix`. `ok` = no copper off-board and no overlap, computed
-  over the whole board before `refs` / `nets` / `bbox_mm` (`summary.matched` counts the filtered
-  items). Call it after every placement change; it is cheap.
-- `kw_pcb_get(project, kinds?, refs?, nets?, layers?, bbox_mm?, detail?, cursor?, limit?, provider?)`
-  - `kinds` default `["footprints", "outline"]`; items with `kind` = footprint | pad | track |
-  via | zone | net; `data.outline` (`bbox_mm`, `closed`), `data.rules` (min clearance / track
-  width / via sizes, copper layers, netclasses), `data.connectivity` (unrouted pairs). Footprints
-  carry `x_mm/y_mm`, `rotation_deg`, `bbox_mm`, `courtyard_bbox_mm`, `nets`; `detail="full"` adds
-  pads and properties. Filter by `refs` / `nets` / `layers` / `bbox_mm` before paging.
-- `kw_pcb_drc(project, schematic_parity?, refill_zones?)` - KiCad DRC classified into
-  `must_fix` / `review` / `cosmetic`. `data.ok` = `must_fix == 0`. Use `refill_zones=true`
-  (KiCad 10+) when zones are stale. Passing -> stage `drc_clean`.
+1. `kw_pcb_setup(project, layers?, rules?, netclasses?, outline?, custom_rules?, drc?)` - copper
+   layer count / names, `rules={clearance_mm, track_width_mm, via_size_mm, via_drill_mm,
+   min_track_mm, min_via_mm, min_hole_mm, hole_clearance_mm, copper_edge_clearance_mm, ...}`
+   (`kw_help(topic="kw_pcb_setup")` lists them all; an unknown key is `E_BAD_ARGS` with the
+   list), `netclasses={"Power": {"nets": ["GND", "+3V3", "/VIN"], "track_width_mm": 0.5}}` (into
+   the .kicad_pro; local-label nets are `/<label>`), `outline={"w": 50, "h": 30}` (+ `x`, `y`
+   origin) or `{"points_mm": [[x, y], ...]}` on Edge.Cuts, `custom_rules` (.kicad_dru). Do it
+   before the sync so the outline exists.
+2. `kw_pcb_sync(project, remove_orphans?, keep_positions?, force?, drc?)` - gated on `erc_clean`.
+   KiCad's own netlist drives it: footprints instantiated from the fp-lib-table with pad nets,
+   values / fields / dnp propagated, existing positions kept, orphans removed, **new parts placed
+   off-board in a grid**. Receipt: `data.added / updated / removed`, `data.unresolved[]`
+   ({ref, fpid, reason} - fix with `kw_sch_assign_footprints`), `data.checks` (off-board /
+   overlaps for the new parts), `data.drc` with `parity`. Stage `synced`.
+3. `kw_pcb_place(project, placements=[{ref, at_mm, rotation?, side?, locked?}], relative_to?,
+   drc?)` - the receipt carries `courtyard_overlap`, `off_board_copper`, `off_board`,
+   `unrouted` as validators (before -> after), `data.items[]` = the overlap / off-board items
+   involving the moved refs (with `fix`) and `data.footprints_now` (position / rotation / layer /
+   bbox_mm read back). Loop: place -> read the deltas -> `kw_pcb_check` (whole board: `ok`,
+   `summary`, `items[]` with refs + mm + fix) -> `kw_pcb_get` (`kinds=["footprints", "pads",
+   "outline"]`, `refs`, `bbox_mm`) for geometry -> place again. `placed` = no copper off-board
+   and no courtyard overlap (courtyard overhang of an edge connector is `review`, fine).
+   Placement heuristics: decoupling caps within 2 mm of their IC pin, connectors on the edge,
+   crystals next to the MCU, keep the ratsnest short (`kw_pcb_check` lists `unrouted` pairs with
+   `length_mm`).
+4. `kw_pcb_zones(project, zones=[{net, layers, rect_mm | polygon_mm, priority, ...}], fill?,
+   drc?)` - filled copper (GND pour on B.Cu, power islands) or keepouts (`keepout=true`); the
+   fill runs through kicad-cli (KiCad 10+) or RefillZones (KiCad 11); `data.drc` follows.
+5. `kw_pcb_route(project, ops=[{op: "track", points_mm, net, layer?, width_mm?} | {op: "via",
+   at_mm, net, layers?, size_mm?, drill_mm?} | {op: "delete", uuid}], drc?)` - touch-ups, not
+   whole-board routing. Get pad positions from `kw_pcb_get(kinds=["pads"], refs=[...])` and route
+   pad centre to pad centre with Manhattan corners; the net name must be a board net (local
+   labels are `/<label>`; the error lists candidates), layers must be copper. The receipt's
+   `drc_touched_nets` validator and `data.drc.violations` (touched nets first, uuid + mm) say what
+   the op did: `tracks_crossing` / `shorting_items` = wrong geometry, `unconnected_items` = not
+   done yet, `clearance` = too close.
+6. `kw_pcb_drc(project, schematic_parity?, refill_zones?)` - KiCad's word: `must_fix` /
+   `review` / `cosmetic`, `data.ok` = `must_fix == 0` -> stage `drc_clean`. Copper zones are
+   refilled (and saved) before the check by default when the KiCad can (`zones_stale` in
+   `degraded` when it cannot; track-vs-zone clearance items are then `review`). Fix from
+   `data.violations[]` (`type`, `class`, `pos`, `items[].uuid`) with `kw_pcb_place` /
+   `kw_pcb_route` (`delete` the offending uuid, route again) and re-run.
 
 ## 5. `kw_fab_export(project, targets=["gerbers","drill","pos","bom"])`
 
@@ -79,52 +133,55 @@ targets on the chosen KiCad come back in `data.unsupported` (the rest still expo
 
 | field | meaning | what to do |
 |---|---|---|
-| `stage` | highest validated milestone | compare with the gate you need |
-| `provider_used` | `ipc11:<v>` KiCad computed it (headless api-server); `file` kiwrap read the files; `cli:<v>` a kicad-cli export | trust ipc11/cli results as KiCad's; treat `file` estimates as hints to verify with the validator |
-| `degraded: ["airwire_endpoints_estimated"]` | the unrouted count is KiCad's connectivity (ipc11); the pad pairs are nearest-anchor guesses | trust the count; route by net, not by the exact pair |
-| `degraded: ["ratsnest_estimated"]` | unrouted pairs are kiwrap's estimate from the files (no KiCad ratsnest export yet) | confirm with `kw_pcb_drc` (`unconnected_items`) before/after routing |
+| `stage` | highest validated milestone (`created -> sch_written -> erc_clean -> synced -> placed -> routed -> drc_clean -> exported`) | compare with the gate you need |
+| `validators[]` | `erc` (errors), `drc` (must_fix; detail review / cosmetic / unconnected), `parity`, `drc_touched_nets` (by_net), `courtyard_overlap`, `off_board_copper`, `off_board`, `unrouted` - each `before -> after` | a delta that went the wrong way is your last op |
+| `provider_used` | `ipc11:<v>` KiCad did it (headless api-server commit / read); `file` kiwrap's lossless writer / reader; `cli:<v>` a kicad-cli run | trust KiCad's numbers; treat `file` estimates as hints to verify with the validator |
+| `degraded: ["ipc11_unavailable"]` | the headless server could not serve; the file engine answered | fine to continue; mention it if results look off |
+| `degraded: ["ipc11_guarded"]` | the G13 hang guard kept a multi-unit-symbol write off IPC (docs/UPSTREAM.md G13) | nothing to do; the file engine wrote it |
+| `degraded: ["erc_skipped"]` | you passed `erc=false` | run `kw_sch_check` (or the next authoring call with `erc=true`) before relying on the stage |
+| `degraded: ["ratsnest_estimated" / "airwire_endpoints_estimated"]` | unrouted pairs are kiwrap's estimate / KiCad's count with guessed ends | confirm with `kw_pcb_drc` (`unconnected_items`) |
 | `degraded: ["netlist_estimated"]` | nets came from the file walk | `kw_sch_check` exports KiCad's netlist |
-| `degraded: ["ipc11_unavailable"]` | the headless server failed; the file engine answered | fine to continue; mention it if results look off |
 | `degraded: ["external_edit"]` | a `.kicad_*` file changed outside kiwrap | re-run the validators; stop editing files by hand |
-| `degraded: ["render_unavailable"]` | no rasteriser (`uv sync --extra render`) | use the structured tools; renders are secondary anyway |
 | `snapshot` | git sha of the auto-commit | `kw_snapshot(action="restore", ref=...)` undoes |
 | `next_suggested` | the tool to call next | follow it unless the user says otherwise |
+| `data.sheets` | sha256 per sheet file | the `if_match` for `kw_sch_edit` |
 | `data.next_cursor` | more items on the read | call again with `cursor`, or narrow the filters |
 
 `kw_help(topic="providers")` lists every operation's provider chain (ipc11 -> file -> cli) and
-what each `degraded` tag means.
+what each `degraded` tag means; `kw_help(topic=<tool>)` the long form of every tool.
 
 ## KiCad 11 first - what changes on 10.x
 
-The 10.99 nightly / KiCad 11 exposes `kicad-cli api-server` (headless IPC): `kw_pcb_get` /
-`kw_sch_get` answer with `provider_used: ipc11:<version>` and pin nets straight from KiCad.
-On 10.0.x the same tools read the files (`provider_used: file`), pin nets come from
-`kicad-cli sch export netlist`, `kw_sch_diff` is unsupported, and the ratsnest is always an
-estimate. The tool names, arguments and item shapes are identical; only the receipt's
-`provider_used` / `degraded` differ - read them instead of asking which version is installed.
+On the 10.99 nightly / KiCad 11 the writes go through the headless api-server
+(`provider_used: ipc11:<version>`: PlaceSymbolFromLibrary, CreateItems, UpdateItems, ImportNetlist,
+RefillZones - one undo step each) and reads answer with KiCad's own connectivity. On 10.0.x the
+same tools write through kiwrap's lossless CST writers (`provider_used: file`) and kicad-cli
+validates; `kw_sch_diff` is unsupported and the ratsnest is an estimate. Tool names, arguments and
+receipts are identical; only `provider_used` / `degraded` differ - read them instead of asking
+which version is installed.
 
 ## Teaching errors (`isError: true`)
 
 | code | meaning | do this |
 |---|---|---|
 | `E_NO_KICAD` | no install matches `target_kicad` | `kw_env`, then pick from `candidates` |
-| `E_UNSUPPORTED` | capability / component missing on this KiCad or build | use `data.fallback` (names a kw_* tool) or a KiCad from `candidates` |
+| `E_UNSUPPORTED` | capability / component missing on this KiCad or build (e.g. `sheet_pin` needs `pins` on the sheet item) | use `fix` / `data.fallback` or a KiCad from `candidates` |
 | `E_PROJECT_NOT_FOUND` | bad `project` path or missing design file | pass the dir or `.kicad_pro`; create with `kw_project` |
-| `E_BAD_ARGS` | schema/semantic argument error (unknown `kinds` value, bad `cursor`, `bbox_mm` not 4 numbers, `provider` the operation lacks) | follow `fix` / `example` / `candidates` |
+| `E_BAD_ARGS` | schema/semantic error: unknown pin (candidates = the pins), unknown ref (candidates = the refs), a net or layer the board lacks, a `?` reference, `force` without a reason | follow `fix` / `example` / `candidates` |
 | `E_KICAD_FAILED` | kicad-cli / api-server exited non-zero | read `data.stderr`; check epochs vs target |
 | `E_FILE_LOCKED` | KiCad has the file open, or another kiwrap call runs | close KiCad / wait |
-| `E_GATE` | stage gate not met | run the validator named in `fix`; `force={"reason"}` only when the user accepts the risk |
-| `E_EXTERNAL_EDIT` | a file changed under a running operation | re-run validators |
+| `E_GATE` | `kw_pcb_sync` needs `erc_clean`; `kw_fab_export` needs `drc_clean` | run the validator named in `fix`; `force={"reason"}` only when the user accepts the risk |
+| `E_EXTERNAL_EDIT` | `if_match` no longer matches the sheet / a file changed under an operation | re-read (`kw_sch_get`, `data.sheets`) and retry; re-run validators |
 | `E_TIMEOUT` | KiCad exceeded its time budget | `run_async=true` + `kw_job`; narrow reads with filters |
 | `E_INTERNAL` | kiwrap bug or git failure | report `data.traceback`; restore a snapshot |
 
-`kw_help(topic=<code or tool>)` has the long form of every row.
-
 ## Rules
 
-- Never edit `.kicad_*` files directly. Never guess library ids or pin positions (`kw_sch_get`
-  gives absolute pin endpoints; `kw_pcb_get` gives pad positions). Never route by hand.
+- Never edit `.kicad_*` files directly. Never guess library ids (`kw_lib_search`) or pin / pad
+  positions (`kw_sch_add_symbol` / `kw_sch_get` give absolute pin endpoints; `kw_pcb_get` gives
+  pad positions). Never route whole boards by hand with `kw_pcb_route`; it is for touch-ups.
 - Positions are millimetres. Filter (`refs`, `nets`, `bbox_mm`, `layers`, `sheets`) before you
   page; `limit` defaults to 200 items.
-- Renders are <= 1024 px and secondary; `view="2d"` + `layers` isolates layers (no region crop).
-- Do not call `kw_fab_export` with `force` to skip DRC unless the user explicitly accepts it.
+- Read every receipt's `validators` and `stage`; act on `next_suggested`.
+- Do not call `kw_pcb_sync` / `kw_fab_export` with `force` to skip a gate unless the user
+  explicitly accepts it.
