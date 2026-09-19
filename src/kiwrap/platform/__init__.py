@@ -43,6 +43,13 @@ class Platform:
     def is_windows(self) -> bool:
         return self.name == "windows"
 
+    @property
+    def max_socket_path(self) -> int:
+        """Longest IPC socket path the OS transport accepts: nng named pipes on Windows took a
+        126-char path and rejected 146 (docs/VERIFICATION.md claim 10; 120 keeps a margin); an
+        AF_UNIX `sun_path` is 108 bytes including the NUL on Linux, so 107 characters."""
+        return 120 if self.is_windows else 107
+
     def python_name(self) -> str:
         return "python" + self.exe_suffix
 

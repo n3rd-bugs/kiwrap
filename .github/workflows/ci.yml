@@ -1,6 +1,9 @@
 # kiwrap CI (docs/DECISIONS.md D12 Windows + Linux, D14 GitHub Actions for headless tests).
 #
 # Jobs
+#   kicad-python-wheel  builds the pinned kicad-python wheel ONCE (shallow + sparse clone, repaired,
+#                       verified; scripts/ci/build_kicad_python_wheel.py), cached on the pin; every
+#                       other job installs that wheel instead of building from git (3.5 GB clone)
 #   lint           ruff + import-linter (blocking), mypy (non-blocking)           ubuntu
 #   scripts-lint   bash -n + shellcheck on the bootstrap/CI shell scripts, PowerShell parse
 #   unit           pytest tests/ + scripts/ci/tests_ci (no KiCad; kicad-marked tests auto-skip)   windows + ubuntu
@@ -33,6 +36,11 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # The kicad-python pin (pyproject.toml direct reference); the wheelhouse cache is keyed on it.
+  KICAD_PYTHON_PIN: "f79cebd1c09f6ef1d16e74d538da521e68c2d9f1"
+  # `uv run` must never re-sync the environment after scripts/ci/sync_with_wheelhouse.sh replaced
+  # the git build of kicad-python with the wheelhouse wheel (it would build from git again).
+  UV_NO_SYNC: "1"
   # Pinned installer facts (verified 2026-09-19): winget KiCad.KiCad 10.0.6 and Chocolatey kicad 10.0.6 both
   # resolve to this exact NSIS installer, so caching it directly is equivalent to either package manager.
   KICAD_WIN_VERSION: "10.0.6"
@@ -43,10 +51,42 @@ env:
   KICAD_PPA: "ppa:kicad/kicad-10.0-releases"
 
 jobs:
+  kicad-python-wheel:
+    name: kicad-python wheel (pinned, built once)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: false
+      - name: Cache the built wheel (keyed on the pin + the build script)
+        id: wheel-cache
+        uses: actions/cache@v6
+        with:
+          path: wheelhouse
+          key: kicad-python-wheel-${{ env.KICAD_PYTHON_PIN }}-${{ hashFiles('scripts/ci/build_kicad_python_wheel.py') }}
+      - name: Build + repair + verify (cache miss; shallow/sparse clone, no 3.5 GB submodule)
+        if: steps.wheel-cache.outputs.cache-hit != 'true'
+        run: python scripts/ci/build_kicad_python_wheel.py --out wheelhouse
+      - name: Pin check (the wheel must match pyproject.toml's commit)
+        run: |
+          grep -q "kicad-python @ git+https://gitlab.com/kicad/code/kicad-python.git@$KICAD_PYTHON_PIN" pyproject.toml
+          ls -l wheelhouse && cat wheelhouse/*.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kicad-python-wheel
+          path: wheelhouse/kicad_python-*.whl
+          if-no-files-found: error
+
   lint:
     name: lint (ruff, import-linter, mypy)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    needs: kicad-python-wheel
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -55,8 +95,12 @@ jobs:
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
-      - name: Sync
-        run: uv sync --all-extras
+      - uses: actions/download-artifact@v7
+        with:
+          name: kicad-python-wheel
+          path: wheelhouse
+      - name: Sync (kicad-python from the wheelhouse, never built from git here)
+        run: bash scripts/ci/sync_with_wheelhouse.sh
       - name: ruff check
         run: uv run ruff check .
       - name: import-linter (architectural contracts)
@@ -73,9 +117,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: bash -n
         run: |
-          for f in scripts/bootstrap.sh scripts/ci/run_pytest.sh; do bash -n "$f"; done
+          for f in scripts/bootstrap.sh scripts/ci/run_pytest.sh scripts/ci/sync_with_wheelhouse.sh; do bash -n "$f"; done
       - name: shellcheck
-        run: shellcheck -S style scripts/bootstrap.sh scripts/ci/run_pytest.sh
+        run: shellcheck -S style scripts/bootstrap.sh scripts/ci/run_pytest.sh scripts/ci/sync_with_wheelhouse.sh
       - name: PowerShell parse (bootstrap.ps1)
         shell: pwsh
         run: |
@@ -99,6 +143,7 @@ jobs:
     name: unit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    needs: kicad-python-wheel
     strategy:
       fail-fast: false
       matrix:
@@ -111,8 +156,13 @@ jobs:
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
-      - name: Sync
-        run: uv sync --all-extras
+      - uses: actions/download-artifact@v7
+        with:
+          name: kicad-python-wheel
+          path: wheelhouse
+      - name: Sync (kicad-python from the wheelhouse)
+        shell: bash
+        run: bash scripts/ci/sync_with_wheelhouse.sh
       - name: pytest (no KiCad on this runner; kicad/gui tests auto-skip)
         shell: bash
         run: bash scripts/ci/run_pytest.sh tests scripts/ci/tests_ci -q -m "not gui" --timeout 600
@@ -122,8 +172,13 @@ jobs:
     if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_kicad) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    needs: kicad-python-wheel
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: kicad-python-wheel
+          path: wheelhouse
       - name: Storage home for this job (kiwrap.platform honours KIWRAP_HOME)
         run: echo "KIWRAP_HOME=$RUNNER_TEMP/kiwrap-home" >> "$GITHUB_ENV"
       - uses: actions/setup-python@v7
@@ -151,8 +206,8 @@ jobs:
           KICAD_CONFIG_HOME: ${{ runner.temp }}/kicad-config
           KICAD_DOCUMENTS_HOME: ${{ runner.temp }}/kicad-documents
           KICAD_CACHE_HOME: ${{ runner.temp }}/kicad-cache
-      - name: Sync
-        run: uv sync --all-extras
+      - name: Sync (kicad-python from the wheelhouse)
+        run: bash scripts/ci/sync_with_wheelhouse.sh
       - name: Snapshot the runner's ~/.config/kicad (must stay untouched)
         run: uv run python scripts/ci/user_config_hash.py --write "$RUNNER_TEMP/user-config-before.txt"
       - name: Bootstrap engines (JRE 25 + Freerouting 2.4.1 into KIWRAP_HOME, verified hashes)
@@ -183,8 +238,13 @@ jobs:
     if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_kicad) }}
     runs-on: windows-latest
     timeout-minutes: 90
+    needs: kicad-python-wheel
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: kicad-python-wheel
+          path: wheelhouse
       - name: Storage home for this job (kiwrap.platform honours KIWRAP_HOME)
         shell: pwsh
         run: Add-Content -Path $env:GITHUB_ENV -Value "KIWRAP_HOME=$env:RUNNER_TEMP\kiwrap-home"
@@ -224,8 +284,9 @@ jobs:
           KICAD_CACHE_HOME: ${{ runner.temp }}\kicad-cache
         run: |
           & "C:\Program Files\KiCad\10.0\bin\kicad-cli.exe" version --format plain
-      - name: Sync
-        run: uv sync --all-extras
+      - name: Sync (kicad-python from the wheelhouse)
+        shell: bash
+        run: bash scripts/ci/sync_with_wheelhouse.sh
       - name: Snapshot %APPDATA%\kicad (must stay untouched)
         shell: pwsh
         run: uv run python scripts/ci/user_config_hash.py --write "$env:RUNNER_TEMP\user-config-before.txt"

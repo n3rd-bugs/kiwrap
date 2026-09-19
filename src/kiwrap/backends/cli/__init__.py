@@ -31,4 +31,14 @@ Modules and their public functions (signatures are the contract; see each module
                  (cli.has_render; else Unsupported with fallback "svg")
                  rasterise_svg(svg: Path, out_png: Path, *, max_px=1024) -> Path   (pypdfium2/resvg, never PyMuPDF)
     upgrade.py   upgrade_copy(install, config, src: Path, dst_dir: Path) -> Path   (sch/pcb/sym/fp upgrade on a COPY)
+    structured.py  capability-gated structured exports parsed into kiwrap.formats.reports models (mm, y down):
+                 export_stats(install, config, board, ...) -> BoardStats        (cli.has_stats_json)
+                 export_stackup(install, config, board, ...) -> Stackup         (cli.has_stackup_json | csv | board fallback)
+                 sch_diff(install, config, reference, comparison, ...) -> SchDiff  (cli.has_sch_diff; exit 0 same / 5 differ)
+                 export_ipc2581(install, config, board, ...) -> Ipc2581Board    (subcommand 'pcb export ipc2581')
+                 export_ipcd356(install, config, board, ...) -> TestPoints      (subcommand 'pcb export ipcd356')
+                 export_position(install, config, board, ...) -> PositionFile   (all versions)
+                 export_png(install, config, board, out_dir, ...) -> list[Path] (cli.has_pcb_png)
+                 capability(caps, key) -> bool derives the four cli.has_* keys from cli.subcommands / cli.flags
+                 when a cached record predates them.
 """

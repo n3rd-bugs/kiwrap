@@ -1,0 +1,114 @@
+{
+  "metadata": {
+    "date": "2026-09-19T10:34:16",
+    "generator": "KiCad 10.0.6",
+    "project": "ecc83-pp",
+    "board_name": "ecc83-pp"
+  },
+  "board": {
+    "has_outline": true,
+    "width": "52.0700 mm",
+    "height": "46.3550 mm",
+    "area": "2413.705 mm²",
+    "front_component_density": "51.80",
+    "back_component_density": "14.27",
+    "front_copper_area": "216.882 mm²",
+    "back_copper_area": "1669.041 mm²",
+    "min_track_clearance": "0.8510 mm",
+    "min_track_width": "0.8000 mm",
+    "min_drill_diameter": "0.8000 mm",
+    "board_thickness": "1.6000 mm",
+    "front_footprint_area": "1250.399 mm²",
+    "back_footprint_area": "344.33 mm²",
+    "front_footprint_density": "51.80",
+    "back_footprint_density": "14.27"
+  },
+  "pads": {
+    "through_hole": 33,
+    "smd": 0,
+    "connector": 0,
+    "npth": 0,
+    "castellated": 0,
+    "press_fit": 0
+  },
+  "vias": {
+    "through": 0,
+    "blind": 0,
+    "buried": 0,
+    "micro": 0
+  },
+  "components": {
+    "tht": {
+      "front": 15,
+      "back": 0,
+      "total": 15
+    },
+    "smd": {
+      "front": 0,
+      "back": 0,
+      "total": 0
+    },
+    "unspecified": {
+      "front": 0,
+      "back": 0,
+      "total": 0
+    },
+    "total": {
+      "front": 15,
+      "back": 0,
+      "total": 15
+    }
+  },
+  "drill_holes": [
+    {
+      "count": 10,
+      "shape": "Round",
+      "x_size": "0.8000 mm",
+      "y_size": "0.8000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_cu",
+      "stop_layer": "bottom_cu"
+    },
+    {
+      "count": 9,
+      "shape": "Round",
+      "x_size": "1.0200 mm",
+      "y_size": "1.0200 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_cu",
+      "stop_layer": "bottom_cu"
+    },
+    {
+      "count": 8,
+      "shape": "Round",
+      "x_size": "1.5000 mm",
+      "y_size": "1.5000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_cu",
+      "stop_layer": "bottom_cu"
+    },
+    {
+      "count": 4,
+      "shape": "Round",
+      "x_size": "3.2000 mm",
+      "y_size": "3.2000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_cu",
+      "stop_layer": "bottom_cu"
+    },
+    {
+      "count": 2,
+      "shape": "Round",
+      "x_size": "1.0000 mm",
+      "y_size": "1.0000 mm",
+      "plated": true,
+      "source": "Pad",
+      "start_layer": "top_cu",
+      "stop_layer": "bottom_cu"
+    }
+  ]
+}

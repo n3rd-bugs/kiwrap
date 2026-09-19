@@ -17,7 +17,7 @@ from kiwrap.core.server import build_context, build_server
 from kiwrap.core.state import STAGES, KiwrapError
 from kiwrap.core.state.jobs import JobQueue
 from kiwrap.core.state.receipts import ReceiptOut
-from kiwrap.core.tools import PHASE0_TOOLS, TOOL_NAMES, templates
+from kiwrap.core.tools import ALL_TOOLS, TOOL_NAMES, templates
 from kiwrap.core.tools import help as help_tool
 from kiwrap.core.tools._base import ToolContext, to_kiwrap_error
 from kiwrap.core.tools.checks import classify_drc
@@ -40,6 +40,7 @@ ERROR_CODES = (
     "E_BAD_ARGS",
     "E_KICAD_FAILED",
     "E_FILE_LOCKED",
+    "E_BUSY",
     "E_GATE",
     "E_EXTERNAL_EDIT",
     "E_TIMEOUT",
@@ -108,13 +109,18 @@ def test_catalog_is_deterministic_and_annotated():
         "kw_snapshot",
         "kw_job",
         "kw_help",
+        "kw_sch_get",
         "kw_sch_check",
+        "kw_sch_stats",
+        "kw_sch_diff",
         "kw_sch_render",
+        "kw_pcb_get",
+        "kw_pcb_check",
         "kw_pcb_drc",
         "kw_pcb_render",
         "kw_fab_export",
     )
-    for spec in PHASE0_TOOLS:
+    for spec in ALL_TOOLS:
         assert spec.name.startswith("kw_") and spec.description
         assert spec.annotations.read_only_hint is not None and spec.annotations.destructive_hint is not None
 
@@ -621,6 +627,35 @@ def test_editor_lock_and_project_lock(h: Harness):
     finally:
         locks.ProjectLock.__init__ = old
     lock.unlink()
+
+
+def test_mutation_prologue_releases_own_ipc_sessions_and_reports_busy_reads(h: Harness):
+    """Finding 19: a pooled headless api-server holds KiCad's `~<name>.kicad_pro.lck`; the mutating
+    tools close kiwrap's OWN servers on the project before the editor-lock check, and answer E_BUSY
+    (not E_FILE_LOCKED with a 'delete the lock' fix) while a non-pooled read is in flight."""
+    proj = h.create()
+    calls: list[Path] = []
+    lck = Path(proj, "~demo.kicad_pro.lck")
+
+    def release(directory):
+        calls.append(Path(directory))
+        lck.unlink(missing_ok=True)  # what CloseAllDocuments + stop() do for a pooled server
+        return {"closed": [str(Path(proj, "demo.kicad_pcb"))], "busy": []}
+
+    lck.write_text("{}")
+    h.ctx.services.ipc_release_project = release
+    sc = h.ok("kw_sch_check", project=proj)
+    assert calls == [Path(proj).resolve()] and not lck.exists() and sc["ok"] is True
+
+    h.ctx.services.ipc_release_project = lambda directory: {"closed": [], "busy": [str(Path(proj, "demo.kicad_pcb"))]}
+    sc = h.fail("kw_sch_check", "E_BUSY", project=proj)
+    assert sc["candidates"] == ["demo.kicad_pcb"] and "retry" in sc["fix"]
+
+    def unsupported(directory):
+        raise KiwrapError("E_UNSUPPORTED", "no IPC backend in this build", data={"service": "ipc_release_project"})
+
+    h.ctx.services.ipc_release_project = unsupported
+    assert h.ok("kw_sch_check", project=proj)["ok"] is True  # a build without IPC just skips the step
 
 
 def test_snapshot_tool(h: Harness):

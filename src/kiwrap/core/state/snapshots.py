@@ -34,7 +34,9 @@ STORE_DIRNAME = "snapshots.git"
 STATE_DIRNAME = ".kiwrap"
 
 #: Written to `<project>/.kiwrap/.gitignore` so an enclosing user repository never sees the store.
-KIWRAP_DIR_IGNORE = "# written by kiwrap: the snapshot store, lock and temp dir are private\nsnapshots.git/\nlock\ntmp/\n"
+KIWRAP_DIR_IGNORE = (
+    "# written by kiwrap: the snapshot store, lock and temp dir are private\nsnapshots.git/\nlock\ntmp/\n"
+)
 
 #: Directories never walked for owned files (backups are KiCad's own history, `fab/` is export output).
 _SKIP_DIR_NAMES = frozenset({".git", ".kiwrap", "fab", "node_modules"})
@@ -206,7 +208,14 @@ def _stage_owned(project_dir: Path) -> None:
     paths = sorted(set(owned_files(project_dir)) | {p for p in tracked if p})
     if not paths:
         return
-    _git(project_dir, "add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul", stdin="\0".join(paths) + "\0")
+    _git(
+        project_dir,
+        "add",
+        "-A",
+        "--pathspec-from-file=-",
+        "--pathspec-file-nul",
+        stdin="\0".join(paths) + "\0",
+    )
 
 
 def is_dirty(project_dir: Path) -> bool:

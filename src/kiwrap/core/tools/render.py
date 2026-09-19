@@ -177,7 +177,10 @@ def pcb_render(ctx: ToolContext, args: PcbRenderArgs) -> Receipt:
 PCB_RENDER = ToolSpec(
     name="kw_pcb_render",
     title="Board render",
-    description="PNG of the board (<= 1024 px): 3d via kicad-cli pcb render where supported, else a 2d layer plot. Always returns the numeric summary.",
+    description=(
+        "Secondary; prefer kw_pcb_get/kw_pcb_check for feedback. PNG of the board (<= 1024 px): 3d via kicad-cli "
+        "pcb render where supported, else a 2d layer plot. Always returns the numeric summary."
+    ),
     input_model=PcbRenderArgs,
     handler=pcb_render,
     annotations=READ_ONLY,
@@ -250,7 +253,10 @@ def sch_render(ctx: ToolContext, args: SchRenderArgs) -> Receipt:
 SCH_RENDER = ToolSpec(
     name="kw_sch_render",
     title="Schematic render",
-    description="PNG of a schematic sheet (<= 1024 px) via kicad-cli PDF export + rasteriser. Always returns the numeric summary.",
+    description=(
+        "Secondary; prefer kw_sch_get/kw_sch_stats for feedback. PNG of a schematic sheet (<= 1024 px) via "
+        "kicad-cli PDF export + rasteriser. Always returns the numeric summary."
+    ),
     input_model=SchRenderArgs,
     handler=sch_render,
     annotations=READ_ONLY,

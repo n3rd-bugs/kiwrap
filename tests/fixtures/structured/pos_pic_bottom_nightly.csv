@@ -1,0 +1,4 @@
+Ref,Val,Package,PosX,PosY,Rot,Side
+"JP1","JUMPER","SolderJumper-2_P1.3mm_Open_TrianglePad1.0x1.5mm",148.082000,-97.790000,0.000000,bottom
+"C1","100µF","CP_Axial_L18.0mm_D6.5mm_P25.00mm_Horizontal",110.490000,-78.867000,180.000000,top
+"U1","24Cxx","DIP-8_W7.62mm_Socket_LongPads",179.070000,-109.220000,0.000000,top

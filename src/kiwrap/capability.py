@@ -30,6 +30,9 @@ Documented keys (all of these must exist for every supported version, see the JS
     ipc.schematic                   bool        (>= 11)
     ipc.schematic_write_crashes     bool        9.0.0-10.0.6 (#24966)
     ipc.commit_needs_document       bool        (>= 10.0.7)
+    ipc.headless_libraries_need_load bool       headless server loads no library until LoadAllLibraries (11)
+    ipc.headless_jobs               bool        RunBoardJobExport*/RunSchematicJobExport* handled headless (false on 10.99.0-4083)
+    ipc.schematic_update_shared_lib_symbol_hangs bool  UpdateItems on a 2nd instance of one lib symbol never replies (10.99.0-4083)
     ipc.single_fixed_pipe           bool        Windows 9/10
     formats.sch / formats.pcb / formats.sym / formats.pro  int  epoch stamps written by this version
     formats.pcb_layer_ids_v2        bool        board layer ids renumbered (B.Cu 31 -> 2) + 4-word layerselection (>= 9.0)
@@ -45,6 +48,21 @@ Documented keys (all of these must exist for every supported version, see the JS
 Extra keys this implementation adds (same conventions):
     cli.has_sym_fp_upgrade  bool   `sym upgrade` + `fp upgrade` (all supported versions)
     cli.has_stats           bool   `pcb export stats`
+    cli.has_stats_json      bool   `pcb export stats --format json` (10.0+; unit strings, see formats.reports.stats)
+    cli.has_stackup_json    bool   `pcb export stackup --format json` (11 / 10.99 nightly; MR !2691 + json on master)
+    cli.has_sch_diff        bool   `sch diff --format json` (11 / 10.99 nightly; MR !2620; exit 5 = differences)
+    cli.has_pcb_png         bool   `pcb export png` (11 / 10.99 nightly; 2D layer PNGs into a directory)
+    cli.drc_error_limit     int    `pcb drc` stops reporting a violation TYPE after this many items (199:
+                                   DRC_ENGINE ERROR_LIMIT, pcbnew/drc/drc_engine.cpp, enforced atomically in
+                                   ReportViolation; verified 2026-09-19: 203 missing courtyards -> 199 listed)
+    cli.drc_extended_error_limit int  the same for the types in cli.drc_extended_error_types (499,
+                                   EXTENDED_ERROR_LIMIT; kit-dev-coldfire with 30 % of its tracks removed
+                                   reports exactly 499 unconnected_items for 634 real airwires)
+    cli.drc_extended_error_types list[str]  ["clearance", "unconnected_items"] (DRC_ENGINE::RunTests)
+    cli.netlist_pinfunction_suffix bool  `sch export netlist` writes (pinfunction "<name>_<number>") and the
+                                   `+no_connect` pintype suffix only for a no-connect MARKER (10.0+,
+                                   eeschema/netlist_exporters/netlist_exporter_xml.cpp); 9 and older write
+                                   the bare pin name
     seed.version / seed.exact / seed.note   which matrix entry seeded the record and how well it fits
     swig.module / swig.python              paths found by the probe ("" when absent)
     probe.ok                bool   whether the `--help` tree probe succeeded (else the seed's cli.* stand)
@@ -397,6 +415,10 @@ def flatten_help_tree(tree: dict[str, Any]) -> dict[str, Any]:
             "cli.has_sch_pcb_upgrade": "sch upgrade" in nodes and "pcb upgrade" in nodes,
             "cli.has_sym_fp_upgrade": "sym upgrade" in nodes and "fp upgrade" in nodes,
             "cli.has_stats": "pcb export stats" in nodes,
+            "cli.has_stats_json": "--format" in set(nodes.get("pcb export stats", {}).get("flags", [])),
+            "cli.has_stackup_json": "--format" in set(nodes.get("pcb export stackup", {}).get("flags", [])),
+            "cli.has_sch_diff": "sch diff" in nodes,
+            "cli.has_pcb_png": "pcb export png" in nodes,
             "cli.drc_refill_flags": {"--refill-zones", "--save-board"} <= drc_flags,
             "cli.help_exit_code": max(
                 (n["exit_code"] for n in nodes.values()), default=tree.get("exit_code", 0)
@@ -456,6 +478,15 @@ def _cli_stat(install: KiCadInstallation) -> list[int]:
     return [st.st_size, st.st_mtime_ns]
 
 
+def _matrix_digest() -> str:
+    """sha1 of the seed matrix file: a cache written from an older matrix (new keys such as
+    `cli.drc_error_limit` added by a kiwrap update) is stale even though the KiCad did not change."""
+    try:
+        return hashlib.sha1(matrix_path().read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
 def _read_cache(path: Path, install: KiCadInstallation, schema_key: str) -> dict[str, Any] | None:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -464,6 +495,8 @@ def _read_cache(path: Path, install: KiCadInstallation, schema_key: str) -> dict
     if raw.get("schema") != CACHE_SCHEMA or raw.get("install") != install.key():
         return None
     if raw.get("kicad_cli_stat") != _cli_stat(install):
+        return None
+    if schema_key == "values" and raw.get("matrix_digest") != _matrix_digest():
         return None
     return raw if schema_key in raw else None
 
@@ -562,6 +595,7 @@ def capabilities_for(
             "install": install.key(),
             "version": install.version,
             "kicad_cli_stat": _cli_stat(install),
+            "matrix_digest": _matrix_digest(),
             "probed": probed,
             "values": values,
         },

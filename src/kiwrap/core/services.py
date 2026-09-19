@@ -6,6 +6,24 @@ component that is still a `NotImplementedError` stub, or absent, turns into a te
 `E_UNSUPPORTED` at call time rather than an import failure at server start), and tests build a
 `Services` with fakes. This is also where KiCad installs and capability records are cached
 for the lifetime of the server (`kw_env(refresh=True)` clears them).
+
+Data-first backends (docs/DECISIONS.md D16/D17; selected per operation by `kiwrap.core.planner`):
+the IPC headless session + readers, the lossless file readers + analysis and the structured
+kicad-cli exports. They are optional fields (default: a "missing" callable that raises
+E_UNSUPPORTED, which the planner treats as "provider unavailable, try the next one"), so a
+`Services` built by hand for tests keeps working, and `Services.real()` binds them lazily to the
+contract modules named below (the integrator reconciles names if the real modules differ):
+
+    ipc_session(install, file, config_root=...) -> kiwrap.backends.ipc.sessions.HeadlessSession
+    ipc_read_board(session) / ipc_read_schematic(session) -> kiwrap.backends.ipc.readers (mm units)
+    ipc_ratsnest(session) -> kiwrap.backends.ipc.queries.ratsnest (KiCad's connectivity clusters
+    per net via GetConnectedItems; unrouted = clusters - 1, airwires between nearest anchors)
+    file_read_board(path) -> kiwrap.formats.board.BoardFile.load
+    file_read_schematic(path) -> kiwrap.formats.schematic.Hierarchy.load (the sheet tree)
+    courtyard_overlaps / off_board / ratsnest_estimate (board) and pin_connectivity /
+    netlist_from_file (schematic) -> kiwrap.formats.analysis
+    export_stats / export_stackup (install, config, board) and sch_diff (install, config, a, b)
+    -> kiwrap.backends.cli.structured (parsed JSON dicts)
 """
 
 from __future__ import annotations
@@ -38,7 +56,9 @@ def _lazy(
     def call(*args: Any, **kwargs: Any) -> Any:
         try:
             mod = importlib.import_module(module)
-            fn = getattr(mod, name)
+            fn: Any = mod
+            for part in name.split("."):  # "BoardFile.load" -> the classmethod
+                fn = getattr(fn, part)
             if extra:
                 accepted = inspect.signature(fn).parameters
                 for key, value in extra.items():
@@ -63,8 +83,48 @@ def _lazy(
                 data={"module": module, "function": name},
             ) from exc
 
+    call.__name__ = name.replace(".", "_")
+    return call
+
+
+def _missing(name: str, capability_hint: str) -> Callable[..., Any]:
+    """The default for an optional backend: E_UNSUPPORTED with a fix naming the component."""
+
+    def call(*args: Any, **kwargs: Any) -> Any:
+        raise KiwrapError(
+            "E_UNSUPPORTED",
+            f"{capability_hint} is not wired into this server ({name})",
+            why="the Services instance was built without this backend (a test double or a partial build)",
+            fix="update kiwrap; this tool needs the component providing " + name,
+            data={"service": name},
+        )
+
     call.__name__ = name
     return call
+
+
+#: optional data-first backends: field name -> (module, attribute, capability hint)
+DATA_BACKENDS: dict[str, tuple[str, str, str]] = {
+    # pooled: one api-server per (install, file) survives between tool calls (sessions.SessionPool)
+    "ipc_session": ("kiwrap.backends.ipc.sessions", "pooled_session", "the headless IPC session"),
+    # the mutating tools' prologue: close kiwrap's own pooled servers on the project (they hold
+    # KiCad's ~<name>.kicad_pro.lck) and learn about reads still in flight
+    "ipc_release_project": ("kiwrap.backends.ipc.sessions", "release_project", "the headless IPC session pool"),
+    "ipc_read_board": ("kiwrap.backends.ipc.readers", "read_board", "the IPC board reader"),
+    "ipc_read_schematic": ("kiwrap.backends.ipc.readers", "read_schematic", "the IPC schematic reader"),
+    "ipc_ratsnest": ("kiwrap.backends.ipc.queries", "ratsnest", "the IPC connectivity / ratsnest query"),
+    "file_read_board": ("kiwrap.formats.board", "BoardFile.load", "the board file reader"),
+    # the whole sheet tree (root + sub-sheets, per-instance references), not one file
+    "file_read_schematic": ("kiwrap.formats.schematic", "Hierarchy.load", "the schematic file reader"),
+    "courtyard_overlaps": ("kiwrap.formats.analysis", "courtyard_overlaps", "courtyard overlap analysis"),
+    "off_board": ("kiwrap.formats.analysis", "off_board", "off-board analysis"),
+    "ratsnest_estimate": ("kiwrap.formats.analysis", "ratsnest_estimate", "the ratsnest estimate"),
+    "pin_connectivity": ("kiwrap.formats.analysis", "pin_connectivity", "schematic pin connectivity"),
+    "netlist_from_file": ("kiwrap.formats.analysis", "netlist_from_file", "the file netlist"),
+    "export_stats": ("kiwrap.backends.cli.structured", "export_stats", "kicad-cli pcb export stats"),
+    "export_stackup": ("kiwrap.backends.cli.structured", "export_stackup", "kicad-cli pcb export stackup"),
+    "sch_diff": ("kiwrap.backends.cli.structured", "sch_diff", "kicad-cli sch diff"),
+}
 
 
 @dataclass
@@ -85,15 +145,42 @@ class Services:
     render_pcb: Callable[..., Path]
     render_pcb_2d: Callable[..., Path]
     rasterise_pdf: Callable[..., Path]
+    # data-first backends (optional; see DATA_BACKENDS and the module docstring)
+    ipc_session: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    ipc_release_project: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    ipc_read_board: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    ipc_read_schematic: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    ipc_ratsnest: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    file_read_board: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    file_read_schematic: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    courtyard_overlaps: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    off_board: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    ratsnest_estimate: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    pin_connectivity: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    netlist_from_file: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    export_stats: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    export_stackup: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    sch_diff: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     # caches (per server process)
     _installs: list[Install] | None = field(default=None, repr=False)
     _caps: dict[str, Caps] = field(default_factory=dict, repr=False)
     _roots: dict[str, ConfigRoot] = field(default_factory=dict, repr=False)
 
+    def __post_init__(self) -> None:
+        """Optional backends left at None (a hand-built `Services`) become `_missing` callables."""
+        for name, (module, attr, hint) in DATA_BACKENDS.items():
+            if getattr(self, name) is None:
+                setattr(self, name, _missing(f"{module}.{attr}", hint))
+
     @classmethod
     def real(cls, storage_home: Path) -> Services:
         home = {"storage_home": storage_home}
+        data: dict[str, Any] = {
+            name: _lazy(module, attr, capability_hint=hint)
+            for name, (module, attr, hint) in DATA_BACKENDS.items()
+        }
         return cls(
+            **data,
             storage_home=storage_home,
             discover=_lazy("kiwrap.installation", "discover", capability_hint="KiCad discovery", extra=home),
             # probe_paths=False: a path in a tool argument only ever selects an install discovery
@@ -179,3 +266,10 @@ class Services:
 
     def provider(self, install: Install) -> str:
         return f"cli:{install.version}"
+
+    def data_backends(self) -> dict[str, bool]:
+        """Which optional backends are wired (not the `_missing` default) - for kw_env / tests."""
+        return {
+            name: getattr(getattr(self, name), "__name__", "") != f"{m}.{a}"
+            for name, (m, a, _) in DATA_BACKENDS.items()
+        }

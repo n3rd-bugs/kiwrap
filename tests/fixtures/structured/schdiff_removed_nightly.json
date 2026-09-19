@@ -1,0 +1,126 @@
+{
+  "changes": [
+    {
+      "bbox": [
+        1853438,
+        761238,
+        128525,
+        1525
+      ],
+      "children": [],
+      "id": "/28f865a0-4433-4a53-bbd7-b62f276848e4/06655b90-3a73-4865-8781-04208e869f47",
+      "kind": "removed",
+      "properties": [
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "color",
+            "v": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "name": "Color"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "int",
+            "v": 1981200
+          },
+          "name": "End X"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "int",
+            "v": 762000
+          },
+          "name": "End Y"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "double",
+            "v": 127000.0
+          },
+          "name": "Length"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "int",
+            "v": 0
+          },
+          "name": "Line Width"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "bool",
+            "v": false
+          },
+          "name": "Locked"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "bool",
+            "v": false
+          },
+          "name": "Private"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "int",
+            "v": 1854200
+          },
+          "name": "Start X"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "type": "int",
+            "v": 762000
+          },
+          "name": "Start Y"
+        },
+        {
+          "after": {
+            "type": "none"
+          },
+          "before": {
+            "label": "Solid",
+            "type": "enum",
+            "v": 0
+          },
+          "name": "Wire Style"
+        }
+      ],
+      "typeName": "SCH_LINE"
+    }
+  ],
+  "docType": "kicad_sch",
+  "path": "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\structured\\out\\10.99.0\\mod2.kicad_sch"
+}

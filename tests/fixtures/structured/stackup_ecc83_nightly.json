@@ -1,0 +1,135 @@
+{
+ "finish": {
+  "typeName": "None"
+ },
+ "impedance": {},
+ "edge": {
+  "connector": {
+   "type": "BECT_NONE"
+  },
+  "plating": {}
+ },
+ "layers": [
+  {
+   "thickness": {},
+   "layer": "BL_F_SilkS",
+   "enabled": true,
+   "type": "BSLT_SILKSCREEN",
+   "color": {
+    "a": 1
+   },
+   "userName": "F.Silkscreen",
+   "silkscreen": {
+    "materialName": "Not specified"
+   }
+  },
+  {
+   "thickness": {},
+   "layer": "BL_F_Paste",
+   "enabled": true,
+   "type": "BSLT_SOLDERPASTE",
+   "userName": "F.Paste"
+  },
+  {
+   "thickness": {
+    "valueNm": "10000"
+   },
+   "layer": "BL_F_Mask",
+   "enabled": true,
+   "type": "BSLT_SOLDERMASK",
+   "color": {
+    "a": 1
+   },
+   "userName": "F.Mask",
+   "soldermask": {
+    "epsilonR": 3.3,
+    "materialName": "Not specified",
+    "thickness": {
+     "valueNm": "10000"
+    }
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "35000"
+   },
+   "layer": "BL_F_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "top_cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "1510000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.5,
+      "lossTangent": 0.02,
+      "materialName": "FR4",
+      "thickness": {
+       "valueNm": "1510000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_CORE"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "35000"
+   },
+   "layer": "BL_B_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "bottom_cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "10000"
+   },
+   "layer": "BL_B_Mask",
+   "enabled": true,
+   "type": "BSLT_SOLDERMASK",
+   "color": {
+    "a": 1
+   },
+   "userName": "B.Mask",
+   "soldermask": {
+    "epsilonR": 3.3,
+    "materialName": "Not specified",
+    "thickness": {
+     "valueNm": "10000"
+    }
+   }
+  },
+  {
+   "thickness": {},
+   "layer": "BL_B_Paste",
+   "enabled": true,
+   "type": "BSLT_SOLDERPASTE",
+   "userName": "B.Paste"
+  },
+  {
+   "thickness": {},
+   "layer": "BL_B_SilkS",
+   "enabled": true,
+   "type": "BSLT_SILKSCREEN",
+   "color": {
+    "a": 1
+   },
+   "userName": "B.Silkscreen",
+   "silkscreen": {
+    "materialName": "Not specified"
+   }
+  }
+ ]
+}

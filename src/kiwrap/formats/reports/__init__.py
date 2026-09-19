@@ -3,6 +3,11 @@
 Parsers live in `erc.py`, `drc.py`, `netlist.py`. They take the raw kicad-cli output plus the
 quirk parameters the caller read from the capability record (e.g. `position_scale`); they never
 import anything outside `kiwrap.formats`.
+
+The structured-export parsers keep their models in their own modules (imported explicitly, not
+re-exported here): `stats` (BoardStats), `stackup` (Stackup), `schdiff` (SchDiff; eeschema IU =
+1/10000 mm), `ipc2581` (Ipc2581Board), `ipcd356` (TestPoints), `position` (PositionFile). All
+return KiCad board millimetres with y down; `kiwrap.backends.cli.structured` produces their input.
 """
 
 from __future__ import annotations

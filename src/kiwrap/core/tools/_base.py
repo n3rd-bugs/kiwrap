@@ -16,6 +16,7 @@ import traceback
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Annotated, Any
 
 from mcp.types import CallToolResult, ToolAnnotations
@@ -65,6 +66,8 @@ class ToolSpec:
     annotations: ToolAnnotations
     title: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)
+    #: a `ReceiptOut` subclass that types `data` for this tool's published outputSchema (None: ReceiptOut)
+    output_model: type[BaseModel] | None = None
 
 
 # ---- exception mapping -----------------------------------------------------------------------
@@ -223,11 +226,12 @@ def make_callable(spec: ToolSpec, ctx: ToolContext) -> Callable[..., CallToolRes
             return result
         return receipt_to_result(spec.name, result, ok=bool(result.data.get("ok", True)))
 
+    result_type: Any = Annotated[CallToolResult, spec.output_model] if spec.output_model else ToolResult
     tool_fn.__name__ = spec.name
     tool_fn.__qualname__ = spec.name
     tool_fn.__doc__ = spec.description
-    tool_fn.__signature__ = inspect.Signature(params, return_annotation=ToolResult)  # type: ignore[attr-defined]
-    tool_fn.__annotations__ = {p.name: p.annotation for p in params} | {"return": ToolResult}
+    tool_fn.__signature__ = inspect.Signature(params, return_annotation=result_type)  # type: ignore[attr-defined]
+    tool_fn.__annotations__ = {p.name: p.annotation for p in params} | {"return": result_type}
     return tool_fn
 
 
@@ -309,6 +313,31 @@ class Mutation:
         return delta
 
 
+def release_own_sessions(ctx: ToolContext, project: Project) -> None:
+    """Before the editor-lock check: close kiwrap's own pooled api-servers on this project (a
+    headless server holds KiCad's `~<name>.kicad_pro.lck` for its whole lifetime, so a read that
+    stayed pooled would otherwise be refused as "KiCad has the file open" - reviewer finding 19),
+    and refuse with E_BUSY while a non-pooled read is still in flight in another thread."""
+    release = getattr(ctx.services, "ipc_release_project", None)
+    if not callable(release):
+        return
+    try:
+        info = release(project.dir)
+    except KiwrapError as exc:
+        if exc.code == "E_UNSUPPORTED":  # no IPC backend in this build: nothing to release
+            return
+        raise
+    busy = list((info or {}).get("busy") or [])
+    if busy:
+        raise KiwrapError(
+            "E_BUSY",
+            f"a kiwrap read is still using {len(busy)} file(s) of this project over IPC",
+            why="the headless api-server of that read holds KiCad's project lock until it finishes",
+            fix="retry in a moment; the read (kw_pcb_get / kw_sch_get / kw_pcb_check) releases the project when done",
+            candidates=[Path(b).name for b in busy],
+        )
+
+
 @contextmanager
 def mutation(
     ctx: ToolContext, project: Project, tool: str, *, force: Any = None, gate: bool = True
@@ -319,6 +348,7 @@ def mutation(
     on the way out (also on failure, so a half-applied change is committed as its own snapshot
     and remains undoable; the message then carries `FAILED <code>`)."""
     parsed = Force.parse(force)
+    release_own_sessions(ctx, project)
     with project_mutation(project):
         state = project.load_state()
         external = check_external_edit(project, state)

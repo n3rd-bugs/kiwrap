@@ -116,7 +116,10 @@ def receipt_to_result(
     structured = receipt_to_dict(receipt, ok=ok)
     body = text if text is not None else json.dumps(structured, indent=1, default=str)
     if len(body) > MAX_TEXT_CHARS:
-        body = body[:MAX_TEXT_CHARS] + "\n... (truncated; the full payload is in structuredContent)"
+        body = body[:MAX_TEXT_CHARS] + (
+            "\n... (text truncated mid-JSON: the full payload is in structuredContent; re-call with a smaller "
+            "limit, detail='summary' or filters, or follow next_cursor)"
+        )
     content: list[Any] = [TextContent(type="text", text=_summary_line(tool, receipt, ok) + "\n" + body)]
     if receipt.image:
         content.append(

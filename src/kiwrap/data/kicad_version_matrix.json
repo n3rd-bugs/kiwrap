@@ -63,6 +63,10 @@
    "cli.has_render": "verified",
    "cli.has_sch_pcb_upgrade": "verified",
    "cli.has_stats": "verified",
+   "cli.has_stats_json": "verified",
+   "cli.has_stackup_json": "verified",
+   "cli.has_sch_diff": "verified",
+   "cli.has_pcb_png": "verified",
    "cli.has_sym_fp_upgrade": "verified",
    "cli.help_exit_code": "verified",
    "cli.sch_stamp_gate_needs_generator_version": "verified",
@@ -92,7 +96,14 @@
    "swig.needs_newboard_for_fill": "verified",
    "swig.ses_import_headless": "verified",
    "swig.shim": "verified",
-   "swig.write_drc_report_ok": "verified"
+   "swig.write_drc_report_ok": "verified",
+   "ipc.headless_libraries_need_load": "docs",
+   "ipc.headless_jobs": "docs",
+   "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
+   "cli.drc_error_limit": "verified",
+   "cli.drc_extended_error_limit": "verified",
+   "cli.drc_extended_error_types": "verified",
+   "cli.netlist_pinfunction_suffix": "verified"
   },
   "10.0.6": {
    "cli.drc_refill_flags": "verified",
@@ -185,7 +196,11 @@
    "swig.needs_newboard_for_fill": "docs",
    "swig.ses_import_headless": "docs",
    "swig.shim": "docs",
-   "swig.write_drc_report_ok": "docs"
+   "swig.write_drc_report_ok": "docs",
+   "cli.drc_error_limit": "verified",
+   "cli.drc_extended_error_limit": "verified",
+   "cli.drc_extended_error_types": "verified",
+   "cli.netlist_pinfunction_suffix": "verified"
   },
   "10.0.7": {
    "cli.drc_refill_flags": "docs",
@@ -278,7 +293,11 @@
    "swig.needs_newboard_for_fill": "docs",
    "swig.ses_import_headless": "docs",
    "swig.shim": "docs",
-   "swig.write_drc_report_ok": "docs"
+   "swig.write_drc_report_ok": "docs",
+   "cli.drc_error_limit": "verified",
+   "cli.drc_extended_error_limit": "verified",
+   "cli.drc_extended_error_types": "verified",
+   "cli.netlist_pinfunction_suffix": "verified"
   },
   "11.0.0": {
    "cli.drc_refill_flags": "docs",
@@ -343,6 +362,10 @@
    "cli.has_render": "docs",
    "cli.has_sch_pcb_upgrade": "docs",
    "cli.has_stats": "docs",
+   "cli.has_stats_json": "docs",
+   "cli.has_stackup_json": "docs",
+   "cli.has_sch_diff": "docs",
+   "cli.has_pcb_png": "docs",
    "cli.has_sym_fp_upgrade": "docs",
    "cli.help_exit_code": "docs",
    "cli.sch_stamp_gate_needs_generator_version": "docs",
@@ -372,7 +395,14 @@
    "swig.needs_newboard_for_fill": "docs",
    "swig.ses_import_headless": "docs",
    "swig.shim": "docs",
-   "swig.write_drc_report_ok": "docs"
+   "swig.write_drc_report_ok": "docs",
+   "ipc.headless_libraries_need_load": "docs",
+   "ipc.headless_jobs": "docs",
+   "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
+   "cli.drc_error_limit": "docs",
+   "cli.drc_extended_error_limit": "docs",
+   "cli.drc_extended_error_types": "docs",
+   "cli.netlist_pinfunction_suffix": "docs"
   },
   "7.0.6": {
    "cli.drc_refill_flags": "verified",
@@ -412,6 +442,10 @@
    "cli.has_render": "verified",
    "cli.has_sch_pcb_upgrade": "verified",
    "cli.has_stats": "verified",
+   "cli.has_stats_json": "verified",
+   "cli.has_stackup_json": "verified",
+   "cli.has_sch_diff": "verified",
+   "cli.has_pcb_png": "verified",
    "cli.has_sym_fp_upgrade": "verified",
    "cli.help_exit_code": "verified",
    "cli.sch_stamp_gate_needs_generator_version": "verified",
@@ -441,7 +475,11 @@
    "swig.needs_newboard_for_fill": "verified",
    "swig.ses_import_headless": "verified",
    "swig.shim": "verified",
-   "swig.write_drc_report_ok": "verified"
+   "swig.write_drc_report_ok": "verified",
+   "ipc.headless_libraries_need_load": "docs",
+   "ipc.headless_jobs": "docs",
+   "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
+   "cli.netlist_pinfunction_suffix": "docs"
   },
   "8.0.1": {
    "cli.drc_refill_flags": "verified",
@@ -487,6 +525,10 @@
    "cli.has_render": "verified",
    "cli.has_sch_pcb_upgrade": "verified",
    "cli.has_stats": "verified",
+   "cli.has_stats_json": "verified",
+   "cli.has_stackup_json": "verified",
+   "cli.has_sch_diff": "verified",
+   "cli.has_pcb_png": "verified",
    "cli.has_sym_fp_upgrade": "verified",
    "cli.help_exit_code": "verified",
    "cli.sch_stamp_gate_needs_generator_version": "verified",
@@ -516,7 +558,14 @@
    "swig.needs_newboard_for_fill": "verified",
    "swig.ses_import_headless": "verified",
    "swig.shim": "verified",
-   "swig.write_drc_report_ok": "verified"
+   "swig.write_drc_report_ok": "verified",
+   "ipc.headless_libraries_need_load": "docs",
+   "ipc.headless_jobs": "docs",
+   "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
+   "cli.drc_error_limit": "docs",
+   "cli.drc_extended_error_limit": "docs",
+   "cli.drc_extended_error_types": "docs",
+   "cli.netlist_pinfunction_suffix": "docs"
   },
   "9.0.5": {
    "cli.drc_refill_flags": "verified",
@@ -572,6 +621,10 @@
    "cli.has_render": "verified",
    "cli.has_sch_pcb_upgrade": "verified",
    "cli.has_stats": "verified",
+   "cli.has_stats_json": "verified",
+   "cli.has_stackup_json": "verified",
+   "cli.has_sch_diff": "verified",
+   "cli.has_pcb_png": "verified",
    "cli.has_sym_fp_upgrade": "verified",
    "cli.help_exit_code": "verified",
    "cli.sch_stamp_gate_needs_generator_version": "verified",
@@ -601,10 +654,21 @@
    "swig.needs_newboard_for_fill": "verified",
    "swig.ses_import_headless": "verified",
    "swig.shim": "verified",
-   "swig.write_drc_report_ok": "verified"
+   "swig.write_drc_report_ok": "verified",
+   "ipc.headless_libraries_need_load": "docs",
+   "ipc.headless_jobs": "docs",
+   "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
+   "cli.drc_error_limit": "docs",
+   "cli.drc_extended_error_limit": "docs",
+   "cli.drc_extended_error_types": "docs",
+   "cli.netlist_pinfunction_suffix": "docs"
   },
   "10.99.0": {
    "cli.subcommands": "verified",
+   "cli.has_stats_json": "verified",
+   "cli.has_stackup_json": "verified",
+   "cli.has_sch_diff": "verified",
+   "cli.has_pcb_png": "verified",
    "cli.flags.fp diff": "verified",
    "cli.flags.fp export svg": "verified",
    "cli.flags.gerber": "verified",
@@ -631,12 +695,31 @@
    "cli.flags.sch export bom": "verified",
    "cli.flags.sch export png": "verified",
    "cli.flags.sch import": "verified",
-   "cli.flags.sym diff": "verified"
+   "cli.flags.sym diff": "verified",
+   "ipc.headless": "verified",
+   "ipc.schematic": "verified",
+   "ipc.commit_needs_document": "verified",
+   "ipc.headless_libraries_need_load": "verified",
+   "ipc.headless_jobs": "verified",
+   "ipc.schematic_update_shared_lib_symbol_hangs": "verified",
+   "cli.drc_error_limit": "verified",
+   "cli.drc_extended_error_limit": "verified",
+   "cli.drc_extended_error_types": "verified",
+   "cli.netlist_pinfunction_suffix": "verified"
   },
   "9.0.9": {
-   "cli.flags.pcb export drill": "verified"
+   "cli.flags.pcb export drill": "verified",
+   "cli.drc_error_limit": "docs",
+   "cli.drc_extended_error_limit": "docs",
+   "cli.drc_extended_error_types": "docs",
+   "cli.netlist_pinfunction_suffix": "docs"
   },
-  "8.0.9": {}
+  "8.0.9": {
+   "cli.drc_error_limit": "docs",
+   "cli.drc_extended_error_limit": "docs",
+   "cli.drc_extended_error_types": "docs",
+   "cli.netlist_pinfunction_suffix": "docs"
+  }
  },
  "schema": 1,
  "versions": {
@@ -881,6 +964,10 @@
     "cli.has_render": false,
     "cli.has_sch_pcb_upgrade": false,
     "cli.has_stats": false,
+    "cli.has_stats_json": false,
+    "cli.has_stackup_json": false,
+    "cli.has_sch_diff": false,
+    "cli.has_pcb_png": false,
     "cli.has_sym_fp_upgrade": true,
     "cli.help_exit_code": 1,
     "cli.sch_stamp_gate_needs_generator_version": false,
@@ -951,7 +1038,11 @@
     "swig.needs_newboard_for_fill": true,
     "swig.ses_import_headless": false,
     "swig.shim": "v7",
-    "swig.write_drc_report_ok": true
+    "swig.write_drc_report_ok": true,
+    "ipc.headless_libraries_need_load": false,
+    "ipc.headless_jobs": false,
+    "ipc.schematic_update_shared_lib_symbol_hangs": false,
+    "cli.netlist_pinfunction_suffix": false
    }
   },
   "8.0.1": {
@@ -1310,6 +1401,10 @@
     "cli.has_render": false,
     "cli.has_sch_pcb_upgrade": false,
     "cli.has_stats": false,
+    "cli.has_stats_json": false,
+    "cli.has_stackup_json": false,
+    "cli.has_sch_diff": false,
+    "cli.has_pcb_png": false,
     "cli.has_sym_fp_upgrade": true,
     "cli.help_exit_code": 1,
     "cli.sch_stamp_gate_needs_generator_version": true,
@@ -1388,7 +1483,17 @@
     "swig.needs_newboard_for_fill": true,
     "swig.ses_import_headless": true,
     "swig.shim": "v8plus",
-    "swig.write_drc_report_ok": true
+    "swig.write_drc_report_ok": true,
+    "ipc.headless_libraries_need_load": false,
+    "ipc.headless_jobs": false,
+    "ipc.schematic_update_shared_lib_symbol_hangs": false,
+    "cli.drc_error_limit": 199,
+    "cli.drc_extended_error_limit": 499,
+    "cli.drc_extended_error_types": [
+     "clearance",
+     "unconnected_items"
+    ],
+    "cli.netlist_pinfunction_suffix": false
    }
   },
   "8.0.9": {
@@ -2022,6 +2127,10 @@
     "cli.has_render": true,
     "cli.has_sch_pcb_upgrade": false,
     "cli.has_stats": false,
+    "cli.has_stats_json": false,
+    "cli.has_stackup_json": false,
+    "cli.has_sch_diff": false,
+    "cli.has_pcb_png": false,
     "cli.has_sym_fp_upgrade": true,
     "cli.help_exit_code": 0,
     "cli.sch_stamp_gate_needs_generator_version": true,
@@ -2111,7 +2220,17 @@
     "swig.needs_newboard_for_fill": true,
     "swig.ses_import_headless": true,
     "swig.shim": "v8plus",
-    "swig.write_drc_report_ok": true
+    "swig.write_drc_report_ok": true,
+    "ipc.headless_libraries_need_load": false,
+    "ipc.headless_jobs": false,
+    "ipc.schematic_update_shared_lib_symbol_hangs": false,
+    "cli.drc_error_limit": 199,
+    "cli.drc_extended_error_limit": 499,
+    "cli.drc_extended_error_types": [
+     "clearance",
+     "unconnected_items"
+    ],
+    "cli.netlist_pinfunction_suffix": false
    }
   },
   "9.0.9": {
@@ -2930,6 +3049,10 @@
     "cli.has_render": true,
     "cli.has_sch_pcb_upgrade": true,
     "cli.has_stats": true,
+    "cli.has_stats_json": true,
+    "cli.has_stackup_json": false,
+    "cli.has_sch_diff": false,
+    "cli.has_pcb_png": false,
     "cli.has_sym_fp_upgrade": true,
     "cli.help_exit_code": 0,
     "cli.sch_stamp_gate_needs_generator_version": true,
@@ -3027,7 +3150,17 @@
     "swig.needs_newboard_for_fill": false,
     "swig.ses_import_headless": true,
     "swig.shim": "v8plus",
-    "swig.write_drc_report_ok": false
+    "swig.write_drc_report_ok": false,
+    "ipc.headless_libraries_need_load": false,
+    "ipc.headless_jobs": false,
+    "ipc.schematic_update_shared_lib_symbol_hangs": false,
+    "cli.drc_error_limit": 199,
+    "cli.drc_extended_error_limit": 499,
+    "cli.drc_extended_error_types": [
+     "clearance",
+     "unconnected_items"
+    ],
+    "cli.netlist_pinfunction_suffix": true
    }
   },
   "10.0.6": {
@@ -3118,7 +3251,7 @@
   },
   "10.99.0": {
    "inherits": "11.0.0",
-   "note": "probed live on windows 10.99.0 — nightly; re-run refresh_matrix.py after every nightly bump",
+   "note": "probed live on windows 10.99.0 — nightly; re-run refresh_matrix.py after every nightly bump | ipc.* verified 2026-09-19 by tests/test_ipc_live.py + conformance/tests/t5_ipc_handlers.py (build 10.99.0-4083-g6dd893f7d1, kicad-python f79cebd)",
    "values": {
     "cli.subcommands": [
      "api-server",
@@ -3648,7 +3781,13 @@
      "--format",
      "--output",
      "--exit-code-only"
-    ]
+    ],
+    "ipc.headless": true,
+    "ipc.schematic": true,
+    "ipc.commit_needs_document": true,
+    "ipc.headless_libraries_need_load": true,
+    "ipc.headless_jobs": false,
+    "ipc.schematic_update_shared_lib_symbol_hangs": true
    }
   },
   "11.0.0": {
@@ -3728,7 +3867,14 @@
     "swig.needs_newboard_for_fill": false,
     "swig.ses_import_headless": false,
     "swig.shim": "",
-    "swig.write_drc_report_ok": false
+    "swig.write_drc_report_ok": false,
+    "cli.has_stats_json": true,
+    "cli.has_stackup_json": true,
+    "cli.has_sch_diff": true,
+    "cli.has_pcb_png": true,
+    "ipc.headless_libraries_need_load": true,
+    "ipc.headless_jobs": false,
+    "ipc.schematic_update_shared_lib_symbol_hangs": false
    }
   }
  }

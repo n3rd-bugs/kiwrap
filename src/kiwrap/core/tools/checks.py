@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project, ProjectState
-from kiwrap.core.state.stages import downgrade_below, record_stage
+from kiwrap.core.state.stages import downgrade_below, record_stage, sha256_file
 from kiwrap.core.tools._base import MUTATING, ToolContext, ToolSpec, mutation, to_kiwrap_error
 
 DRC_MUST_FIX = (
@@ -62,6 +62,37 @@ def violation_dict(v: Any) -> dict[str, Any]:
         "pos": pos_dict(v.pos),
         "items": [{"uuid": i.uuid, "description": i.description, "pos": pos_dict(i.pos)} for i in v.items],
     }
+
+
+def drc_type_limit(vtype: str, caps: Any) -> int:
+    """KiCad's per-type reporting limit for a DRC violation type (capability keys
+    `cli.drc_error_limit` / `cli.drc_extended_error_limit` / `cli.drc_extended_error_types`;
+    DRC_ENGINE ERROR_LIMIT 199 / EXTENDED_ERROR_LIMIT 499 when the record has none)."""
+    extended = _table(caps, "cli.drc_extended_error_types", ("clearance", "unconnected_items"))
+    key = "cli.drc_extended_error_limit" if vtype in extended else "cli.drc_error_limit"
+    default = 499 if vtype in extended else 199
+    try:
+        val = caps[key]
+    except (KeyError, TypeError):
+        return default
+    return int(val) if isinstance(val, (int, float)) and val > 0 else default
+
+
+def drc_capped_types(report: Any, caps: Any) -> list[str]:
+    """Violation types whose count reached KiCad's reporting limit (a lower bound, not a total).
+    Prefers what the backend recorded (`report.raw['_cli']['capped']`, computed by
+    `kiwrap.backends.cli.drc.capped_types`); recomputed here for reports without it."""
+    raw = getattr(report, "raw", None)
+    if isinstance(raw, dict) and isinstance(raw.get("_cli"), dict) and "capped" in raw["_cli"]:
+        return sorted(str(t) for t in raw["_cli"]["capped"])
+    counts: dict[str, int] = {}
+    for v in (
+        *getattr(report, "violations", ()),
+        *getattr(report, "unconnected", ()),
+        *getattr(report, "schematic_parity", ()),
+    ):
+        counts[v.type] = counts.get(v.type, 0) + 1
+    return sorted(t for t, n in counts.items() if n >= drc_type_limit(t, caps))
 
 
 def _table(caps: Any, key: str, default: tuple[str, ...]) -> tuple[str, ...]:
@@ -245,6 +276,7 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
             buckets[d["class"]].append(d)
         must_fix = len(buckets["must_fix"])
         ok = must_fix == 0
+        capped = drc_capped_types(report, caps)
         data: dict[str, Any] = {
             "ok": ok,
             "kicad_version": report.kicad_version,
@@ -255,6 +287,7 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
             "cosmetic": len(buckets["cosmetic"]),
             "unconnected": len([v for v in report.unconnected if not getattr(v, "excluded", False)]),
             "parity_violations": len(report.schematic_parity),
+            "capped": capped,
             "violations": [*buckets["must_fix"], *buckets["review"], *buckets["cosmetic"]][:MAX_VIOLATIONS],
             "violations_truncated": max(0, len(all_v) - MAX_VIOLATIONS),
             "options": {
@@ -268,6 +301,20 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
             must_fix,
             {"review": data["review"], "cosmetic": data["cosmetic"], "unconnected": data["unconnected"]},
         )
+        m.history_extra["board_sha256"] = sha256_file(project.board)  # kw_pcb_check: is this DRC fresh?
+        if capped:
+            m.history_extra["drc_capped"] = list(capped)
+            m.receipt.degraded.append("drc_counts_capped")
+            limits = ", ".join(f"{t} after {drc_type_limit(t, caps)}" for t in capped)
+            m.receipt.warnings.append(
+                f"KiCad stops reporting a violation type once its limit is reached ({limits}): the counts for "
+                f"{', '.join(capped)} are LOWER BOUNDS. Fix the listed items and re-run kw_pcb_drc"
+                + (
+                    "; for the complete unrouted count use kw_pcb_check (its connectivity providers are uncapped)"
+                    if "unconnected_items" in capped
+                    else ""
+                )
+            )
         if args.refill_zones and args.save_board:
             m.receipt.changed["updated"].append(project.board.name)
         if ok:

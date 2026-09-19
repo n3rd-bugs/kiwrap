@@ -1,0 +1,58 @@
+{
+  "changes": [
+    {
+      "bbox": [
+        1535890,
+        784251,
+        61274,
+        132283
+      ],
+      "children": [],
+      "id": "/28f865a0-4433-4a53-bbd7-b62f276848e4/00000000-0000-0000-0000-00004549f38a",
+      "kind": "modified",
+      "properties": [
+        {
+          "after": {
+            "type": "string",
+            "v": "2.2K"
+          },
+          "before": {
+            "type": "string",
+            "v": "1.5K"
+          },
+          "name": "Value"
+        }
+      ],
+      "refdes": "R1",
+      "typeName": "SCH_SYMBOL"
+    },
+    {
+      "bbox": [
+        1510491,
+        1071573,
+        151939,
+        396853
+      ],
+      "children": [],
+      "id": "/28f865a0-4433-4a53-bbd7-b62f276848e4/00000000-0000-0000-0000-00004549f39d",
+      "kind": "modified",
+      "properties": [
+        {
+          "after": {
+            "type": "int",
+            "v": 1651000
+          },
+          "before": {
+            "type": "int",
+            "v": 1549400
+          },
+          "name": "Position X"
+        }
+      ],
+      "refdes": "R2",
+      "typeName": "SCH_SYMBOL"
+    }
+  ],
+  "docType": "kicad_sch",
+  "path": "C:\\Users\\usama\\AppData\\Local\\Temp\\claude\\c--Upwork-KiCad\\48a8df66-7213-479f-ab2e-a63b89135016\\scratchpad\\structured\\out\\10.99.0\\mod3.kicad_sch"
+}

@@ -27,6 +27,11 @@ SUMMARY_KEYS = (
     "swig.available",
     "ipc.available",
     "ipc.headless",
+    "ipc.schematic",
+    "cli.has_sch_diff",
+    "cli.has_stats_json",
+    "cli.has_stackup_json",
+    "cli.has_pcb_png",
     "rules.default_min_track_width_mm",
 )
 
@@ -99,6 +104,10 @@ def run(ctx: ToolContext, args: EnvArgs) -> Receipt:
 
     storage = ctx.services.storage_home
     engines = {name: (storage / rel).exists() for name, rel in ENGINE_DIRS.items()}
+    try:
+        data_backends = ctx.services.data_backends()
+    except AttributeError:  # a hand-built Services double without the method
+        data_backends = {}
     data = {
         "ok": True,
         "kiwrap_version": ctx.server_version,
@@ -106,9 +115,15 @@ def run(ctx: ToolContext, args: EnvArgs) -> Receipt:
         "installs": rows,
         "default_install": rows[0]["version"] if rows else None,
         "engines": engines,
+        # which optional data-first backends this server can reach (kiwrap.core.services.DATA_BACKENDS);
+        # the planner falls through a provider whose backend is missing, so an agent reading
+        # `provider_used: file` on a KiCad with ipc.headless looks here first
+        "data_backends": data_backends,
         "storage": {
             "home": str(storage),
-            "sandbox_roots": str(storage / "kicad-config"),  # kiwrap.sandbox: kicad-config/<semver>-<root digest>/
+            "sandbox_roots": str(
+                storage / "kicad-config"
+            ),  # kiwrap.sandbox: kicad-config/<semver>-<root digest>/
             "jobs": str(ctx.jobs.storage_dir) if ctx.jobs.storage_dir else None,
             "temp": str(plat.temp_dir),
             "user_kicad_config_home": str(plat.user_kicad_config_home) + " (read-only, never written)",

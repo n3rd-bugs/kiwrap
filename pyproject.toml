@@ -9,6 +9,17 @@ authors = [{ name = "Usama Masood" }]
 dependencies = [
     "mcp>=2.2,<3",
     "pydantic>=2.7",
+    # KiCad 11 IPC client (kiwrap.backends.ipc). Pinned to a git commit because no 0.9 wheel is on
+    # PyPI (latest is 0.8.0, built against 10.0.6 protos, which cannot send OpenDocument). A PEP 508
+    # direct reference, not a bare `==0.9.0.dev0` + [tool.uv.sources]: the source table does not
+    # travel with the built kiwrap wheel, whose `Requires-Dist: kicad-python==0.9.0.dev0` existed on
+    # no index and made `pip install kiwrap-*.whl` / `uv tool install` unsatisfiable (reviewer
+    # finding 6, 2026-09-19). Building it from git needs a toolchain and clones KiCad as a submodule
+    # (3.5 GB); scripts/ci/build_kicad_python_wheel.py builds the wheel once from a shallow, sparse
+    # clone and CI installs that wheel (`uv sync --no-install-package kicad-python` + the
+    # wheelhouse) instead of building here. Its own deps (protobuf<6, pynng, zstandard, jsonschema)
+    # come with it. Never install kipy 0.8.0 into the same environment (proto packages collide).
+    "kicad-python @ git+https://gitlab.com/kicad/code/kicad-python.git@f79cebd1c09f6ef1d16e74d538da521e68c2d9f1",
 ]
 
 [project.optional-dependencies]
@@ -30,8 +41,20 @@ dev = [
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+# the kicad-python git pin above is a PEP 508 direct reference (PyPI would refuse the upload;
+# kiwrap is not on PyPI while it depends on an unreleased kicad-python)
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/kiwrap"]
+
+# Site hook for kicad-python's generated protobuf modules (kiwrap.backends.ipc explains why): the
+# .pth line `import _kiwrap_kipy_proto` appends <site-packages>/kipy/proto to sys.path at start-up.
+# hatchling copies force-include files into editable wheels too (verified: hatchling 1.32.3).
+[tool.hatch.build.targets.wheel.force-include]
+"src/kiwrap/backends/ipc/_pth/kiwrap_kipy_proto.pth" = "kiwrap_kipy_proto.pth"
+"src/kiwrap/backends/ipc/_pth/_kiwrap_kipy_proto.py" = "_kiwrap_kipy_proto.py"
 
 [tool.ruff]
 line-length = 110

@@ -138,7 +138,10 @@ def refuse_if_editor_open(project: Project) -> None:
             "E_FILE_LOCKED",
             f"KiCad has {len(locks)} file(s) of this project open",
             why="editing a file on disk while a KiCad editor holds it would be overwritten on the next GUI save",
-            fix="close the file in KiCad (or delete the stale ~*.lck file if KiCad is not running) and retry",
+            fix=(
+                "close the file in KiCad and retry; if no KiCad (and no kicad-cli api-server) is running the "
+                "~*.lck is stale and may be deleted - kiwrap's own headless servers are closed before this check"
+            ),
             candidates=[p.name for p in locks],
         )
 

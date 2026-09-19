@@ -490,3 +490,82 @@ Ordered by severity; each names the owning section/phase. These are inputs to Ph
 - The vcpkg/VS 17.14 source-build recipe (binary cache hash matching MSVC 14.44, swigwin 4.3.1, ~1 day) is unverified since no build was attempted.
 - Multi-unit symbols, rotated/mirrored placements combined with hierarchical sheets, and bus wiring were never run through ERC/netlist; only the pin transform (12 orientations, single-pin symbol) and flat rotation-0 schematics were.
 - kicad-cli `pcb drc --refill-zones --save-board` preserves all board content it does not touch (it re-serialises the file with KiCad's own writer); assumed lossless because it is KiCad, but not diffed.
+
+---
+
+## 18. Direction change 2026-09-19: KiCad 11 first, data-first feedback
+
+Decisions D16 and D17 ([DECISIONS.md](DECISIONS.md)) change the priority order and the feedback
+model set out in §1–§11. This section records what changed and where the detail now lives; the
+earlier sections are left as written and read as "Phase 0 as planned".
+
+**Targets.** The primary target is the newest KiCad: the pinned 10.99 nightly (10.99.0-4083-g6dd893f7d1
+today, re-probed by `scripts/ci/refresh_matrix.py` on every bump) and KiCad 11.0 at GA; 10.0.x is
+co-primary; 9 is certified later; 8 and 7 are best-effort. The §2 matrix column "11 (master, not
+installed)" is now a verified column: `kicad-cli api-server` runs headless, `sch diff`, `sch import`,
+`pcb export png|bom|stackup --format json`, `gerber`, `mergetool` exist, SWIG and the bundled Python
+are gone. The SWIG driver (§3, §14) leaves the critical path and becomes a legacy backend for ≤ 10.
+
+**Backends by version (replaces the §4 priority order).**
+
+| KiCad | Schematic read/write | Board read/write | Checks and exports |
+|---|---|---|---|
+| 11 / nightly (`ipc.headless`) | headless IPC (`kiwrap.backends.ipc`) with the file engine as the lossless bridge | headless IPC; file engine | kicad-cli (job exports over headless IPC are unhandled on 10.99.0-4083 — T5) |
+| 10.0.x (co-primary) | file engine only (no schematic API; #24966 until 10.0.7) | file engine + SWIG driver (legacy) + GUI IPC live sessions (PCB only, D2) | kicad-cli |
+| 9 / 8 / 7 | file engine | file engine + SWIG driver | kicad-cli where it exists |
+
+**Data-first feedback (replaces "render and look" in §11).** The agent's loop is structured data:
+`kw_pcb_get`, `kw_sch_get`, `kw_pcb_check`, `kw_sch_stats`, `kw_sch_diff` (typed `outputSchema`,
+filters, paging) fed by a planner (`kiwrap.core.planner`) whose provider chains are `ipc11 → file →
+cli` with capability predicates, fall-through and `provider_used` / `degraded[]` receipts. Renders
+(`kw_sch_render`, `kw_pcb_render`) are secondary tools for humans and VS Code previews. The skill
+rule becomes: after every mutating step — snapshot → structured check (`kw_*_check` / `kw_*_get`)
+→ fix from uuid + position → re-validate; render only when a human asks.
+
+**Three tiers of signal ([UPSTREAM.md](UPSTREAM.md) §1 is the definitive table).** Tier 1, no
+KiCad change: everything in the files through the lossless CST and its semantic models
+(`kiwrap.formats.board` / `schematic` / `analysis`: geometry, courtyard overlaps matching DRC,
+off-board, pin connectivity and a netlist that agrees with kicad-cli on 12779/12787 demo nets) plus
+kicad-cli structured outputs (DRC/ERC JSON, netlist, IPC-2581, IPC-D-356, stats, stackup,
+position, `sch diff`, PNG). Tier 2, KiCad 11 headless IPC: items, bounding boxes, hit test, nets,
+connectivity, netlist + hierarchy, design rules, `ImportNetlist`, `Place*FromLibrary`, commits and
+saves. Tier 3, gaps needing a KiCad change: ratsnest/airwires with endpoints (no CLI or IPC
+surface anywhere; kiwrap ships an estimate), DRC/ERC over IPC, per-net statistics, job dispatch and
+library queries on the headless server, schematic `GetBoundingBox`, plus the bugs ERC JSON ×100
+(#25582), DRC per-type caps (#25434) and the nightly `UpdateItems` hang. UPSTREAM.md §2 has one
+card per gap with workaround, upstream status, proposed proto/CLI change, effort and priority.
+
+**The non-negotiable, relaxed.** "No shipped component may require a patched KiCad" becomes:
+stock KiCad always works and is the only thing certified as *supported*; a patched or nightly
+build unlocks more; every patch lives in `n3rd-bugs/kicad-source-mirror` (branches `mr/<issue>-<slug>`,
+integration branch `kiwrap/<kicad-sha>`, tags `kiwrap-build/<sha>-<n>`) until merged upstream, and
+is detected by presence probes that flip ordinary capability keys (`cli.has_ratsnest_export`,
+`ipc.has_get_ratsnest`, …) plus an informational `kiwrap.patches` list; tools never branch on the
+latter. The source build moves from D1's "gated trigger" to planned Phase 1 work; the bench's
+acceptance test is that T5 on the self-built nightly commit reproduces
+`conformance/snapshots/ipc-handlers/10.99.0.json` (UPSTREAM.md §3–§4).
+
+**Capability keys added or planned by this change.** Existing: `ipc.headless`, `ipc.schematic`,
+`ipc.commit_needs_document`, `ipc.headless_libraries_need_load`, `ipc.headless_jobs`,
+`ipc.schematic_update_shared_lib_symbol_hangs`, `cli.has_stats_json`, `cli.has_stackup_json`,
+`cli.has_sch_diff`, `cli.has_pcb_png`. Planned with the fork: `cli.has_ratsnest_export`,
+`ipc.has_get_ratsnest`, `ipc.has_drc_job`, `ipc.has_erc_job`, `ipc.has_net_statistics`,
+`ipc.headless_library_queries`, `ipc.schematic_bounding_box`, `ipc.schematic_pins_are_items`,
+`ipc.import_netlist_structured`, `cli.drc_json_has_marker_pos`, `cli.drc_unlimited_violations`,
+`kiwrap.patches`, `kiwrap.patched_build`. `cli.erc_json_pos_scale` stays forever and flips to 1 on
+fixed builds.
+
+**Client.** kicad-python from git main (0.9.0.dev0, pinned commit, MIT) is the KiCad 11 client;
+kiwrap launches `kicad-cli api-server` itself (sandbox env, `Ping` readiness as in KiCad's own
+`qa/tests/api/api_e2e_utils.h`, tree kill) because `kipy.server.KiCadServer` takes no `env`. The
+Windows git-install packaging bug (bare proto imports; root cause protoc-wheel-0's `os.execv`
+launcher) is covered by a `.pth` site hook that is documented as temporary; the upstream fix is a
+five-line change to `tools/generate_protos.py` (UPSTREAM.md G14). kipy 0.8.0 stays the client for
+GUI sessions on 9/10 and is never installed in the same environment.
+
+**What §17 items this closes.** "KiCad 11 path is entirely documentary" — closed: the nightly is
+installed, T5 snapshotted, the headless backend, readers, queries and a write path are verified
+live. "kipy 0.8.0 cannot send the `document` field" — handled by the git-main client for 11 and
+the `ipc.commit_needs_document` key. Still open from §17: the ≤ 10 netlist updater (tier 1 on
+those versions), library management tooling (tier 1 lib-table reader is a kiwrap TODO in
+UPSTREAM.md G11), and the Linux/CI mechanics.

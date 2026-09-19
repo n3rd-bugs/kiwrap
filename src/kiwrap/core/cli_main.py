@@ -108,7 +108,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
 TOKEN_ENV = "KIWRAP_HTTP_TOKEN"
 
 
-def resolve_http_token(cli_token: str | None, token_file: str | None, env_token: str | None) -> tuple[str, str]:
+def resolve_http_token(
+    cli_token: str | None, token_file: str | None, env_token: str | None
+) -> tuple[str, str]:
     """(token, source) with source in {'--token-file', 'KIWRAP_HTTP_TOKEN', '--token', 'generated'}."""
     if token_file:
         value = Path(token_file).read_text(encoding="utf-8").strip()

@@ -1,15 +1,30 @@
-# Building KiCad from source (gated developer diagnostic)
+# Building KiCad from source (the bench)
 
-Status: **recipe only, not executed.** Decision D1 ([DECISIONS.md](../DECISIONS.md)) and
-[ARCHITECTURE.md §5.2](../ARCHITECTURE.md#52-source-build--defer-as-a-gated-developer-diagnostic)
-defer the build until a *named trigger* fires. Everything kiwrap ships runs against stock
-installers; a patched KiCad is never a dependency, and conformance (T1–T9) runs against installed
-binaries only. The Windows recipe below was assembled from the official dev-docs, the
-`kicad-win-builder` scripts and the toolchain inventory of this machine
-([research/09](../research/09-kicad-plugin-and-build.md), spike
-`spikes/kicad-plugin-and-build/kwb_build.ps1`); the Linux outline is from dev-docs and the
-10.0.6 PPA source package. Neither has been run here — expect small drift and fix the doc when
-you run it.
+Status: **executed on 2026-09-19** — Debug build of the fork at the nightly's commit
+`6dd893f7d1` (= installed 10.99.0-4083) at `C:\src\kicad`, preset `msvc-win64-debug`, QA tests
+on. Decision D17 ([DECISIONS.md](../DECISIONS.md)) made the bench *planned*: kiwrap extends
+KiCad's CLI/IPC upstream ([UPSTREAM.md](../UPSTREAM.md) has the ranked gap cards and the
+fork/patch workflow). Stock installers remain what kiwrap ships against; a patched build only
+unlocks more.
+
+## What actually happened (2026-09-19, this machine)
+
+| Step | Outcome |
+|---|---|
+| VS 2022 17.9 → **17.14.37710 (MSVC 14.44.35207)** | `vs_community.exe update --installPath … --quiet --norestart --wait` via the current bootstrapper (the old installer's `setup.exe --update` / `update` returned 87 = invalid parameter). ~25 min. |
+| vcpkg at the win-builder pin `66c0373d` at `C:cpkg`, `bootstrap-vcpkg.bat -disableMetrics` | OK (tool 2025-12-16). Run the batch file from PowerShell, not Git Bash. |
+| `kicad-gitlab` NuGet source, `VCPKG_BINARY_SOURCES=clear;nuget,kicad-gitlab,read` | Feed reachable anonymously (HTTP 200) but **every package was NotFound**: our `cl` is 19.44.35229 (a newer 14.44 servicing than CI's 35207) and the ABI hash includes it. Expect a full local dependency build. |
+| Fork clone (`--filter=blob:none` not used; full clone ~2 GB), `git checkout 6dd893f7d1` | OK. `CMakePresets.json.sample` hardcodes `VCPKG_ROOT: E:/vcpkg2/` — patch the copy to `C:/vcpkg/`; its `test-base` test preset lacks `"hidden": true` and CMake 3.31 rejects the file — add it. |
+| `cmake --preset msvc-win64-debug` (vcpkg installs 143 packages) | 141 built in **84 min**; `wxwidgets-33` failed: wxWidgets downloads the WebView2 SDK with `file(DOWNLOAD)`, and vcpkg had picked the **MinGW `cmake.exe` from `%USERPROFILE%	ools\mingw64in`** (no Windows certificate store → "SSL peer certificate" error). Put `C:\Program Files\CMakein` first on PATH and drop the mingw64 dir; the retry configured in 70 min (wxWidgets + KiCad configure). |
+| `cmake --build build\msvc-win64-debug --parallel 22` | **10 min**, 3648 targets, 0 errors: `kicad-cli.exe`, `kicad.exe`, `pcbnew.exe`, `eeschema.exe`, `qa_api.exe`, `qa_pcbnew.exe`, `qa_eeschema.exe`, … |
+| Running from the build tree | Needs every KiCad DLL directory of the build tree on PATH (`kicommon.dll` in `common\`, `kigal.dll` in `common\gal`, `kicad_3dsg.dll`, …) plus `vcpkg_installedd-windows\debugin`, and `KICAD_RUN_FROM_BUILD_DIR=1`; otherwise exit 0xC0000135. `C:\src\kicad-env.ps1` (outside the repo; copy in [`../../scripts/dev/kicad-env.ps1`](../../scripts/dev/kicad-env.ps1)) sets all of it with a sandboxed `KICAD_*_HOME` and a short `TEMP`. `kicad-cli version --format plain` → `10.99.0`; `api-server` present. |
+| `qa_api.exe` (KiCad's IPC API suite) | 99/108 cases pass. The 9 failures are harness environment (it resolves `qa/tests/schemas/api.v1.schema.json` relative to the working directory, then `ApiJobs/*` time out on `OpenDocument`; one mock expectation in `ApiWizards`) — rerun from the source `qa/` layout before treating any as real. `test_api_e2e.cpp` + `api_e2e_utils.h` are the template for new handler tests. |
+| Disk | vcpkg 31 GB (`buildtrees` 18 GB can be deleted), build tree 14 GB. |
+
+Next on the bench (per [UPSTREAM.md §4](../UPSTREAM.md#4-what-the-source-build-bench-must-enable-first)):
+`cmake --install` into `C:\kiwrap-buildsdd893f7d1-1`, register it as an explicit install, run T5
+against it and require equality with `conformance/snapshots/ipc-handlers/10.99.0.json`, then branch
+`mr/g6-headless-jobs` and `mr/g1-ratsnest`.
 
 ## When a build is the honest tool (the named triggers)
 

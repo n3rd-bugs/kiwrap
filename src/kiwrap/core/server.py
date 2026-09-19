@@ -27,18 +27,31 @@ from kiwrap.core.services import Services
 from kiwrap.core.state import KiwrapError
 from kiwrap.core.state.jobs import JobQueue
 from kiwrap.core.state.receipts import error_to_result
-from kiwrap.core.tools import PHASE0_TOOLS, TOOL_NAMES
+from kiwrap.core.tools import ALL_TOOLS, TOOL_NAMES
 from kiwrap.core.tools._base import ToolContext, ToolSpec, make_callable, to_kiwrap_error
 from kiwrap.platform import current
 
 INSTRUCTIONS = (
     "kiwrap drives installed KiCad binaries. Flow: kw_env -> kw_project(create) -> kw_sch_check -> "
-    "kw_pcb_drc -> kw_fab_export. Never edit .kicad_* files by hand (stages downgrade with external_edit). "
+    "kw_pcb_drc -> kw_fab_export. Data first: after every change query structured state (kw_sch_get / "
+    "kw_sch_stats / kw_pcb_get / kw_pcb_check) and act on it; renders (kw_sch_render / kw_pcb_render) are "
+    "secondary. Never edit .kicad_* files by hand (stages downgrade with external_edit). "
     "Positions are millimetres. Errors are isError results with {code, message, why, fix, candidates, example}; "
     "kw_help(topic=<code or tool>) explains each. kw_snapshot(restore) is undo."
 )
 
-REPORT_TOOLS = {"kw_sch_check", "kw_pcb_drc", "kw_fab_export", "kw_env", "kw_project"}
+REPORT_TOOLS = {
+    "kw_sch_check",
+    "kw_pcb_drc",
+    "kw_fab_export",
+    "kw_env",
+    "kw_project",
+    "kw_sch_get",
+    "kw_sch_stats",
+    "kw_sch_diff",
+    "kw_pcb_get",
+    "kw_pcb_check",
+}
 MAX_RESULT_CHARS = 60_000
 
 
@@ -54,7 +67,7 @@ class KiwrapServer(MCPServer):
     dispatches through `self.call_tool`, so the override is reached over the wire.
     """
 
-    async def call_tool(  # type: ignore[override]
+    async def call_tool(
         self, name: str, arguments: dict[str, Any], context: Any = None
     ) -> CallToolResult | Any:
         try:
@@ -91,7 +104,7 @@ def build_context(storage_home: Path | None = None, services: Services | None = 
     return ToolContext(services=svc, jobs=JobQueue(home / "jobs"), server_version=__version__)
 
 
-def register_tools(mcp: MCPServer, ctx: ToolContext, specs: tuple[ToolSpec, ...] = PHASE0_TOOLS) -> None:
+def register_tools(mcp: MCPServer, ctx: ToolContext, specs: tuple[ToolSpec, ...] = ALL_TOOLS) -> None:
     for spec in specs:
         meta = dict(spec.meta)
         if spec.name in REPORT_TOOLS:
@@ -108,7 +121,7 @@ def register_tools(mcp: MCPServer, ctx: ToolContext, specs: tuple[ToolSpec, ...]
 def build_server(
     storage_home: Path | None = None, *, services: Services | None = None, context: ToolContext | None = None
 ) -> MCPServer:
-    """Create the server with every Phase 0 tool registered in catalog order."""
+    """Create the server with every catalog tool (`ALL_TOOLS`) registered in catalog order."""
     ctx = context or build_context(storage_home, services)
     mcp = KiwrapServer(name="kiwrap", version=__version__, instructions=INSTRUCTIONS)
     register_tools(mcp, ctx)

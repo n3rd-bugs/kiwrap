@@ -11,5 +11,6 @@ Nine parallel research tracks, each combining web research with local experiment
 - [versioning-strategy: what a version-agnostic wrapper over KiCad 7/8/9/10(+11) must handle (file-format drift, kicad-cli argument drift, library/env-var/config resolution, Python API coupling) plus an adapter/IR design recommendation](07-versioning-strategy.md) — 18 findings
 - [e2e-agent-workflow: natural-language spec -> schematic -> ERC -> PCB -> placement -> routing -> DRC -> fabrication, as a version-agnostic KiCad wrapper driven by AI agents (tool catalog + skills)](08-e2e-agent-workflow.md) — 17 findings
 - [kicad-plugin-and-build: (A) KiCad 9/10 plugin mechanisms that could host a VS Code bridge (SWIG action plugins, IPC API plugins, eeschema hooks, in-process vs external capabilities) and (B) building KiCad from source on Windows vs debugging the installed release with public symbols](09-kicad-plugin-and-build.md) — 22 findings
+- [KiCad upstream MRs behind the KiCad 11 API features](10-kicad-upstream-mrs.md) — how handlers land, what is open, what to re-derive
 
 Proposals and judging: [proposals/](proposals/)

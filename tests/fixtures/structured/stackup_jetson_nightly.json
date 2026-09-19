@@ -1,0 +1,423 @@
+{
+ "finish": {
+  "typeName": "ENIG"
+ },
+ "impedance": {},
+ "edge": {
+  "connector": {
+   "type": "BECT_NONE"
+  },
+  "plating": {}
+ },
+ "layers": [
+  {
+   "thickness": {},
+   "layer": "BL_F_SilkS",
+   "enabled": true,
+   "type": "BSLT_SILKSCREEN",
+   "color": {
+    "a": 1
+   },
+   "userName": "F.Silkscreen",
+   "silkscreen": {
+    "materialName": "Not specified"
+   }
+  },
+  {
+   "thickness": {},
+   "layer": "BL_F_Paste",
+   "enabled": true,
+   "type": "BSLT_SOLDERPASTE",
+   "userName": "F.Paste"
+  },
+  {
+   "thickness": {
+    "valueNm": "10000"
+   },
+   "layer": "BL_F_Mask",
+   "enabled": true,
+   "type": "BSLT_SOLDERMASK",
+   "color": {
+    "a": 1
+   },
+   "userName": "F.Mask",
+   "soldermask": {
+    "epsilonR": 3.3,
+    "materialName": "Not specified",
+    "thickness": {
+     "valueNm": "10000"
+    }
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "35000"
+   },
+   "layer": "BL_F_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "F.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "120000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.1,
+      "lossTangent": 0.02,
+      "materialName": "PR2116",
+      "thickness": {
+       "valueNm": "120000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_PREPREG"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In1_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In1.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "200000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.3,
+      "lossTangent": 0.02,
+      "materialName": "FR4",
+      "thickness": {
+       "valueNm": "200000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_CORE"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In2_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In2.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "70000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 3.96,
+      "lossTangent": 0.02,
+      "materialName": "PR1080",
+      "thickness": {
+       "valueNm": "70000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     },
+     {
+      "epsilonR": 3.96,
+      "materialName": "PR1080",
+      "thickness": {
+       "valueNm": "70000"
+      },
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_PREPREG"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In3_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In3.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "200000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.3,
+      "lossTangent": 0.02,
+      "materialName": "FR4",
+      "thickness": {
+       "valueNm": "200000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_CORE"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In4_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In4.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "70000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 3.96,
+      "lossTangent": 0.02,
+      "materialName": "PR1080",
+      "thickness": {
+       "valueNm": "70000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     },
+     {
+      "epsilonR": 3.96,
+      "materialName": "PR1080",
+      "thickness": {
+       "valueNm": "70000"
+      },
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_PREPREG"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In5_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In5.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "200000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.3,
+      "lossTangent": 0.02,
+      "materialName": "FR4",
+      "thickness": {
+       "valueNm": "200000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_CORE"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "35000"
+   },
+   "layer": "BL_In6_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In6.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "70000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 3.96,
+      "lossTangent": 0.02,
+      "materialName": "PR1080",
+      "thickness": {
+       "valueNm": "70000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     },
+     {
+      "epsilonR": 3.96,
+      "materialName": "PR1080",
+      "thickness": {
+       "valueNm": "70000"
+      },
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_PREPREG"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In7_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In7.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "200000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.3,
+      "lossTangent": 0.02,
+      "materialName": "FR4",
+      "thickness": {
+       "valueNm": "200000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_CORE"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "18000"
+   },
+   "layer": "BL_In8_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "In8.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "120000"
+   },
+   "layer": "BL_UNDEFINED",
+   "enabled": true,
+   "type": "BSLT_DIELECTRIC",
+   "dielectric": {
+    "layer": [
+     {
+      "epsilonR": 4.1,
+      "lossTangent": 0.02,
+      "materialName": "PR2116",
+      "thickness": {
+       "valueNm": "120000"
+      },
+      "specFrequency": 1000000000,
+      "dielectricModel": "DM_CONSTANT"
+     }
+    ],
+    "type": "BSDT_PREPREG"
+   }
+  },
+  {
+   "thickness": {
+    "valueNm": "35000"
+   },
+   "layer": "BL_B_Cu",
+   "enabled": true,
+   "type": "BSLT_COPPER",
+   "materialName": "copper",
+   "userName": "B.Cu"
+  },
+  {
+   "thickness": {
+    "valueNm": "10000"
+   },
+   "layer": "BL_B_Mask",
+   "enabled": true,
+   "type": "BSLT_SOLDERMASK",
+   "color": {
+    "a": 1
+   },
+   "userName": "B.Mask",
+   "soldermask": {
+    "epsilonR": 3.3,
+    "materialName": "Not specified",
+    "thickness": {
+     "valueNm": "10000"
+    }
+   }
+  },
+  {
+   "thickness": {},
+   "layer": "BL_B_Paste",
+   "enabled": true,
+   "type": "BSLT_SOLDERPASTE",
+   "userName": "B.Paste"
+  },
+  {
+   "thickness": {},
+   "layer": "BL_B_SilkS",
+   "enabled": true,
+   "type": "BSLT_SILKSCREEN",
+   "color": {
+    "a": 1
+   },
+   "userName": "B.Silkscreen",
+   "silkscreen": {
+    "materialName": "Not specified"
+   }
+  }
+ ]
+}

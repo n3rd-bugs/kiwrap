@@ -1,0 +1,905 @@
+<?xml version='1.0' encoding='utf-8'?>
+<IPC-2581 xmlns="http://webstds.ipc.org/2581" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" revision="C" xsi:schemaLocation="http://webstds.ipc.org/2581 http://webstds.ipc.org/2581/IPC-2581C.xsd">
+  <Content roleRef="Owner">
+    <FunctionMode mode="USERDEF" sectionKey="KBCASUMPLRDOEF" />
+    <StepRef name="pic_programmer" />
+    <LayerRef name="F.Silkscreen" />
+    <LayerRef name="F.Paste" />
+    <LayerRef name="F.Mask" />
+    <LayerRef name="top_layer" />
+    <LayerRef name="DIELECTRIC_1" />
+    <LayerRef name="bottom_layer" />
+    <LayerRef name="B.Mask" />
+    <LayerRef name="B.Paste" />
+    <LayerRef name="B.Silkscreen" />
+    <LayerRef name="F.Adhesive" />
+    <LayerRef name="B.Adhesive" />
+    <LayerRef name="User.Drawings" />
+    <LayerRef name="User.Comments" />
+    <LayerRef name="User.Eco1" />
+    <LayerRef name="User.Eco2" />
+    <LayerRef name="Edge.Cuts" />
+    <LayerRef name="Margin" />
+    <LayerRef name="B.Courtyard" />
+    <LayerRef name="F.Courtyard" />
+    <LayerRef name="B.Fab" />
+    <LayerRef name="F.Fab" />
+    <LayerRef name="top_layer_bottom_layer" />
+    <BomRef name="pic_programmer_1" />
+    <AvlRef name="Primary_Vendor_List" />
+    <DictionaryStandard units="MILLIMETER">
+      <EntryStandard id="ROUNDRECT_1">
+        <RectRound width="2.40" height="2.40" radius="0.250001" upperRight="true" upperLeft="true" lowerRight="true" lowerLeft="true" />
+      </EntryStandard>
+      <EntryStandard id="CIRCLE_2">
+        <Circle diameter="2.40" />
+      </EntryStandard>
+      <EntryStandard id="CIRCLE_3">
+        <Circle diameter="4.30" />
+      </EntryStandard>
+      </DictionaryStandard>
+    </Content>
+  <LogisticHeader>
+    <Role id="Owner" roleFunction="SENDER" />
+    <Enterprise id="UNKNOWN" code="NONE" />
+    <Person name="UNKNOWN" enterpriseRef="UNKNOWN" roleRef="Owner" />
+  </LogisticHeader>
+  <HistoryRecord number="1" origination="2026-09-19T10:45:08" software="KiCad EDA" lastChange="2026-09-19T10:45:08">
+    <FileRevision fileRevisionId="1" comment="NO COMMENT" label="NO LABEL">
+      <SoftwarePackage name="KiCad" revision="10.99.0" vendor="KiCad EDA">
+        <Certification certificationStatus="SELFTEST" />
+      </SoftwarePackage>
+    </FileRevision>
+  </HistoryRecord>
+  <Bom name="pic_programmer_1">
+    <BomHeader revision="1.0" assembly="pic_programmer_2">
+      <StepRef name="pic_programmer" />
+    </BomHeader>
+    <BomItem OEMDesignNumberRef="Jumper_SolderJumper-2_P1.3mm_Open_TrianglePad1.0x1.5mm_JUMPER" quantity="1" pinCount="2" category="DOCUMENT">
+      <RefDes name="JP1" packageRef="SolderJumper-2_P1.3mm_Open_TrianglePad1.0x1.5mm_23" populate="false" layerRef="bottom_layer" />
+      <Characteristics category="DOCUMENT">
+        <Textual definitionSource="KICAD" textualCharacteristicName="Value" textualCharacteristicValue="JUMPER" />
+      </Characteristics>
+    </BomItem>
+    <BomItem OEMDesignNumberRef="Package_DIP_DIP-8_W7.62mm_Socket_LongPads_24Cxx" quantity="1" pinCount="8" category="ELECTRICAL">
+      <RefDes name="U1" packageRef="DIP-8_W7.62mm_Socket_LongPads_4" populate="true" layerRef="top_layer" />
+      <Characteristics category="ELECTRICAL">
+        <Textual definitionSource="KICAD" textualCharacteristicName="Value" textualCharacteristicValue="24Cxx" />
+      </Characteristics>
+    </BomItem>
+    </Bom>
+  <Ecad name="Design">
+    <CadHeader units="MILLIMETER">
+      <Spec name="F.Silkscreen_2">
+        <General type="MATERIAL">
+          <Property text="Top Silk Screen" />
+          <Property text="Color : White" />
+          <Property text="Type : Top Silk Screen" />
+        </General>
+      </Spec>
+      </CadHeader>
+    <CadData>
+      <Layer name="F.Silkscreen" layerFunction="SILKSCREEN" polarity="POSITIVE" side="TOP" />
+      <Layer name="F.Paste" layerFunction="SOLDERPASTE" polarity="POSITIVE" side="TOP" />
+      <Layer name="F.Mask" layerFunction="SOLDERMASK" polarity="POSITIVE" side="TOP" />
+      <Layer name="top_layer" layerFunction="CONDUCTOR" polarity="POSITIVE" side="TOP" />
+      <Layer name="DIELECTRIC_1" layerFunction="DIELCORE" polarity="POSITIVE" side="INTERNAL" />
+      <Layer name="bottom_layer" layerFunction="CONDUCTOR" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="B.Mask" layerFunction="SOLDERMASK" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="B.Paste" layerFunction="SOLDERPASTE" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="B.Silkscreen" layerFunction="SILKSCREEN" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="F.Adhesive" layerFunction="GLUE" polarity="POSITIVE" side="TOP" />
+      <Layer name="B.Adhesive" layerFunction="GLUE" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="User.Drawings" layerFunction="DOCUMENT" polarity="POSITIVE" side="NONE" />
+      <Layer name="User.Comments" layerFunction="DOCUMENT" polarity="POSITIVE" side="NONE" />
+      <Layer name="User.Eco1" layerFunction="DOCUMENT" polarity="POSITIVE" side="NONE" />
+      <Layer name="User.Eco2" layerFunction="DOCUMENT" polarity="POSITIVE" side="NONE" />
+      <Layer name="Edge.Cuts" layerFunction="BOARD_OUTLINE" polarity="POSITIVE" side="ALL" />
+      <Layer name="Margin" layerFunction="DOCUMENT" polarity="POSITIVE" side="NONE" />
+      <Layer name="B.Courtyard" layerFunction="COURTYARD" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="F.Courtyard" layerFunction="COURTYARD" polarity="POSITIVE" side="TOP" />
+      <Layer name="B.Fab" layerFunction="ASSEMBLY" polarity="POSITIVE" side="BOTTOM" />
+      <Layer name="F.Fab" layerFunction="ASSEMBLY" polarity="POSITIVE" side="TOP" />
+      <Layer name="top_layer_bottom_layer" layerFunction="DRILL" polarity="POSITIVE" side="ALL">
+        <Span fromLayer="top_layer" toLayer="bottom_layer" />
+      </Layer>
+      <Stackup name="Primary_Stackup" overallThickness="1.60" tolPlus="0.0" tolMinus="0.0" whereMeasured="MASK" stackupStatus="PROPOSED">
+        <StackupGroup name="Primary_Stackup_Group" thickness="1.60" tolPlus="0.0" tolMinus="0.0">
+          <StackupLayer layerOrGroupRef="F.Silkscreen" thickness="0.0" tolPlus="0.0" tolMinus="0.0" sequence="0">
+            <SpecRef id="F.Silkscreen_2" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="F.Paste" thickness="0.0" tolPlus="0.0" tolMinus="0.0" sequence="1">
+            <SpecRef id="F.Paste_1" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="F.Mask" thickness="0.010" tolPlus="0.0" tolMinus="0.0" sequence="2">
+            <SpecRef id="F.Mask_2" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="top_layer" thickness="0.0350" tolPlus="0.0" tolMinus="0.0" sequence="3">
+            <SpecRef id="top_layer_1" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="DIELECTRIC_1" thickness="1.510" tolPlus="0.0" tolMinus="0.0" sequence="4">
+            <SpecRef id="DIELECTRIC_1_1" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="bottom_layer" thickness="0.0350" tolPlus="0.0" tolMinus="0.0" sequence="5">
+            <SpecRef id="bottom_layer_1" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="B.Mask" thickness="0.010" tolPlus="0.0" tolMinus="0.0" sequence="6">
+            <SpecRef id="B.Mask_2" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="B.Paste" thickness="0.0" tolPlus="0.0" tolMinus="0.0" sequence="7">
+            <SpecRef id="B.Paste_1" />
+          </StackupLayer>
+          <StackupLayer layerOrGroupRef="B.Silkscreen" thickness="0.0" tolPlus="0.0" tolMinus="0.0" sequence="8">
+            <SpecRef id="B.Silkscreen_2" />
+          </StackupLayer>
+        </StackupGroup>
+      </Stackup>
+      <Step name="pic_programmer" type="BOARD">
+        <NonstandardAttribute name="FOOTPRINT_COUNT" type="INTEGER" value="63" />
+        <PadStackDef name="PADSTACK_27">
+          <PadstackHoleDef name="PH600000" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="0.0" y="0.0" />
+          <PadstackPadDef layerRef="top_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_14" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="bottom_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_14" />
+          </PadstackPadDef>
+        </PadStackDef>
+        <PadStackDef name="PADSTACK_28">
+          <PadstackPadDef layerRef="bottom_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <StandardPrimitiveRef id="CUSTOM_26" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="B.Mask" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <StandardPrimitiveRef id="CUSTOM_26" />
+          </PadstackPadDef>
+        </PadStackDef>
+        <PadStackDef name="PADSTACK_29">
+          <PadstackPadDef layerRef="bottom_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <StandardPrimitiveRef id="CUSTOM_25" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="B.Mask" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <StandardPrimitiveRef id="CUSTOM_25" />
+          </PadstackPadDef>
+        </PadStackDef>
+        <PadStackDef name="PADSTACK_7">
+          <PadstackHoleDef name="PTH800000_800000" diameter="0.80" platingStatus="PLATED" plusTol="0.0" minusTol="0.0" x="0.0" y="0.0" />
+          <PadstackPadDef layerRef="top_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="F.Mask" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="bottom_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="B.Mask" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+        </PadStackDef>
+        <PadStackDef name="PADSTACK_8">
+          <PadstackHoleDef name="PTH800000_800000" diameter="0.80" platingStatus="PLATED" plusTol="0.0" minusTol="0.0" x="0.0" y="0.0" />
+          <PadstackPadDef layerRef="top_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="F.Mask" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="bottom_layer" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+          <PadstackPadDef layerRef="B.Mask" padUse="REGULAR">
+            <Location x="0.0" y="0.0" />
+            <UserPrimitiveRef id="UCIRCLE_5" />
+          </PadstackPadDef>
+        </PadStackDef>
+        <Datum x="0.0" y="0.0" />
+        <Profile>
+          <Polygon>
+            <PolyBegin x="233.680" y="-139.70" />
+            <PolyStepSegment x="73.660" y="-139.70" />
+            <PolyStepSegment x="73.660" y="-40.640" />
+            <PolyStepSegment x="173.990" y="-40.640" />
+            <PolyStepSegment x="233.680" y="-40.640" />
+            <PolyStepSegment x="233.680" y="-139.70" />
+          </Polygon>
+        </Profile>
+        <Package name="DIP-8_W7.62mm_Socket_LongPads_4" type="OTHER" pinOne="1" pinOneOrientation="UPPER_LEFT">
+          <Outline>
+            <Polygon>
+              <PolyBegin x="9.1350" y="1.5750" />
+              <PolyStepSegment x="9.1350" y="-9.1950" />
+              <PolyStepSegment x="-1.5150" y="-9.1950" />
+              <PolyStepSegment x="-1.5150" y="1.5750" />
+              <PolyStepSegment x="9.1350" y="1.5750" />
+            </Polygon>
+            <LineDescRef id="LINE_1" />
+          </Outline>
+          <PickupPoint x="0.0" y="0.0" />
+          <Pin number="1" electricalType="ELECTRICAL" type="THRU">
+            <Location x="0.0" y="0.0" />
+            <StandardPrimitiveRef id="ROUNDRECT_7" />
+          </Pin>
+          <Pin number="2" electricalType="ELECTRICAL" type="THRU">
+            <Location x="0.0" y="-2.540" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+          <Pin number="3" electricalType="ELECTRICAL" type="THRU">
+            <Location x="0.0" y="-5.080" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+          <Pin number="4" electricalType="ELECTRICAL" type="THRU">
+            <Location x="0.0" y="-7.620" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+          <Pin number="5" electricalType="ELECTRICAL" type="THRU">
+            <Location x="7.620" y="-7.620" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+          <Pin number="6" electricalType="ELECTRICAL" type="THRU">
+            <Location x="7.620" y="-5.080" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+          <Pin number="7" electricalType="ELECTRICAL" type="THRU">
+            <Location x="7.620" y="-2.540" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+          <Pin number="8" electricalType="ELECTRICAL" type="THRU">
+            <Location x="7.620" y="0.0" />
+            <StandardPrimitiveRef id="OVAL_8" />
+          </Pin>
+        </Package>
+        <Package name="SolderJumper-2_P1.3mm_Open_TrianglePad1.0x1.5mm_23" type="OTHER" pinOne="1" pinOneOrientation="LEFT">
+          <Outline>
+            <Polygon>
+              <PolyBegin x="-1.6750" y="1.260355" />
+              <PolyStepSegment x="-1.660355" y="1.2750" />
+              <PolyStepSegment x="1.660355" y="1.2750" />
+              <PolyStepSegment x="1.6750" y="1.260355" />
+              <PolyStepSegment x="1.6750" y="-1.260355" />
+              </Polygon>
+            <LineDescRef id="LINE_3" />
+          </Outline>
+          <PickupPoint x="0.0" y="0.0" />
+          <Pin number="1" electricalType="ELECTRICAL" type="SURFACE">
+            <Location x="-0.7250" y="0.0" />
+            <StandardPrimitiveRef id="CUSTOM_25" />
+          </Pin>
+          <Pin number="2" electricalType="ELECTRICAL" type="SURFACE">
+            <Location x="0.7250" y="0.0" />
+            <StandardPrimitiveRef id="CUSTOM_26" />
+          </Pin>
+          <OtherSideView>
+            <Outline>
+              <Polygon>
+                <PolyBegin x="1.6450" y="1.2450" />
+                <PolyStepSegment x="1.6450" y="-1.2450" />
+                <PolyStepSegment x="-1.6450" y="-1.2450" />
+                <PolyStepSegment x="-1.6450" y="1.2450" />
+                <PolyStepSegment x="1.6450" y="1.2450" />
+              </Polygon>
+              <LineDescRef id="LINE_1" />
+            </Outline>
+            <SilkScreen>
+              <Marking markingUsage="NONE">
+                <UserSpecial>
+                  <Line startX="-1.40" startY="-1.0" endX="-1.40" endY="1.0">
+                    <LineDesc lineWidth="0.120" lineEnd="ROUND" />
+                  </Line>
+                  <Line startX="-1.40" startY="1.0" endX="1.40" endY="1.0">
+                    <LineDesc lineWidth="0.120" lineEnd="ROUND" />
+                  </Line>
+                  <Line startX="1.40" startY="-1.0" endX="-1.40" endY="-1.0">
+                    <LineDesc lineWidth="0.120" lineEnd="ROUND" />
+                  </Line>
+                  <Line startX="1.40" startY="1.0" endX="1.40" endY="-1.0">
+                    <LineDesc lineWidth="0.120" lineEnd="ROUND" />
+                  </Line>
+                </UserSpecial>
+              </Marking>
+            </SilkScreen>
+          </OtherSideView>
+        </Package>
+        <Component refDes="U1" packageRef="DIP-8_W7.62mm_Socket_LongPads_4" part="Package_DIP_DIP-8_W7.62mm_Socket_LongPads_24Cxx" layerRef="top_layer" mountType="THMT">
+          <Location x="179.070" y="-109.220" />
+        </Component>
+        <Component refDes="JP1" packageRef="SolderJumper-2_P1.3mm_Open_TrianglePad1.0x1.5mm_23" part="Jumper_SolderJumper-2_P1.3mm_Open_TrianglePad1.0x1.5mm_JUMPER" layerRef="bottom_layer" mountType="OTHER">
+          <Xform rotation="180.0" mirror="true" />
+          <Location x="148.0820" y="-97.790" />
+        </Component>
+        <LayerFeature layerRef="top_layer">
+          <Set net="/CLOCK-RB6" padUsage="VIA">
+            <Features>
+              <UserSpecial><Line startX="189.8650" startY="-123.190" endX="192.4050" endY="-125.730">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="193.040" startY="-75.5650" endX="196.2150" endY="-72.390">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            <Pad padstackDefRef="PADSTACK_27">
+              <Location x="189.8650" y="-110.490" />
+              <StandardPrimitiveRef id="CIRCLE_27" />
+            </Pad>
+            </Set>
+          <Set net="/CLOCK-RB6">
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-114.30" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="6" />
+            </Pad>
+            </Set>
+          <Set net="/DATA-RB7" padUsage="VIA">
+            <Features>
+              <UserSpecial><Line startX="201.2950" startY="-85.090" endX="194.9450" endY="-91.440">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="194.9450" startY="-91.440" endX="194.9450" endY="-113.6650">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/DATA-RB7">
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-116.840" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="5" />
+            </Pad>
+            </Set>
+          <Set net="/pic_sockets/VCC_PIC">
+            <Features>
+              <UserSpecial><Line startX="154.3050" startY="-104.7750" endX="151.7650" endY="-102.2350">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="151.7650" startY="-102.2350" endX="147.9550" endY="-102.2350">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-109.220" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="8" />
+            </Pad>
+            </Set>
+          <Set net="GND">
+            <Pad padstackDefRef="PADSTACK_7">
+              <Location x="179.070" y="-109.220" />
+              <StandardPrimitiveRef id="ROUNDRECT_7" />
+              <PinRef componentRef="U1" pin="1" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-111.760" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="2" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-114.30" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="3" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-116.840" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="4" />
+            </Pad>
+            </Set>
+          <Set net="Net-(D4-A)">
+            <Features>
+              <UserSpecial><Line startX="111.760" startY="-119.380" endX="115.570" endY="-123.190">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="125.730" startY="-120.650" endX="125.730" endY="-119.380">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(Q2-C)">
+            <Features>
+              <UserSpecial><Line startX="150.4950" startY="-71.7550" endX="152.40" endY="-69.850">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="139.0650" startY="-73.660" endX="146.050" endY="-73.660">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(R8-Pad1)">
+            <Features>
+              <UserSpecial><Line startX="135.0010" startY="-96.2660" endX="135.0010" endY="-92.4560">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="120.0150" startY="-116.2050" endX="114.9350" endY="-116.2050">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="VCC">
+            <Features>
+              <UserSpecial><Line startX="110.490" startY="-124.1550" endX="110.490" endY="-119.380">
+                  <LineDesc lineWidth="0.80" lineEnd="ROUND" />
+                </Line>
+                <Line startX="145.10" startY="-97.470" endX="144.780" endY="-97.790">
+                  <LineDesc lineWidth="0.80" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="unconnected-(U1-WP-Pad7)">
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-111.760" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="7" />
+            </Pad>
+          </Set>
+          </LayerFeature>
+        <LayerFeature layerRef="F.Mask">
+          <Set>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-114.30" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="6" />
+            </Pad>
+            </Set>
+          <Set>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-116.840" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="5" />
+            </Pad>
+            </Set>
+          <Set>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-109.220" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="8" />
+            </Pad>
+            </Set>
+          <Set>
+            <Pad padstackDefRef="PADSTACK_7">
+              <Location x="179.070" y="-109.220" />
+              <StandardPrimitiveRef id="ROUNDRECT_7" />
+              <PinRef componentRef="U1" pin="1" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-111.760" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="2" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-114.30" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="3" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-116.840" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="4" />
+            </Pad>
+            </Set>
+          <Set>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-111.760" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="7" />
+            </Pad>
+          </Set>
+          </LayerFeature>
+        <LayerFeature layerRef="bottom_layer">
+          <Set net="/CLOCK-RB6" padUsage="VIA">
+            <Features>
+              <UserSpecial><Line startX="182.2450" startY="-125.730" endX="186.690" endY="-125.730">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="195.580" startY="-53.340" endX="196.850" endY="-54.610">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            <Pad padstackDefRef="PADSTACK_27">
+              <Location x="189.8650" y="-110.490" />
+              <StandardPrimitiveRef id="CIRCLE_27" />
+            </Pad>
+            </Set>
+          <Set net="/CLOCK-RB6">
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-114.30" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="6" />
+            </Pad>
+            </Set>
+          <Set net="/DATA-RB7" padUsage="VIA">
+            <Features>
+              <UserSpecial><Line startX="215.2650" startY="-50.80" endX="210.820" endY="-50.80">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="209.550" startY="-52.070" endX="210.820" endY="-50.80">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/DATA-RB7">
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-116.840" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="5" />
+            </Pad>
+            </Set>
+          <Set net="/PC-CLOCK-OUT">
+            <Features>
+              <UserSpecial><Line startX="85.090" startY="-123.190" endX="86.360" endY="-124.460">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="77.470" startY="-117.4750" endX="77.470" endY="-120.650">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/PC-DATA-IN">
+            <Features>
+              <UserSpecial><Line startX="123.190" startY="-113.030" endX="123.190" endY="-111.760">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="121.920" startY="-114.30" endX="123.190" endY="-113.030">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/PC-DATA-OUT">
+            <Features>
+              <UserSpecial><Line startX="84.512370" startY="-111.890" endX="82.60" endY="-111.890">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="85.277370" startY="-111.1250" endX="84.512370" endY="-111.890">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/VPP_ON">
+            <Features>
+              <UserSpecial><Line startX="82.60" startY="-114.660" endX="87.5240" endY="-114.660">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="87.5240" startY="-114.660" endX="87.630" endY="-114.5540">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/VPP{slash}MCLR">
+            <Features>
+              <UserSpecial><Line startX="195.580" startY="-132.7150" endX="196.2150" endY="-133.350">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="175.260" startY="-50.80" endX="175.260" endY="-47.6250">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="/pic_sockets/VCC_PIC">
+            <Features>
+              <UserSpecial><Line startX="184.70" startY="-121.920" endX="189.230" endY="-121.920">
+                  <LineDesc lineWidth="0.350" lineEnd="ROUND" />
+                </Line>
+                <Line startX="204.470" startY="-116.840" endX="210.1850" endY="-116.840">
+                  <LineDesc lineWidth="0.350" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-109.220" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="8" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_28">
+              <Location x="148.8070" y="-97.790" />
+              <StandardPrimitiveRef id="CUSTOM_26" />
+              <PinRef componentRef="JP1" pin="2" />
+            </Pad>
+          </Set>
+          <Set net="GND">
+            <Pad padstackDefRef="PADSTACK_7">
+              <Location x="179.070" y="-109.220" />
+              <StandardPrimitiveRef id="ROUNDRECT_7" />
+              <PinRef componentRef="U1" pin="1" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-111.760" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="2" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-114.30" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="3" />
+            </Pad>
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="179.070" y="-116.840" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="4" />
+            </Pad>
+            </Set>
+          <Set net="Net-(C5-Pad1)">
+            <Features>
+              <UserSpecial><Line startX="124.460" startY="-48.260" endX="128.270" endY="-48.260">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="128.270" startY="-48.260" endX="129.540" endY="-49.530">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+              </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D1-A)">
+            <Features>
+              <UserSpecial><Line startX="78.30" startY="-68.50" endX="78.30" endY="-77.0">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="81.80" startY="-65.0" endX="78.30" endY="-68.50">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+              </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D1-K)">
+            <Features>
+              <UserSpecial><Line startX="82.550" startY="-76.20" endX="87.630" endY="-71.120">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="84.1120" startY="-89.70" endX="84.5820" endY="-90.170">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D10-A)">
+            <Features>
+              <UserSpecial><Line startX="118.110" startY="-57.150" endX="124.460" endY="-57.150">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="124.460" startY="-60.960" endX="125.730" endY="-62.230">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D11-A)">
+            <Features>
+              <UserSpecial><Line startX="146.6850" startY="-80.6450" endX="148.590" endY="-80.6450">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="148.590" startY="-80.6450" endX="149.2250" endY="-81.280">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D11-K)">
+            <Features>
+              <UserSpecial><Line startX="141.6050" startY="-72.5170" endX="140.0810" endY="-70.9930">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="141.6050" startY="-78.1050" endX="141.6050" endY="-72.5170">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D12-A)">
+            <Features>
+              <UserSpecial><Line startX="153.670" startY="-97.1550" endX="153.670" endY="-97.790">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="153.670" startY="-97.790" endX="158.1150" endY="-102.2350">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+              </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D2-A)">
+            <Features>
+              <UserSpecial><Line startX="106.0450" startY="-121.920" endX="107.950" endY="-121.920">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="95.8850" startY="-118.110" endX="94.6150" endY="-119.380">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D4-A)">
+            <Features>
+              <UserSpecial><Line startX="107.950" startY="-108.5850" endX="103.6320" endY="-108.5850">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="100.330" startY="-111.760" endX="97.790" endY="-111.1250">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D6-A)">
+            <Features>
+              <UserSpecial><Line startX="99.9490" startY="-125.4760" endX="100.330" endY="-125.0950">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="95.8850" startY="-123.4440" endX="97.9170" endY="-125.4760">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D8-A)">
+            <Features>
+              <UserSpecial><Line startX="153.670" startY="-77.470" endX="149.2250" endY="-77.470">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+              </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(D9-A)">
+            <Features>
+              <UserSpecial><Line startX="153.670" startY="-87.630" endX="149.2250" endY="-87.630">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+              </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(Q1-B)">
+            <Features>
+              <UserSpecial><Line startX="145.9230" startY="-91.0590" endX="144.780" endY="-89.9160">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="147.320" startY="-71.120" endX="147.320" endY="-68.580">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(Q2-B)">
+            <Features>
+              <UserSpecial><Line startX="149.860" startY="-51.6420" endX="149.860" endY="-54.610">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="141.212370" startY="-60.8330" endX="142.855369" endY="-62.475999">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(Q2-C)">
+            <Features>
+              <UserSpecial><Line startX="152.40" startY="-68.580" endX="156.210" endY="-68.580">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="149.2250" startY="-62.556106" endX="149.2250" endY="-65.4050">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(Q3-B)">
+            <Features>
+              <UserSpecial><Line startX="135.2550" startY="-96.520" endX="137.160" endY="-96.520">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="135.2550" startY="-96.520" endX="134.620" endY="-97.1550">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(R12-Pad1)">
+            <Features>
+              <UserSpecial><Line startX="128.270" startY="-119.380" endX="128.270" endY="-120.650">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="128.270" startY="-120.650" endX="129.540" endY="-121.920">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(R13-Pad1)">
+            <Features>
+              <UserSpecial><Line startX="130.810" startY="-109.62640" endX="132.68960" endY="-107.74680">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="132.68960" startY="-107.74680" endX="138.40460" endY="-107.74680">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(R15-Pad1)">
+            <Features>
+              <UserSpecial><Line startX="118.110" startY="-80.010" endX="124.460" endY="-86.360">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="124.460" startY="-86.360" endX="124.460" endY="-89.5350">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(R16-Pad1)">
+            <Features>
+              <UserSpecial><Line startX="119.6340" startY="-75.1840" endX="120.650" endY="-76.20">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="120.650" startY="-79.3750" endX="127.0" endY="-85.7250">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(U4-FB+)">
+            <Features>
+              <UserSpecial><Line startX="112.3950" startY="-59.690" endX="113.6650" endY="-60.960">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="110.490" startY="-59.690" endX="112.3950" endY="-59.690">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="Net-(U4-Vc)">
+            <Features>
+              <UserSpecial><Line startX="114.30" startY="-48.260" endX="114.30" endY="-52.070">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="110.490" startY="-57.150" endX="110.490" endY="-53.340">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="VCC">
+            <Features>
+              <UserSpecial><Line startX="144.780" startY="-97.790" endX="144.780" endY="-97.9170">
+                  <LineDesc lineWidth="0.80" lineEnd="ROUND" />
+                </Line>
+                <Line startX="124.460" startY="-80.010" endX="123.8250" endY="-79.3750">
+                  <LineDesc lineWidth="0.80" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            <Pad padstackDefRef="PADSTACK_29">
+              <Location x="147.3570" y="-97.790" />
+              <StandardPrimitiveRef id="CUSTOM_25" />
+              <PinRef componentRef="JP1" pin="1" />
+            </Pad>
+            </Set>
+          <Set net="VPP">
+            <Features>
+              <UserSpecial><Line startX="139.70" startY="-54.610" endX="139.70" endY="-53.0860">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                <Line startX="145.5420" startY="-59.7060" endX="142.9860" endY="-57.150">
+                  <LineDesc lineWidth="0.50" lineEnd="ROUND" />
+                </Line>
+                </UserSpecial></Features>
+            </Set>
+          <Set net="unconnected-(U1-WP-Pad7)">
+            <Pad padstackDefRef="PADSTACK_8">
+              <Location x="186.690" y="-111.760" />
+              <StandardPrimitiveRef id="OVAL_8" />
+              <PinRef componentRef="U1" pin="7" />
+            </Pad>
+          </Set>
+          </LayerFeature>
+        <LayerFeature layerRef="top_layer_bottom_layer">
+          <Set geometry="PADSTACK_27" net="/CLOCK-RB6">
+            <Hole name="H1" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="189.8650" y="-110.490" />
+          </Set>
+          <Set geometry="PADSTACK_27" net="/CLOCK-RB6">
+            <Hole name="H2" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="192.4050" y="-125.730" />
+          </Set>
+          <Set geometry="PADSTACK_27" net="/CLOCK-RB6">
+            <Hole name="H3" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="196.850" y="-54.610" />
+          </Set>
+          <Set geometry="PADSTACK_27" net="/DATA-RB7">
+            <Hole name="H4" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="200.0250" y="-52.070" />
+          </Set>
+          <Set geometry="PADSTACK_27" net="/DATA-RB7">
+            <Hole name="H5" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="192.4050" y="-123.190" />
+          </Set>
+          <Set geometry="PADSTACK_27" net="/DATA-RB7">
+            <Hole name="H6" diameter="0.60" platingStatus="VIA" plusTol="0.0" minusTol="0.0" x="192.4050" y="-114.30" />
+          </Set>
+          <Set geometry="PADSTACK_7" net="/pic_sockets/VCC_PIC">
+            <Hole name="H59" diameter="0.80" platingStatus="PLATED" plusTol="0.0" minusTol="0.0" x="179.070" y="-120.650" />
+          </Set>
+          <Set geometry="PADSTACK_8" net="unconnected-(U6-GP5{slash}OSC1-Pad2)">
+            <Hole name="H60" diameter="0.80" platingStatus="PLATED" plusTol="0.0" minusTol="0.0" x="179.070" y="-123.190" />
+          </Set>
+          </LayerFeature>
+      </Step>
+    </CadData>
+  </Ecad>
+  </IPC-2581>

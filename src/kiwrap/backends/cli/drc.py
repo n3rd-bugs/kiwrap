@@ -11,6 +11,13 @@ Verified facts encoded here (docs/VERIFICATION.md / docs/ARCHITECTURE.md §2):
 - `--exit-code-violations` -> exit 5 when violations exist (with `--severity-all` warnings count
   too); mapped into the `Report`, never raised. Load failures exit 3 on 9/10 and -1/0xFFFFFFFF/127
   on 7/8 (claim 9) -> `CliLoadError` from the runner.
+- The DRC engine CAPS every violation type: `DRC_ENGINE::RunTests` sets `m_errorLimits[type]` to
+  ERROR_LIMIT (199) or, for `clearance` / `unconnected_items`, EXTENDED_ERROR_LIMIT (499), and
+  `ReportViolation` drops further items of that type (pcbnew/drc/drc_engine.cpp; verified
+  2026-09-19 on 10.0.6 and the nightly: 203 missing courtyards -> 199 in the JSON, a board with
+  634 airwires -> exactly 499 unconnected_items). `capped_types()` names the saturated types so
+  kw_pcb_drc can say the counts are lower bounds (matrix keys `cli.drc_error_limit`,
+  `cli.drc_extended_error_limit`, `cli.drc_extended_error_types`).
 """
 
 from __future__ import annotations
@@ -37,6 +44,32 @@ def report_from_drc_json(doc: dict[str, Any], *, source: str) -> Report:
     via `kiwrap.formats.reports.drc.parse_drc_json`; no position scale because DRC JSON is already
     millimetres (claim 1)."""
     return parse_drc_json(json.dumps(doc), position_scale=1.0, source=source)
+
+
+#: DRC_ENGINE defaults, used when a capability record carries no limit keys
+DEFAULT_ERROR_LIMIT = 199
+DEFAULT_EXTENDED_ERROR_LIMIT = 499
+DEFAULT_EXTENDED_ERROR_TYPES = ("clearance", "unconnected_items")
+
+
+def capped_types(report: Report, caps: Capabilities | None = None) -> list[str]:
+    """Violation types whose count reached KiCad's per-type reporting limit (module docstring), so
+    their count in `report` is a lower bound. Excluded markers count: the engine decrements the
+    limit before the exclusion is looked at."""
+    limit = int(_cap_value(caps, "cli.drc_error_limit", DEFAULT_ERROR_LIMIT))
+    extended = int(_cap_value(caps, "cli.drc_extended_error_limit", DEFAULT_EXTENDED_ERROR_LIMIT))
+    extended_types = set(_cap_value(caps, "cli.drc_extended_error_types", DEFAULT_EXTENDED_ERROR_TYPES))
+    counts: dict[str, int] = {}
+    for v in (*report.violations, *report.unconnected, *report.schematic_parity):
+        counts[v.type] = counts.get(v.type, 0) + 1
+    return sorted(t for t, n in counts.items() if n >= (extended if t in extended_types else limit) > 0)
+
+
+def _cap_value(caps: Capabilities | None, key: str, default: Any) -> Any:
+    if caps is None:
+        return default
+    value = caps.get(key) if hasattr(caps, "get") else None
+    return default if value is None else value
 
 
 def run_drc(
@@ -107,5 +140,6 @@ def run_drc(
         "exit_code_violations": res.violations,
         "path": str(out),
         "board_saved": bool(save_board),
+        "capped": capped_types(report, caps),
     }
     return report
