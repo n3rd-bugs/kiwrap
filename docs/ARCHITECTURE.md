@@ -10,9 +10,9 @@ Status: decision document, 2026-09-18 (working name *kiwrap*; the synthesis was 
 
 **Shape.** One MIT Python MCP server (**kiwrap-core**, 36 stage-named `kw_*` tools) is the only agent contract. A thin TypeScript VS Code extension registers it, previews files and shows diagnostics. A thin PCM-packaged KiCad plugin (**KiWrap Connect**) hands a running KiCad's socket/token to kiwrap-core. Everything the tools do is backed by four exchangeable surfaces: files (lossless s-expression engine), `kicad-cli`, a SWIG driver run under each install's own Python (7–10), and the IPC API (9/10 live, 11 headless).
 
-**In scope (v1):** 2–4 layer boards on KiCad 10 first, then 9 and 8; JLCPCB-style fabrication profile; Freerouting/KRT autorouting; intent-driven placement; live editing of an open board on 9/10; KiCad 11 readiness.
+**In scope (v1):** 2–4 layer boards on KiCad 10 first, then 9 certified and 8 partial (schematic + fab); **Windows and Linux certified from Phase 0**; JLCPCB fabrication profile; Freerouting/KRT autorouting; intent-driven placement; hierarchical and multi-unit schematics; live editing of an open *board* on 9/10 (Phase 3, sandboxed pcbnew); KiCad 11 readiness. Claude Code (CLI + VS Code) is the first-class agent client; others get generated configs and best-effort support.
 
-**Out of scope:** driving KiCad's push-and-shove router as a batch engine, shipping a patched KiCad, cloud routers, KiCad 7 beyond best-effort, a from-scratch autoplacer.
+**Out of scope:** driving KiCad's push-and-shove router as a batch engine, shipping a patched KiCad, cloud routers, KiCad 7 beyond best-effort, a from-scratch autoplacer, bus wires (Phase 2), macOS (later), scheduled paid evals (manual only).
 
 **Non-negotiables:** KiCad is the judge (every mutating tool returns kicad-cli ERC/DRC deltas); geometry is computed by tools, never by the model; the user's `%APPDATA%/kicad` is never modified; no shipped component runs code inside KiCad.
 
@@ -173,7 +173,7 @@ Every stage of the flow ran on installed 7–10 binaries. KiCad-side debugging w
 
 ## 6. Version isolation and upgrade strategy
 
-**Layer 1 — `KiCadInstallation`:** `{root, kicad-cli, python.exe + ABI tag + DLL dir, share/{symbols,footprints,3dmodels,template,schemas}, semver (kicad-cli version --format plain), commit}`. Discovery: registry Uninstall keys (`DisplayName 'KiCad X.Y'`; 7 under WOW6432Node) ∪ `C:\Program Files\KiCad\*\bin\kicad-cli.exe` ∪ PATH ∪ explicit setting.
+**Layer 1 — `KiCadInstallation`:** `{root, kicad-cli, python.exe + ABI tag + DLL dir, share/{symbols,footprints,3dmodels,template,schemas}, semver (kicad-cli version --format plain), commit}`. Discovery on Windows: registry Uninstall keys (`DisplayName 'KiCad X.Y'`; 7 under WOW6432Node) ∪ `C:\Program Files\KiCad\*\bin\kicad-cli.exe` ∪ PATH ∪ explicit setting. Discovery on Linux (**decided in, not yet verified** — Phase 0 spike): `kicad-cli` on PATH, distro packages (`/usr/bin/kicad-cli`; SWIG `pcbnew` lives in the system `python3` site-packages rather than a bundled interpreter, so the driver runs under `/usr/bin/python3` with the matching ABI), Flatpak `org.kicad.KiCad` (`flatpak run --command=kicad-cli org.kicad.KiCad`), Snap and AppImage; the IPC socket is a unix socket under `$XDG_RUNTIME_DIR`/`/tmp/kicad/api.sock`; config root `$XDG_CONFIG_HOME/kicad/<major.minor>`; GUI tests run under Xvfb. A platform seam (`kiwrap.platform`) isolates paths, process management and socket transport.
 
 **Layer 2 — capability record keyed on FULL semver**, seeded from the verified matrix, re-probed on first use, cached per root+semver: `cli.subcommands`, `cli.flags[subcommand]` (parsed from `--help`, exit status ignored on 7/8), `has_erc_cli/has_drc_cli (≥8)`, `has_render/has_jobset (≥9)`, `has_sch_pcb_upgrade/drc_refill_flags (≥10)`, `sym_fp_upgrade (all)`, `has_ipc (≥9)`, `ipc_headless/ipc_schematic (≥11)`, `ipc_since[command]`, `swig_available (7–10)` + shim id, `gerbers_creates_dir (≥9)`, `writes_prl (≥10)`, `ships_wrl (≤9)`, `erc_json_pos_scale (100 on 8.0.1–10.0.0)`, `ipc_commit_needs_document (≥10.0.7)`, `default_min_track_width (0.2 mm on 10; 0 on 9)`, `sch_stamp_gate_needs_generator_version (8–10)`, epochs written. Tools consult flags only; a missing capability returns `E_UNSUPPORTED {oldest_kicad_with_it, fallback}`.
 
@@ -229,11 +229,11 @@ File-based on 7–10 and by default on 11; the IPC schematic provider backs the 
 
 **Catalog hygiene.** 36 tools (< Cursor's 40-tool cap; Windsurf 100; VS Code 128), names `kw_<stage>_<verb>`, enums (`view`, `targets`, `action`) instead of one tool per subcommand, `kw_help` for depth.
 
-**Registration.** `<repo>/.mcp.json` (Claude Code CLI + extension, VS Code Agent Host harnesses), `.vscode/mcp.json` (Copilot Local harness; `dev.watch`/`dev.debug: python` for breakpoints), `.cursor/mcp.json`, `~/.codex/config.toml` (`tool_timeout_sec = 600`, `startup_timeout_sec = 60`), Windsurf `mcp_config.json`, Copilot CLI `mcp-config.json`; `claude mcp add` / `codex mcp add` one-liners; `enableAllProjectMcpServers` noted for teams. Image results: verified end-to-end with the MCP client, documented for Claude Code and Cursor; Copilot and Codex image handling is documented/unknown respectively and not locally verified — renders are always accompanied by a numeric summary.
+**Registration.** Claude Code is the first-class client (config, skills, image handling and evals all verified there); the other configs are generated and smoke-tested but not in the certification matrix. `<repo>/.mcp.json` (Claude Code CLI + extension, VS Code Agent Host harnesses), `.vscode/mcp.json` (Copilot Local harness; `dev.watch`/`dev.debug: python` for breakpoints), `.cursor/mcp.json`, `~/.codex/config.toml` (`tool_timeout_sec = 600`, `startup_timeout_sec = 60`), Windsurf `mcp_config.json`, Copilot CLI `mcp-config.json`; `claude mcp add` / `codex mcp add` one-liners; `enableAllProjectMcpServers` noted for teams. Image results: verified end-to-end with the MCP client, documented for Claude Code and Cursor; Copilot and Codex image handling is documented/unknown respectively and not locally verified — renders are always accompanied by a numeric summary.
 
 **VS Code extension** (Node LTS to be installed; `engines.vscode ^1.101.0`; `@vscode/vsce` 4): `contributes.mcpServerDefinitionProviders` + `vscode.lm.registerMcpServerDefinitionProvider` (`McpStdioServerDefinition` → uv-managed venv; reaches Copilot only), "Configure agents" command for the other clients, read-only custom editors for `*.kicad_sch`/`*.kicad_pcb` (kicad-cli SVG in a webview; KiCanvas optional behind a setting because it is alpha with 9/10 gaps; "Open in KiCad"), `DiagnosticCollection` fed by `kw_sch_check`/`kw_pcb_drc` with corrected positions, install picker (sets `target_kicad`), Live-KiCad panel (launch sandboxed `pcbnew.exe`/`kicad.exe`, detect crashes such as #24966, relaunch, warn when a GUI holds a file), tasks + project tree, TextMate grammars for `.kicad_*`/`.kicad_dru`, three `languageModelTools` facades (`#kicadRender`, `#kicadCheck`, `#kicadStatus`) with confirmation UI.
 
-**Skills and prompts.** `.claude/skills/kiwrap-flow/SKILL.md` (spec-only frontmatter; read by Claude Code, Copilot VS Code/CLI, Codex, Cursor, Windsurf) plus `kicad-geometry`, `netlist-first-schematic`, `erc-triage`, `drc-triage`, `part-selection`, `reference-circuits` (ESP32-S3 minimal, USB-C 2.0, MCP73831, LDO, I²C pull-ups), `placement`, `routing`, `visual-verification`, `context-budget`, `version-awareness`; `AGENTS.md`/`CLAUDE.md` always-on summary; prompts `new-board-from-spec`, `fix-drc`, `review-before-fab`. **Evals** graded only by KiCad outputs (ERC=0, intent diff empty, unrouted=0, must_fix=0, fab bundle present) with call/token budgets, runners for `claude -p` (isolated `CLAUDE_CONFIG_DIR`), Copilot CLI and Codex.
+**Skills and prompts.** `.claude/skills/kiwrap-flow/SKILL.md` (spec-only frontmatter; read by Claude Code, Copilot VS Code/CLI, Codex, Cursor, Windsurf) plus `kicad-geometry`, `netlist-first-schematic`, `erc-triage`, `drc-triage`, `part-selection`, `reference-circuits` (ESP32-S3 minimal, USB-C 2.0, MCP73831, LDO, I²C pull-ups), `placement`, `routing`, `visual-verification`, `context-budget`, `version-awareness`; `AGENTS.md`/`CLAUDE.md` always-on summary; prompts `new-board-from-spec`, `fix-drc`, `review-before-fab`. **Evals** graded only by KiCad outputs (ERC=0, intent diff empty, unrouted=0, must_fix=0, fab bundle present) with call/token budgets; runner for `claude -p` (isolated `CLAUDE_CONFIG_DIR`) first, Copilot CLI/Codex runners best-effort. Evals are **run manually** (no scheduled spend); the certification suite T1–T9 runs in CI without any agent.
 
 ---
 
@@ -360,31 +360,31 @@ Rules: `kiwrap-formats` has zero runtime dependencies; `kiwrap-swig-driver` is c
 | Windows traps (Setup wizard, Controlled Folder Access, non-ASCII temp paths, `.kicad_prl`, GUIs rewriting settings) | Seeded config/documents/cache homes; three lib tables + prompt flags; Connect hand-off; gitignore `.prl`; CI asserts user config untouched |
 | Fast-moving or stale third parties (KRT, KiCanvas, jlcparts, easyeda2kicad) | Pinned versions in dedicated venvs behind interfaces; DRC after KRT; kicad-cli SVG as guaranteed preview |
 | Scope creep into a KiCad fork / premature source build | Policy: nothing may require a patched KiCad; build gated on named triggers; PDBs + cdb + api.log first; nightly for 11 |
-| No Node on the dev box; VS 2022 17.9 ≠ CI's MSVC 14.44 | Phases 0–2 need no Node; install Node LTS before Phase 3; update VS only if the build trigger fires |
+| Linux certified from day one although every experiment so far ran on Windows; VS 2022 17.9 ≠ CI's MSVC 14.44 | Phase 0 Linux spike (distro/Flatpak discovery, system-python SWIG ABI, unix-socket IPC under Xvfb) on a GitHub-hosted runner before any Linux claim enters the capability record; Node LTS installed in Phase 0; update VS only if the build trigger fires |
 
 ---
 
-## 15. Decisions needed from the user
+## 15. Decisions (resolved 2026-09-19)
 
-Numbered so they can be answered by number. Recommended defaults are in **bold**.
+Asked interactively and answered by the user; the log with consequences is in [DECISIONS.md](DECISIONS.md). Recommended defaults were taken except where marked **(user override)**.
 
-1. **Source build (your explicit expectation).** Verification showed every stage runs on installed binaries, crashes symbolicate against symbols.kicad.org PDBs, and `api.log` records every request. Recommendation: **recipe in Phase 0, build only on a named trigger** (upstream MR, PNS, stepping through KiCad's netlist updater/DRC engine). Alternative: fund the ~1-day bench proactively (VS 2022 17.9 → 17.14 update, 40–80 GB). When triggered, KiCad sources come from a `gh repo fork` of `KiCad/kicad-source-mirror`. Yes/no to the proactive bench?
-2. **In-KiCad plugin scope.** On 9.x and 10.0.0–10.0.6 the API cannot serve anything from a standalone schematic editor and any write dispatched to the schematic handler kills `kicad.exe`. Accept that **Connect is PCB-only on those versions** (the eeschema button only opens VS Code) and that **live sessions use a sandboxed standalone `pcbnew.exe`** rather than your own running KiCad?
-3. **Version floor.** **10 first, 9 certified, 8 schematic + fab, 7 best-effort.** KiCad 7 has no CLI ERC/DRC, no headless SES import and hangs SWIG DRC on wx asserts; dropping it removes a large amount of shim work. Is 7 needed at all?
-4. **Point releases and nightly.** May we install side-by-side **10.0.6, latest 9.0.x/8.0.x and a 10.99 nightly** now, so the capability record is seeded from current builds and the KiCad 11 seams are exercised early?
-5. **Library policy.** Should the sandbox **read (never write) your global `sym-lib-table`/`fp-lib-table` from `%APPDATA%\kicad`** so custom libraries are visible to ERC/DRC/footprint loading, or use only stock KiCad libraries plus project-local tables?
-6. **User KiCad settings.** Confirm kiwrap **never edits `%APPDATA%\kicad`** (live sessions therefore launch a sandboxed KiCad, or you enable the API in Preferences yourself).
-7. **Licensing.** Wrapper **MIT**; `kiwrap-swig-driver` GPL-3.0-or-later as a separate program; Freerouting (GPL), KiBot and easyeda2kicad (AGPL) as separate processes only; PyMuPDF replaced by pypdfium2. Cloud routers (DeepPCB, Quilter) as optional backends — yes/no?
-8. **Hierarchy and buses.** Multi-sheet (incl. repeated sheet instances) and multi-unit symbols **in** for the MVP reference board; **buses out of v1**. Agree?
-9. **Fabrication target.** **JLCPCB default profile** (rules, BOM/pos formats, `LCSC Part #` field, JLC rotation corrections) or generic first?
-10. **Reference board.** The proposed **ESP32-S3-WROOM-1 + USB-C 2.0 + MCP73831 + 3.3 V LDO + buttons + I²C header, 2-layer** board as the eval task, or one of your real projects (which would also test brownfield/hierarchical files)?
-11. **Live editing in v1.** Is "agent edits an open board while you watch" a v1 requirement, or is the headless file-based flow plus previews acceptable for the first release? (Decides whether Phase 3 IPC work gates the VS Code extension.)
-12. **Toolchain and network.** OK to install Node LTS for the extension and to download at bootstrap a private JRE 25, the Freerouting jar, the jlcparts DB and EasyEDA data (Freerouting telemetry forced off)? Any offline/air-gapped requirement?
-13. **Platforms.** **Windows first**; Linux/macOS in v1? (Affects discovery, named-pipe vs unix-socket handling, JRE packaging.)
-14. **Agent clients.** Which of Claude Code, Copilot, Cursor, Windsurf, Codex must be first-class in the eval matrix?
-15. **CI.** Can a self-hosted Windows runner (or this machine on a schedule) run the GUI/IPC certification tests and the paid agent evals, and what monthly budget is acceptable for `claude -p`/Codex/Copilot eval runs?
-
----
+| # | Decision | Choice |
+|---|---|---|
+| 1 | Source build | Recipe + `gh repo fork KiCad/kicad-source-mirror` in Phase 0; build only on a named trigger |
+| 2 | Connect / live sessions on 9.x–10.0.x | PCB-only; sandboxed standalone `pcbnew.exe`; eeschema button only opens VS Code; schematics always via files |
+| 3 | Version floor | 10 first, 9 certified, 8 schematic + fab, 7 best-effort |
+| 4 | Installs | Install 10.0.6, latest 9.0.x/8.0.x and a 10.99 nightly side-by-side; re-run spikes |
+| 5 | Reference board | ESP32-S3-WROOM-1 + USB-C 2.0 + MCP73831 + 3.3 V LDO + buttons + I²C header, 2-layer, JLCPCB parts |
+| 6 | Live editing | Headless first; live IPC sessions + Connect in Phase 3 |
+| 7 | Libraries | Sandbox seeds from stock templates and merges the user's global tables **read-only**; `%APPDATA%\kicad` is never written |
+| 8 | Licensing | MIT core; `kiwrap-swig-driver` GPL-3.0-or-later as a separate program; GPL/AGPL engines as separate processes; no PyMuPDF; no cloud routers |
+| 9 | Fabrication | JLCPCB default profile (rules, naming, `LCSC Part #`, rotation corrections) |
+| 10 | Schematic scope | Hierarchy + multi-unit in v1; buses Phase 2 |
+| 11 | Toolchain | Install Node LTS now; bootstrap downloads pinned JRE 25, Freerouting, jlcparts DB, EasyEDA data; telemetry off |
+| 12 | Platforms | **Windows + Linux certified from Phase 0 (user override)**; macOS later |
+| 13 | Agent clients | **Claude Code (CLI + VS Code) only first-class (user override)**; others generated configs, best-effort |
+| 14 | CI | GitHub Actions for headless tests (Windows + Linux runners); this machine as a self-hosted runner for GUI/IPC certification |
+| 15 | Eval budget | **Manual only (user override)** — no scheduled agent evals |
 
 ---
 

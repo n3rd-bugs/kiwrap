@@ -1,6 +1,6 @@
 # kiwrap — an AI-agent-facing wrapper over KiCad
 
-**Status: design phase (2026-09-18). No product code yet.** This repository currently holds the
+**Status: design decisions taken (2026-09-19), Phase 0 starting. No product code yet.** This repository currently holds the
 researched, adversarially verified architecture for a tool that lets an AI agent (Claude Code,
 Copilot agent mode, Cursor, Windsurf, Codex) do end-to-end electronics development on KiCad —
 spec → schematic → ERC → board → placement → routing → DRC → fabrication files — as a wrapper
@@ -12,6 +12,8 @@ over *installed* KiCad binaries so KiCad can be upgraded underneath (7 → 8 →
    matrix, components, integration strategy per KiCad version, the in-KiCad-plugin and
    source-build decisions, tool catalog, roadmap, risks, **§15 decisions needed**, §16 what
    verification changed, §17 known gaps.
+1. [docs/DECISIONS.md](docs/DECISIONS.md) — the 15 decisions taken on 2026-09-19 with alternatives and
+   consequences (Windows + Linux from Phase 0, Claude Code first-class, manual evals, gated source build).
 2. [docs/VERIFICATION.md](docs/VERIFICATION.md) — the 12 load-bearing claims, each attacked by an
    empirical and a documentary verifier, with corrections.
 3. [docs/research/](docs/research/) — nine research digests (IPC API, SWIG, schematic file
