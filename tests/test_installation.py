@@ -483,9 +483,10 @@ def test_live_discovery_fields(installs):
         assert inst.source in SOURCES
         if current().is_windows:
             assert inst.major_minor == inst.root.name  # C:/Program Files/KiCad/<major.minor>
-        # SWIG's bundled interpreter exists on 7-10 and is gone on 11 (nightly 10.99 verified 2026-09-19)
+        # Windows bundles SWIG's interpreter under bin/ on 7-10 and drops it on 11 (nightly 10.99,
+        # verified 2026-09-19); distro Linux uses the system python3 (CI, 10.0.6 from the PPA).
         bundled = inst.root / "bin" / current().python_name()
-        if bundled.is_file():
+        if current().is_windows and bundled.is_file():
             assert inst.python == bundled and inst.python_dll_dir == inst.root / "bin"
         else:
             assert inst.python is None or inst.python.is_file()
