@@ -370,9 +370,9 @@ Asked interactively and answered by the user; the log with consequences is in [D
 
 | # | Decision | Choice |
 |---|---|---|
-| 1 | Source build | Recipe + `gh repo fork KiCad/kicad-source-mirror` in Phase 0; build only on a named trigger |
+| 1 | Source build | ~~Recipe + fork in Phase 0; build only on a named trigger~~ **superseded by D17: planned in Phase 1 to extend kicad-cli/IPC upstream (data-first feedback)** |
 | 2 | Connect / live sessions on 9.x–10.0.x | PCB-only; sandboxed standalone `pcbnew.exe`; eeschema button only opens VS Code; schematics always via files |
-| 3 | Version floor | 10 first, 9 certified, 8 schematic + fab, 7 best-effort |
+| 3 | Version floor | ~~10 first, 9 certified, 8 schematic + fab, 7 best-effort~~ **superseded by D16: KiCad 11 (nightly) first, 10.0.x co-primary, 9 later, 8/7 best-effort** |
 | 4 | Installs | Install 10.0.6, latest 9.0.x/8.0.x and a 10.99 nightly side-by-side; re-run spikes |
 | 5 | Reference board | ESP32-S3-WROOM-1 + USB-C 2.0 + MCP73831 + 3.3 V LDO + buttons + I²C header, 2-layer, JLCPCB parts |
 | 6 | Live editing | Headless first; live IPC sessions + Connect in Phase 3 |

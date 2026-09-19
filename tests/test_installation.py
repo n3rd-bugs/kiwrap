@@ -23,7 +23,7 @@ from kiwrap.installation import (
     probe_env,
     version_tuple,
 )
-from kiwrap.platform import Platform
+from kiwrap.platform import Platform, current
 from kiwrap.platform.linux import flatpak_wrapper_script
 from kiwrap.platform.system import RegistryEntry, RunResult, System
 
@@ -481,8 +481,14 @@ def test_live_discovery_fields(installs):
         assert inst.kicad_cli.is_file() and inst.kicad_cli.parent == inst.root / "bin"
         assert inst.share.is_dir() and inst.dir("template").is_dir() and inst.dir("symbols").is_dir()
         assert inst.source in SOURCES
-        assert inst.major_minor == inst.root.name  # C:/Program Files/KiCad/<major.minor>
-        assert inst.python is not None and inst.python.is_file() and inst.python_dll_dir == inst.root / "bin"
+        if current().is_windows:
+            assert inst.major_minor == inst.root.name  # C:/Program Files/KiCad/<major.minor>
+        # SWIG's bundled interpreter exists on 7-10 and is gone on 11 (nightly 10.99 verified 2026-09-19)
+        bundled = inst.root / "bin" / current().python_name()
+        if bundled.is_file():
+            assert inst.python == bundled and inst.python_dll_dir == inst.root / "bin"
+        else:
+            assert inst.python is None or inst.python.is_file()
         assert inst.extra.get("display_version", inst.version).startswith(inst.version)
 
 

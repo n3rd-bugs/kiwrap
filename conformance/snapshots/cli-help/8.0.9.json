@@ -1,0 +1,655 @@
+{
+ "schema": 1,
+ "tree": {
+  "command": "",
+  "description": "",
+  "exit_code": 0,
+  "flags": [
+   "--version",
+   "--help"
+  ],
+  "positionals": [],
+  "subcommands": {
+   "fp": {
+    "command": "fp",
+    "description": "Footprint and Footprint Libraries",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "export": {
+      "command": "fp export",
+      "description": "Export utilities (svg)",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "svg": {
+        "command": "fp export svg",
+        "description": "Exports the footprint or entire footprint library to SVG",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--define-var",
+         "--theme",
+         "--fp",
+         "--footprint",
+         "--black-and-white"
+        ],
+        "positionals": [
+         "INPUT_DIR"
+        ],
+        "subcommands": {}
+       }
+      }
+     },
+     "upgrade": {
+      "command": "fp upgrade",
+      "description": "Upgrades the footprint library to the current kicad version format",
+      "exit_code": 1,
+      "flags": [
+       "--help",
+       "--output",
+       "--force"
+      ],
+      "positionals": [
+       "INPUT_DIR"
+      ],
+      "subcommands": {}
+     }
+    }
+   },
+   "pcb": {
+    "command": "pcb",
+    "description": "PCB",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "drc": {
+      "command": "pcb drc",
+      "description": "Runs the Design Rules Check (DRC) on the PCB and creates a report",
+      "exit_code": 1,
+      "flags": [
+       "--help",
+       "--output",
+       "--define-var",
+       "--format",
+       "--all-track-errors",
+       "--schematic-parity",
+       "--units",
+       "--severity-all",
+       "--severity-error",
+       "--severity-warning",
+       "--severity-exclusions",
+       "--exit-code-violations"
+      ],
+      "positionals": [
+       "INPUT_FILE"
+      ],
+      "subcommands": {}
+     },
+     "export": {
+      "command": "pcb export",
+      "description": "Export utilities (Gerbers, drill, position files, etc)",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "drill": {
+        "command": "pcb export drill",
+        "description": "Generate Drill Files",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--format",
+         "--drill-origin",
+         "--excellon-zeros-format",
+         "--excellon-oval-format",
+         "--excellon-units",
+         "--excellon-mirror-y",
+         "--excellon-min-header",
+         "--excellon-separate-th",
+         "--generate-map",
+         "--map-format",
+         "--gerber-precision"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "dxf": {
+        "command": "pcb export dxf",
+        "description": "Generate a DXF from a list of layers",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--drawing-sheet",
+         "--define-var",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--uc",
+         "--use-contours",
+         "--ibt",
+         "--include-border-title",
+         "--ou",
+         "--output-units"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "gerber": {
+        "command": "pcb export gerber",
+        "description": "Plot given layers to a single Gerber file",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--drawing-sheet",
+         "--define-var",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--ibt",
+         "--include-border-title",
+         "--no-x2",
+         "--no-netlist",
+         "--subtract-soldermask",
+         "--disable-aperture-macros",
+         "--use-drill-file-origin",
+         "--precision",
+         "--no-protel-ext"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "gerbers": {
+        "command": "pcb export gerbers",
+        "description": "Plot multiple Gerbers for a PCB, including the ability to use stored board plot settings",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--drawing-sheet",
+         "--define-var",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--ibt",
+         "--include-border-title",
+         "--no-x2",
+         "--no-netlist",
+         "--subtract-soldermask",
+         "--disable-aperture-macros",
+         "--use-drill-file-origin",
+         "--precision",
+         "--no-protel-ext",
+         "--cl",
+         "--common-layers",
+         "--board-plot-params"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "glb": {
+        "command": "pcb export glb",
+        "description": "Export GLB (binary GLTF)",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--define-var",
+         "--force",
+         "--grid-origin",
+         "--drill-origin",
+         "--no-unspecified",
+         "--no-dnp",
+         "--subst-models",
+         "--board-only",
+         "--include-tracks",
+         "--include-zones",
+         "--min-distance",
+         "--user-origin"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "ipc2581": {
+        "command": "pcb export ipc2581",
+        "description": "Export the PCB in IPC2581 format",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--drawing-sheet",
+         "--define-var",
+         "--precision",
+         "--compress",
+         "--version",
+         "--units",
+         "--bom-col-int-id",
+         "--bom-col-mfg-pn",
+         "--bom-col-mfg",
+         "--bom-col-dist-pn",
+         "--bom-col-dist"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "pdf": {
+        "command": "pcb export pdf",
+        "description": "Generate PDF from a list of layers",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--drawing-sheet",
+         "--define-var",
+         "--mirror",
+         "--erd",
+         "--exclude-refdes",
+         "--ev",
+         "--exclude-value",
+         "--ibt",
+         "--include-border-title",
+         "--negative",
+         "--black-and-white",
+         "--theme",
+         "--drill-shape-opt"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "pos": {
+        "command": "pcb export pos",
+        "description": "Generate Position File",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--side",
+         "--format",
+         "--units",
+         "--bottom-negate-x",
+         "--use-drill-file-origin",
+         "--smd-only",
+         "--exclude-fp-th",
+         "--exclude-dnp",
+         "--gerber-board-edge"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "step": {
+        "command": "pcb export step",
+        "description": "Export STEP",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--define-var",
+         "--force",
+         "--grid-origin",
+         "--drill-origin",
+         "--no-unspecified",
+         "--no-dnp",
+         "--subst-models",
+         "--board-only",
+         "--include-tracks",
+         "--include-zones",
+         "--min-distance",
+         "--no-optimize-step",
+         "--user-origin"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "svg": {
+        "command": "pcb export svg",
+        "description": "Generate SVG outputs of a given layer list",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--layers",
+         "--drawing-sheet",
+         "--define-var",
+         "--mirror",
+         "--theme",
+         "--negative",
+         "--black-and-white",
+         "--page-size-mode",
+         "--exclude-drawing-sheet",
+         "--drill-shape-opt"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "vrml": {
+        "command": "pcb export vrml",
+        "description": "Export VRML",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--define-var",
+         "--force",
+         "--user-origin",
+         "--units",
+         "--models-dir",
+         "--models-relative"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       }
+      }
+     }
+    }
+   },
+   "sch": {
+    "command": "sch",
+    "description": "Schematics",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "erc": {
+      "command": "sch erc",
+      "description": "Runs the Electrical Rules Check (ERC) on the schematic and creates a report",
+      "exit_code": 1,
+      "flags": [
+       "--help",
+       "--output",
+       "--define-var",
+       "--format",
+       "--units",
+       "--severity-all",
+       "--severity-error",
+       "--severity-warning",
+       "--severity-exclusions",
+       "--exit-code-violations"
+      ],
+      "positionals": [
+       "INPUT_FILE"
+      ],
+      "subcommands": {}
+     },
+     "export": {
+      "command": "sch export",
+      "description": "Export utilities (netlist, pdf, bom, etc)",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "bom": {
+        "command": "sch export bom",
+        "description": "Generate a Bill of Materials (BOM)",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--preset",
+         "--format-preset",
+         "--fields",
+         "--labels",
+         "--group-by",
+         "--sort-field",
+         "--sort-asc",
+         "--filter",
+         "--exclude-dnp",
+         "--field-delimiter",
+         "--string-delimiter",
+         "--ref-delimiter",
+         "--ref-range-delimiter",
+         "--keep-tabs",
+         "--keep-line-breaks"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "dxf": {
+        "command": "sch export dxf",
+        "description": "Export DXF",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--drawing-sheet",
+         "--define-var",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--pages"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "hpgl": {
+        "command": "sch export hpgl",
+        "description": "Export HPGL",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--drawing-sheet",
+         "--define-var",
+         "--exclude-drawing-sheet",
+         "--pages",
+         "--pen-size",
+         "--origin"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "netlist": {
+        "command": "sch export netlist",
+        "description": "Export a netlist",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--format"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "pdf": {
+        "command": "sch export pdf",
+        "description": "Export PDF",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--drawing-sheet",
+         "--define-var",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--exclude-pdf-property-popups",
+         "--no-background-color",
+         "--pages"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "ps": {
+        "command": "sch export ps",
+        "description": "Export PS",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--drawing-sheet",
+         "--define-var",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--pages"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "python-bom": {
+        "command": "sch export python-bom",
+        "description": "Export the legacy BOM XML format used in the schematic editor with Python scripts",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       },
+       "svg": {
+        "command": "sch export svg",
+        "description": "Export SVG",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--drawing-sheet",
+         "--define-var",
+         "--theme",
+         "--black-and-white",
+         "--exclude-drawing-sheet",
+         "--no-background-color",
+         "--pages"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       }
+      }
+     }
+    }
+   },
+   "sym": {
+    "command": "sym",
+    "description": "Symbol and Symbol Libraries",
+    "exit_code": 0,
+    "flags": [
+     "--help"
+    ],
+    "positionals": [],
+    "subcommands": {
+     "export": {
+      "command": "sym export",
+      "description": "Export utilities (svg)",
+      "exit_code": 0,
+      "flags": [
+       "--help"
+      ],
+      "positionals": [],
+      "subcommands": {
+       "svg": {
+        "command": "sym export svg",
+        "description": "Exports the symbol or entire symbol library to SVG",
+        "exit_code": 1,
+        "flags": [
+         "--help",
+         "--output",
+         "--theme",
+         "--symbol",
+         "--black-and-white",
+         "--include-hidden-pins",
+         "--include-hidden-fields"
+        ],
+        "positionals": [
+         "INPUT_FILE"
+        ],
+        "subcommands": {}
+       }
+      }
+     },
+     "upgrade": {
+      "command": "sym upgrade",
+      "description": "Upgrades the symbol library to the current kicad version format",
+      "exit_code": 1,
+      "flags": [
+       "--help",
+       "--output",
+       "--force"
+      ],
+      "positionals": [
+       "INPUT_FILE"
+      ],
+      "subcommands": {}
+     }
+    }
+   },
+   "version": {
+    "command": "version",
+    "description": "Reports the version info in various formats",
+    "exit_code": 0,
+    "flags": [
+     "--help",
+     "--format"
+    ],
+    "positionals": [],
+    "subcommands": {}
+   }
+  }
+ },
+ "version": "8.0.9"
+}

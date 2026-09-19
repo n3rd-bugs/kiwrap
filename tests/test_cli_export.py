@@ -152,7 +152,8 @@ def test_svg_pdf_dxf_single_file(cli_envs, mm, tmp_path: Path):
     env = env_for(cli_envs, mm)
     board = tmp_path / "hb.kicad_pcb"
     shutil.copy(spike_board(mm, "test_inplace.kicad_pcb"), board)
-    for target, magic in (("svg", b"<?xml"), ("pdf", b"%PDF"), ("dxf", b"  0\r\nSECTION")):
+    # DXF group codes are line based; kicad-cli writes CRLF on Windows and LF on Linux (CI, 2026-09-19).
+    for target, magic in (("svg", b"<?xml"), ("pdf", b"%PDF"), ("dxf", b"  0")):
         files = export.export_pcb(
             env.install,
             env.config,

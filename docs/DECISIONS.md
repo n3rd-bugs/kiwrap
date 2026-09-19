@@ -119,3 +119,40 @@ PC, scheduled when idle.
 **Choice:** no scheduled agent evals; `kiwrap eval` is run by hand when the owner chooses.
 **Consequence:** certification (T1–T9) stays automated; "3 consecutive green runs" for a release
 is a manual gate.
+
+## D16 — KiCad 11 first (supersedes the priority order in D3)
+
+**Choice (owner, 2026-09-19):** the newest KiCad is the primary target: the 10.99 nightly now
+(pinned build, re-probed with `scripts/ci/refresh_matrix.py` on every bump), KiCad 11.0 at GA.
+KiCad 10.0.x stays co-primary because it is what stable users have. 9 is certified later; 8 and 7
+drop to best-effort/deferred.
+**Verified on the installed nightly (10.99.0-4083-g6dd893f7d1):** `kicad-cli api-server
+[--socket] <project|pcb|sch>` runs headless and answers `GetVersion`; documents are opened with the
+new `OpenDocument` command family, which kicad-python 0.8.0 (10.0.6 protos) cannot send; SWIG
+`pcbnew` and the bundled Python are gone; new CLI commands `sch diff --format json`, `sch import`,
+`pcb export png|bom|stackup --format json`, `gerber`, `mergetool`.
+**Consequence:** the IPC headless backend becomes the primary backend for schematic AND board
+from Phase 1, with a client generated from the nightly's own `api/proto`; the file engine remains
+the lossless editing/bridging layer and the only schematic path on ≤ 10; the SWIG driver becomes a
+legacy backend for ≤ 10 and leaves the critical path; the capability matrix keeps a verified entry
+per nightly build.
+
+## D17 — Data-first feedback; expand kicad-cli/IPC upstream; source build planned
+
+**Choice (owner, 2026-09-19):** the agent's feedback loop is structured data, not images. Renders
+stay as secondary tools (VS Code previews, human review). Where KiCad exposes no structured
+surface, kiwrap extends KiCad's CLI/IPC upstream, which requires the source build — so D1's
+"gated trigger" becomes "planned, Phase 1".
+**Tiers:** (1) no KiCad change needed — everything stored in the files via the lossless CST
+(footprint/pad/courtyard geometry, tracks, vias, zone fills, outline; symbol pin endpoints, wires,
+labels, junctions, sheets → overlaps, off-board, bounding boxes, pin connectivity, dangling ends)
+plus kicad-cli JSON/structured exports (DRC/ERC with coordinates, netlist, IPC-2581, IPC-D-356,
+stats, stackup, `sch diff`); (2) KiCad 11 IPC headless — `GetItems`, bounding boxes, hit-test,
+nets, netlist + hierarchy, `ImportNetlist`, `PlaceFootprintFromLibrary`/`PlaceSymbolFromLibrary`,
+job exports; (3) upstream candidates — ratsnest/airwire export with endpoints (`kicad-cli pcb
+export ratsnest --format json` or an IPC `GetRatsnest`), `RunDRC`/`RunERC` over IPC (absent even
+on master), per-net length/trace statistics, and a full structured dump (`pcb/sch export json`).
+**Consequence:** the ARCHITECTURE "non-negotiable" that no shipped component may require a
+patched KiCad is relaxed to: stock KiCad always works; a patched or nightly build unlocks more,
+and every patch is carried in the fork (`n3rd-bugs/kicad-source-mirror`) until merged upstream.
+The T5 handler snapshot of the nightly is the authoritative gap list for tier 3.
