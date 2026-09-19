@@ -119,6 +119,9 @@ _STACKUP = Predicate(
 _NETLIST = Predicate(
     keys=("cli.has_netlist_export",), subcommands={"cli.has_netlist_export": "sch export netlist"}
 )
+_RATSNEST = Predicate(
+    keys=("cli.has_ratsnest_export",), subcommands={"cli.has_ratsnest_export": "pcb export ratsnest"}
+)
 
 OPERATIONS: dict[str, Operation] = {
     "board.read": Operation(
@@ -142,9 +145,18 @@ OPERATIONS: dict[str, Operation] = {
                 IPC11,
                 _HEADLESS,
                 note=(
-                    "KiCad's connectivity clusters per net (GetItemsByNet + GetConnectedItems): the unrouted "
-                    "count is KiCad's; airwire end points are nearest-anchor guesses, which the tool tags "
-                    "airwire_endpoints_estimated"
+                    "KiCad's own airwires over GetRatsnest when the server handles it (ipc.has_get_ratsnest, "
+                    "kiwrap patch ratsnest-export), else KiCad's connectivity clusters per net (GetItemsByNet + "
+                    "GetConnectedItems): the unrouted count is KiCad's; airwire end points are nearest-anchor "
+                    "guesses, which the tool tags airwire_endpoints_estimated"
+                ),
+            ),
+            Provider(
+                CLI,
+                _RATSNEST,
+                note=(
+                    "kicad-cli pcb export ratsnest (kiwrap patch ratsnest-export, docs/UPSTREAM.md "
+                    "G1): KiCad's airwires with both end items, anchor positions and layers; exact, no session"
                 ),
             ),
             Provider(FILE, degraded=("ratsnest_estimated",), note="nearest-pad ratsnest estimate"),
@@ -274,21 +286,24 @@ class Outcome(Generic[T]):
     degraded: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     errors: list[tuple[str, KiwrapError]] = field(default_factory=list)  # providers that fell through
+    patch: str = ""  # kiwrap patch id the answering provider relied on (docs/UPSTREAM.md §3.3)
 
     @property
     def provider_name(self) -> str:
         return self.provider.name
 
     def provider_used(self, install: Any) -> str:
-        return provider_label(self.provider.name, install)
+        return provider_label(self.provider.name, install, patch=self.patch)
 
 
-def provider_label(provider: str, install: Any) -> str:
-    """`provider_used` string: `ipc11:<version>`, `cli:<version>`, or plain `file`."""
+def provider_label(provider: str, install: Any, *, patch: str = "") -> str:
+    """`provider_used` string: `ipc11:<version>`, `cli:<version>`, or plain `file`; a kiwrap
+    patch the provider relied on is appended as `+<id>` (`cli:10.99.0+ratsnest-export`)."""
     if provider == FILE:
         return FILE
     version = getattr(install, "version", None)
-    return f"{provider}:{version}" if version else provider
+    label = f"{provider}:{version}" if version else provider
+    return f"{label}+{patch}" if patch else label
 
 
 def run(

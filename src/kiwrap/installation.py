@@ -17,10 +17,25 @@ Verified live on this machine (Windows 11; KiCad 7.0.6, 8.0.1, 9.0.5, 10.0.0 und
 - Registry: `HKLM\\...\\Uninstall\\KiCad 8.0|9.0|10.0` and `HKLM\\...\\WOW6432Node\\...\\KiCad 7.0`
   (see `kiwrap.platform.windows`).
 Linux sources are designed only (see `kiwrap.platform.linux`) and covered by fake-System tests.
+
+Explicit installs (source "explicit"; docs/UPSTREAM.md §4.3, verified 2026-09-19 with the bench
+build `C:/kiwrap-builds/6dd893f7d1-1` = `cmake --install` of the fork at the nightly's commit):
+- `discover(explicit=[...])` arguments, then the roots in `KIWRAP_KICAD_ROOTS` (`os.pathsep`
+  separated; the mechanism for sessions whose storage home is redirected, i.e. pytest and CI), then
+  `<storage>/installs.json` (`register_root()` / `python -m kiwrap.installation --register <root>`).
+- A root that carries `<root>/kiwrap-install.json` (written by scripts/dev/install_kicad_build.ps1)
+  contributes its string fields to `KiCadInstallation.extra`: `build_tree`, `commit` (the BUILT
+  commit, i.e. the source tree's HEAD: a patched build of base X gets its integration-branch sha,
+  so two builds of one base never share a T4/T5 snapshot name), `base` (the upstream commit the
+  build is based on, `base/<sha>`), `kiwrap_patches` (comma-separated patch ids, "" when none),
+  `preset`, `build_type`, `installed_at`. Explicit roots sort AFTER a native install of the same
+  version (bench builds last) so `find("10.99")` and the `newest` fixture keep returning the
+  installer's binaries.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from collections.abc import Callable, Mapping
@@ -35,6 +50,11 @@ from kiwrap.platform.system import System
 SOURCES = ("explicit", "registry", "program_files", "path", "apt", "flatpak", "snap", "appimage")
 
 PROBE_CONFIG_DIRNAME = "probe-config"
+INSTALLS_FILE = "installs.json"  # <storage>/installs.json: {"schema": 1, "roots": ["C:/kiwrap-builds/..."]}
+INSTALLS_SCHEMA = 1
+ROOTS_ENV = "KIWRAP_KICAD_ROOTS"  # os.pathsep-separated install roots / kicad-cli paths
+INSTALL_METADATA = "kiwrap-install.json"  # <root>/kiwrap-install.json: build provenance (see docstring)
+_METADATA_KEYS = ("build_tree", "commit", "base", "kiwrap_patches", "preset", "build_type", "installed_at")
 _SEMVER_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 _VERSION_TIMEOUT_S = 60
 
@@ -70,6 +90,28 @@ class KiCadInstallation:
     def key(self) -> str:
         """Stable cache key: full semver + root."""
         return f"{self.version}@{self.root}"
+
+    @property
+    def is_bench_build(self) -> bool:
+        """True for a self-built KiCad registered with `kiwrap-install.json` metadata (a `commit`)."""
+        return bool(self.extra.get("commit"))
+
+    @property
+    def snapshot_name(self) -> str:
+        """The name conformance snapshots of this install are stored under (docs/UPSTREAM.md
+        §3.3): `<version>` for a stock install, `<version>+<built commit>` for a bench build,
+        `.debug` appended for a Debug build (its wx asserts wedge some handlers, so it never
+        stands in for the RelWithDebInfo build of the same commit)."""
+        if not self.is_bench_build:
+            return self.version
+        suffix = ".debug" if self.extra.get("build_type") == "Debug" else ""
+        return f"{self.version}+{self.extra['commit']}{suffix}"
+
+    @property
+    def kiwrap_patches(self) -> list[str]:
+        """Patch ids the install's metadata claims (informational; capability probes decide)."""
+        raw = self.extra.get("kiwrap_patches", "")
+        return [p for p in raw.split(",") if p]
 
 
 def version_tuple(version: str) -> tuple[int, ...]:
@@ -115,6 +157,83 @@ def read_version(kicad_cli: Path, system: System, env: Mapping[str, str]) -> tup
     return (version, result.stdout.strip()) if version else None
 
 
+def installs_file(storage_home: Path) -> Path:
+    return storage_home / INSTALLS_FILE
+
+
+def registered_roots(
+    storage_home: Path, environ: Mapping[str, str] | None = None, *, system: System | None = None
+) -> list[Path]:
+    """Explicit roots from `KIWRAP_KICAD_ROOTS` (first) and `<storage>/installs.json` (then).
+
+    Malformed entries are ignored, never fatal: discovery must work with zero installs.
+    """
+    system = system or System()
+    environ = system.environ() if environ is None else environ
+    roots: list[Path] = [Path(p) for p in environ.get(ROOTS_ENV, "").split(os.pathsep) if p.strip()]
+    path = installs_file(storage_home)
+    if system.is_file(path):
+        try:
+            raw = json.loads(system.read_text(path))
+            if raw.get("schema") == INSTALLS_SCHEMA:
+                roots += [Path(p) for p in raw.get("roots", []) if isinstance(p, str) and p]
+        except (OSError, ValueError, AttributeError):
+            pass
+    out: list[Path] = []
+    seen: set[Path] = set()
+    for root in roots:
+        key = _norm(root)
+        if key not in seen:
+            seen.add(key)
+            out.append(root)
+    return out
+
+
+def _write_roots(roots: list[Path], storage_home: Path, system: System) -> None:
+    payload = {"schema": INSTALLS_SCHEMA, "roots": [str(r) for r in roots]}
+    system.write_text(installs_file(storage_home), json.dumps(payload, indent=1) + "\n")
+
+
+def register_root(root: Path, storage_home: Path, *, system: System | None = None) -> list[Path]:
+    """Add `root` to `<storage>/installs.json` (idempotent); returns the file's roots afterwards."""
+    system = system or System()
+    roots = [r for r in registered_roots(storage_home, {}, system=system) if _norm(r) != _norm(root)]
+    roots.append(Path(root))
+    _write_roots(roots, storage_home, system)
+    return roots
+
+
+def unregister_root(root: Path, storage_home: Path, *, system: System | None = None) -> list[Path]:
+    """Remove `root` from `<storage>/installs.json`; returns the remaining roots."""
+    system = system or System()
+    roots = [r for r in registered_roots(storage_home, {}, system=system) if _norm(r) != _norm(root)]
+    _write_roots(roots, storage_home, system)
+    return roots
+
+
+def read_install_metadata(root: Path, system: System) -> dict[str, str]:
+    """String fields of `<root>/kiwrap-install.json` (empty when absent or unreadable).
+
+    Lists (`kiwrap_patches`) are joined with commas because `KiCadInstallation.extra` is
+    `dict[str, str]`; `KiCadInstallation.kiwrap_patches` splits them again.
+    """
+    path = root / INSTALL_METADATA
+    if not system.is_file(path):
+        return {}
+    try:
+        raw = json.loads(system.read_text(path))
+    except (OSError, ValueError, AttributeError):
+        return {}
+    out: dict[str, str] = {}
+    for key in _METADATA_KEYS:
+        value = raw.get(key)
+        if isinstance(value, list):
+            out[key] = ",".join(str(v) for v in value)
+        elif value is not None:
+            out[key] = str(value)
+    return out
+
+
 def discover(
     explicit: list[Path] | tuple[Path, ...] = (),
     *,
@@ -124,7 +243,8 @@ def discover(
 ) -> list[KiCadInstallation]:
     """Find every KiCad install on this machine, newest first, de-duplicated by root.
 
-    Sources, in order: `explicit` roots or kicad-cli paths (settings), the platform's native
+    Sources, in order: `explicit` roots or kicad-cli paths (arguments, then `KIWRAP_KICAD_ROOTS`,
+    then `<storage>/installs.json` - see `registered_roots`), the platform's native
     package registry (Windows Uninstall keys incl. WOW6432Node for 7.x; Linux distro packages),
     well-known directories (C:/Program Files/KiCad/*; /usr, /usr/local, /opt/kicad*), Flatpak
     (`org.kicad.KiCad`), Snap, AppImage on PATH, and finally `kicad-cli` on PATH.
@@ -139,7 +259,7 @@ def discover(
     env = probe_env(storage_home, system.environ())
 
     candidates: list[Candidate] = []
-    for spec in explicit:
+    for spec in [*explicit, *registered_roots(storage_home, system.environ(), system=system)]:
         cand = explicit_candidate(Path(spec), platform, system)
         if cand is not None:
             candidates.append(cand)
@@ -159,6 +279,8 @@ def discover(
         extra = dict(cand.extra)
         if raw != version:
             extra["version_raw"] = raw
+        if cand.source == "explicit":
+            extra.update(read_install_metadata(cand.root, system))
         installs.append(
             KiCadInstallation(
                 root=cand.root,
@@ -171,7 +293,13 @@ def discover(
                 extra=extra,
             )
         )
-    installs.sort(key=lambda i: (i.version_tuple, str(i.root)), reverse=True)
+    # Newest first. An explicit root ties with the stock install of the same semver (a bench build
+    # IS the nightly's commit): native sources come first, then plain explicit roots, then bench
+    # builds, so `find("10.99")` and the `newest` fixture keep returning the installer's binaries.
+    installs.sort(
+        key=lambda i: (i.version_tuple, i.source != "explicit", not i.is_bench_build, str(i.root)),
+        reverse=True,
+    )
     return installs
 
 
@@ -218,9 +346,14 @@ def find(
         if path in (_norm(inst.root), _norm(inst.kicad_cli), _norm(inst.kicad_cli.parent)):
             return inst
     if probe_paths:
-        probed = discover([Path(spec)])
-        for inst in probed:
-            if inst.source == "explicit":
+        # discover() also lists the registered explicit roots, so only an install whose root or
+        # kicad-cli IS the spec counts; anything else means the spec path holds no KiCad.
+        for inst in discover([Path(spec)]):
+            if inst.source == "explicit" and path in (
+                _norm(inst.root),
+                _norm(inst.kicad_cli),
+                _norm(inst.kicad_cli.parent),
+            ):
                 return inst
     raise NoKiCadError(spec, installs)
 
@@ -259,7 +392,8 @@ def describe(
     if caps_for is not None:
         header += [label for label, _ in DESCRIBE_KEYS]
     for inst in installs:
-        row = [inst.version, inst.source, str(inst.root), str(inst.python or "-"), str(inst.share)]
+        source = inst.source + (f" ({inst.extra['commit']})" if inst.is_bench_build else "")
+        row = [inst.version, source, str(inst.root), str(inst.python or "-"), str(inst.share)]
         if caps_for is not None:
             caps = caps_for(inst)
             row += ["y" if caps.get(key) else "n" for _, key in DESCRIBE_KEYS]
@@ -274,12 +408,27 @@ def describe(
 
 
 def _main(argv: list[str]) -> int:
-    """`python -m kiwrap.installation [--no-probe] [--refresh] [root-or-kicad-cli ...]`."""
+    """`python -m kiwrap.installation [--no-probe] [--refresh] [--register|--unregister] [root ...]`.
+
+    `--register <root>` adds the root to `<storage>/installs.json` (`--unregister` removes it) and
+    then lists what discovery sees; a registered root must contain `bin/kicad-cli`."""
     import importlib
 
     probe = "--no-probe" not in argv
     refresh = "--refresh" in argv
     explicit = [Path(a) for a in argv if not a.startswith("--")]
+    if "--register" in argv or "--unregister" in argv:
+        storage_home = current().storage_home
+        for root in explicit:
+            if "--unregister" in argv:
+                unregister_root(root, storage_home)
+            elif explicit_candidate(root, current(), System()) is None:
+                print(f"no kicad-cli under {root}; not registered")
+                return 2
+            else:
+                register_root(root, storage_home)
+        print(f"{installs_file(storage_home)}: {[str(r) for r in registered_roots(storage_home, {})]}")
+        explicit = []
     installs = discover(explicit)
     caps_for: Callable[[KiCadInstallation], Mapping[str, object]] | None = None
     if probe:

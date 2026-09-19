@@ -1,0 +1,71 @@
+{
+ "schema": 1,
+ "_about": "Manifest of the kiwrap patch series carried by the fork (docs/UPSTREAM.md 3.2-3.3). `patches[]`: id, gap (G-card), branch mr/<issue>-<slug>, issue, mr, status (local|issue-open|in-review|merged|upstream-fixed-differently|abandoned), keys (capability keys that must ALL probe true for kiwrap.patches to list the id), commands (IPC commands whose T5 outcome may differ from the stock snapshot). `builds[]`: kiwrap-build/* tags (lightweight: annotated tags break git describe and every CMake reconfigure) that were built, T5-snapshotted and installed; `commit` is the BUILT commit (the integration branch's sha, what <prefix>/kiwrap-install.json records), `base` the upstream commit it was built on; kiwrap.patched_build is true for an install whose commit matches one. The data/ package is the only place besides backends/ allowed to name versions and commits.",
+ "base": "6dd893f7d1",
+ "base_version": "10.99.0",
+ "fork": "https://github.com/n3rd-bugs/kicad-source-mirror",
+ "patches": [
+  {
+   "id": "ratsnest-export",
+   "gap": "G1",
+   "branch": "mr/g1-ratsnest",
+   "issue": null,
+   "mr": null,
+   "status": "local",
+   "keys": [
+    "cli.has_ratsnest_export",
+    "ipc.has_get_ratsnest"
+   ],
+   "commands": [
+    "GetRatsnest"
+   ],
+   "note": "2026-09-19: JOB_EXPORT_PCB_RATSNEST + `kicad-cli pcb export ratsnest [--units U] [--nets N1,N2] [--include-routed]` (JSON only, resources/schemas/ratsnest.v1.json; item pairs the project excludes as DRC unconnected_items are listed with `excluded: true` and left out of the counts and lengths; a through item's end is reported on the layer it shares with the other end) + board_commands.proto GetRatsnest (Since: 11.0, RatsnestEdge.excluded) + API_HANDLER_PCB::handleGetRatsnest; QA: qa_pcbnew RatsnestReport (5 cases incl. issue17429 exclusions and the ratsnest_layers fixture), qa_cli test_pcb_export_ratsnest + _exclusions, qa_api ApiE2E/GetRatsnest. The T5 inventory cannot see GetRatsnest until kicad-python is regenerated against the branch (kiwrap's client builds the message classes from a descriptor, backends.ipc.queries.ratsnest_messages), so `commands` is informational for now. RunBoardJobExportRatsnest (the job over IPC) is deliberately not part of the patch: GetRatsnest returns the data without a file round trip, the CLI/jobset half runs the job, and the extra proto/enum/QA surface is a follow-up once GetRatsnest lands."
+  }
+ ],
+ "builds": [
+  {
+   "tag": "kiwrap-build/6dd893f7d1-1",
+   "commit": "6dd893f7d1",
+   "base": "6dd893f7d1",
+   "branch": "base/6dd893f7d1",
+   "preset": "msvc-win64-debug",
+   "patches": [],
+   "snapshot": "10.99.0+6dd893f7d1.debug.json",
+   "note": "2026-09-19 Debug bench (stepping tree, not registered by default): qa_api 99/108 (wx asserts wedge the headless server), T5 differs from stock in SetBoardDesignRules [pcb] only (assert in JSON_SETTINGS::Migrate)"
+  },
+  {
+   "tag": "kiwrap-build/6dd893f7d1-2",
+   "commit": "6dd893f7d1",
+   "base": "6dd893f7d1",
+   "branch": "base/6dd893f7d1",
+   "preset": "msvc-win64-release",
+   "patches": [],
+   "snapshot": "10.99.0+6dd893f7d1.json",
+   "note": "2026-09-19 RelWithDebInfo pristine bench (acceptance build; reinstalled from base after the -3 install had moved its share/ tree away): qa_api 106/108 (two test-side issues), T5 EQUAL to 10.99.0.json, T4 tree identical to the stock nightly's"
+  },
+  {
+   "tag": "kiwrap-build/6dd893f7d1-3",
+   "commit": "c7cb37b80a",
+   "base": "6dd893f7d1",
+   "branch": "kiwrap/6dd893f7d1",
+   "preset": "msvc-win64-release",
+   "patches": [
+    "ratsnest-export"
+   ],
+   "snapshot": "",
+   "note": "2026-09-19 first integration build (superseded by -4, uninstalled): its metadata recorded the base as `commit`, its share/ tree was the one moved out of -2, and its ratsnest export lacked the excluded flag, the shared-layer rule and still took --format"
+  },
+  {
+   "tag": "kiwrap-build/6dd893f7d1-4",
+   "commit": "4a04900fd2",
+   "base": "6dd893f7d1",
+   "branch": "kiwrap/6dd893f7d1",
+   "preset": "msvc-win64-release",
+   "patches": [
+    "ratsnest-export"
+   ],
+   "snapshot": "10.99.0+4a04900fd2.json",
+   "note": "2026-09-19 RelWithDebInfo integration build = base + mr/g6-headless-jobs (test only) + mr/g1-ratsnest (reworked: excluded flag, shared-layer rule, no --format, Assisted-by trailers); qa_api 108/110 (the two known test-side failures), qa_pcbnew RatsnestReport 5/5, qa_cli ratsnest 2/2; T5 EQUAL to 10.99.0.json"
+  }
+ ]
+}

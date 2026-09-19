@@ -31,7 +31,13 @@ Documented keys (all of these must exist for every supported version, see the JS
     ipc.schematic_write_crashes     bool        9.0.0-10.0.6 (#24966)
     ipc.commit_needs_document       bool        (>= 10.0.7)
     ipc.headless_libraries_need_load bool       headless server loads no library until LoadAllLibraries (11)
-    ipc.headless_jobs               bool        RunBoardJobExport*/RunSchematicJobExport* handled headless (false on 10.99.0-4083)
+    ipc.headless_jobs               bool        the 22 RunBoardJobExport*/RunSchematicJobExport* commands are
+                                                handled by the headless api-server (true on 10.99.0-4083 and 11;
+                                                presence: T5 rows `handled`/`bad_request` on the job's own
+                                                document type, `backends.ipc.jobs.probe_headless_jobs`,
+                                                tests/test_ipc_patch_g6.py). A request whose nested
+                                                `job_settings.document` is empty is AS_UNHANDLED by design; the
+                                                first T5 snapshot sent that and misread it as "absent" (UPSTREAM G6)
     ipc.schematic_update_shared_lib_symbol_hangs bool  UpdateItems on a 2nd instance of one lib symbol never replies (10.99.0-4083)
     ipc.single_fixed_pipe           bool        Windows 9/10
     formats.sch / formats.pcb / formats.sym / formats.pro  int  epoch stamps written by this version
@@ -52,6 +58,19 @@ Extra keys this implementation adds (same conventions):
     cli.has_stackup_json    bool   `pcb export stackup --format json` (11 / 10.99 nightly; MR !2691 + json on master)
     cli.has_sch_diff        bool   `sch diff --format json` (11 / 10.99 nightly; MR !2620; exit 5 = differences)
     cli.has_pcb_png         bool   `pcb export png` (11 / 10.99 nightly; 2D layer PNGs into a directory)
+    cli.has_ratsnest_export bool   `pcb export ratsnest` (kiwrap fork patch ratsnest-export,
+                                   docs/UPSTREAM.md G1; no release has it): KiCad's own airwires per net
+                                   with both end items, anchor positions and layers. Derived from the
+                                   `--help` tree like the keys above (presence, never the version).
+    ipc.has_get_ratsnest    bool   the headless api-server answers `GetRatsnest` (same patch). Seeded
+                                   false; `capabilities_for` DERIVES it from `ipc.headless` AND
+                                   `cli.has_ratsnest_export` (the api-server is the probed kicad-cli
+                                   binary; a build carrying only one half of the patch is not
+                                   supported) until the first headless session with a board runs the
+                                   presence probe (`backends.ipc.presence`, docs/UPSTREAM.md 3.3:
+                                   `backends.ipc.queries.probe_get_ratsnest`, one request) and
+                                   records the outcome through `Capabilities.refine`, which lists the
+                                   key in `kiwrap.ipc_probed` and rewrites the cache.
     cli.drc_error_limit     int    `pcb drc` stops reporting a violation TYPE after this many items (199:
                                    DRC_ENGINE ERROR_LIMIT, pcbnew/drc/drc_engine.cpp, enforced atomically in
                                    ReportViolation; verified 2026-09-19: 203 missing courtyards -> 199 listed)
@@ -66,6 +85,19 @@ Extra keys this implementation adds (same conventions):
     seed.version / seed.exact / seed.note   which matrix entry seeded the record and how well it fits
     swig.module / swig.python              paths found by the probe ("" when absent)
     probe.ok                bool   whether the `--help` tree probe succeeded (else the seed's cli.* stand)
+    kiwrap.patches          list[str]  ids from `kiwrap/data/kiwrap_patches.json` whose EVERY detection key
+                                   is truthy in this record (docs/UPSTREAM.md §3.3). Informational only:
+                                   `kw_env` shows it, receipts cite it, T9 refuses to certify a non-empty
+                                   list as *supported*; tools never branch on it.
+    kiwrap.patched_build    bool   the install's `commit` (from `<root>/kiwrap-install.json`, see
+                                   `kiwrap.installation`: the BUILT commit, the integration branch's
+                                   sha for a patched build) matches a `builds[].commit` of the
+                                   manifest - i.e. a bench build kiwrap made, T5-snapshotted and installed
+    kiwrap.build_commit     str    that commit ("" for stock installs); `kiwrap.build_base` is the
+                                   upstream commit it was built on (`base/<sha>`, "" for stock)
+    kiwrap.ipc_probed       list[str]  ipc.* keys a live presence probe has decided for this install
+                                   (`Capabilities.refine`); a key absent here still holds its seeded
+                                   or derived value
 
 Implementation notes
 - Nearest-known-version seeding (docs/ARCHITECTURE.md §6): same major, highest known version
@@ -98,6 +130,8 @@ from kiwrap.platform.system import System
 
 MATRIX_RESOURCE = "kicad_version_matrix.json"
 MATRIX_SCHEMA = 1
+PATCHES_RESOURCE = "kiwrap_patches.json"  # the fork's patch manifest (docs/UPSTREAM.md §3.2)
+PATCHES_SCHEMA = 1
 CACHE_SCHEMA = 1
 CACHE_DIRNAME = "capabilities"
 HELP_TIMEOUT_S = 60
@@ -119,8 +153,16 @@ IPC_SCHEMA_RELPATH = (
 class Capabilities(Mapping[str, Any]):
     """Read-only view over the merged (seed + probe) record for one install."""
 
-    def __init__(self, install: KiCadInstallation, values: dict[str, Any], *, probed: bool):
+    def __init__(
+        self,
+        install: KiCadInstallation,
+        values: dict[str, Any],
+        *,
+        probed: bool,
+        storage_home: Path | None = None,
+    ):
         self._install, self._values, self.probed = install, dict(values), probed
+        self._storage_home = storage_home  # where `refine` persists (None: an unpersisted record)
 
     @property
     def install(self) -> KiCadInstallation:
@@ -141,6 +183,35 @@ class Capabilities(Mapping[str, Any]):
 
     def flags(self, subcommand: str) -> list[str]:
         return list(self._values.get(f"cli.flags.{subcommand}", []))
+
+    def patch_for(self, key: str) -> str:
+        """The id of the manifest patch (`kiwrap.patches`, i.e. present on this install) that
+        provides `key`, or "" when the key is stock or the patch is not present. Receipts append it
+        to `provider_used` (`cli:10.99.0+ratsnest-export`, docs/UPSTREAM.md §3.3)."""
+        return patch_providing(self, key)
+
+    def refine(self, key: str, value: Any) -> None:
+        """Record the outcome of a live presence probe (docs/UPSTREAM.md §3.3: IPC patches are
+        detected on first use of the headless backend). Updates the key, lists it in
+        `kiwrap.ipc_probed`, updates the `kiwrap.*` keys and rewrites this install's cache so later
+        sessions start from the probed value (and skip the probe). A record that was never cached
+        (hand-built, `storage_home=None`) is updated in memory only."""
+        probed = list(self._values.get("kiwrap.ipc_probed", []) or [])
+        if self._values.get(key) == value and key in probed:
+            return
+        self._values[key] = value
+        if key not in probed:
+            probed.append(key)
+        self._values["kiwrap.ipc_probed"] = sorted(probed)
+        self._values.update(patch_keys(self._values, self._install))
+        if self._storage_home is None:
+            return
+        path = cache_file(self._install, self._storage_home)
+        cached = _read_cache(path, self._install, "values")
+        if cached is None:
+            return
+        cached["values"] = dict(self._values)
+        _write_cache(path, cached)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -235,13 +306,23 @@ def seed_for(version: str, matrix: Matrix | None = None) -> tuple[str, dict[str,
     A nightly / master build reports itself as `<major>.99.x` (`kicad-cli version --format plain`
     prints e.g. `10.99.0-unknown-abcdef`; KiCad's convention since 5.99), and it IS the development
     branch of major+1: 10.99 seeds from the 11.0.0 entry (headless api-server, 11 format epochs,
-    no SWIG), not from the last 10.0.x point release.
+    no SWIG), not from the last 10.0.x point release - UNLESS the matrix carries an entry for that
+    exact nightly version (`10.99.0`, refreshed by scripts/ci/refresh_matrix.py from the installed
+    nightly): a verified entry for the very version beats the next major's docs-seeded one, and it
+    is the only way a nightly-only quirk (`ipc.schematic_update_shared_lib_symbol_hangs`, G13)
+    reaches the live record. `seed.exact` is true then, with a note saying it is the nightly entry.
     """
     matrix = matrix or load_matrix()
     want = version_tuple(version)
     known = matrix.known()
     if not known:
         raise ValueError(f"{MATRIX_RESOURCE} lists no versions")
+    exact_entry = next((v for v in known if version_tuple(v) == want), None)
+    if exact_entry is not None and len(want) >= 2 and want[1] == 99:
+        values = dict(matrix.versions[exact_entry])
+        note = f"seeded from the matrix's own {exact_entry} entry ({version} is a nightly of major {want[0] + 1})"
+        values.update({"seed.version": exact_entry, "seed.exact": True, "seed.note": note})
+        return exact_entry, values, True, note
     nightly_of: int | None = None
     if len(want) >= 2 and want[1] == 99:
         nightly_of = want[0] + 1
@@ -269,6 +350,61 @@ def seed_for(version: str, matrix: Matrix | None = None) -> tuple[str, dict[str,
     values = dict(matrix.versions[seed])
     values.update({"seed.version": seed, "seed.exact": exact, "seed.note": note})
     return seed, values, exact, note
+
+
+# --- the patch manifest -----------------------------------------------------------------------------
+
+
+def patches_path() -> Path:
+    return Path(__file__).parent / "data" / PATCHES_RESOURCE
+
+
+@cache
+def load_patch_manifest() -> dict[str, Any]:
+    """`kiwrap_patches.json`: `base` sha, `patches` (id, gap, keys, status, ...) and `builds`
+    (tag, commit, patches). Missing file -> an empty manifest (stock-only checkouts)."""
+    try:
+        raw = json.loads(patches_path().read_text(encoding="utf-8"))
+    except OSError:
+        return {"schema": PATCHES_SCHEMA, "base": "", "patches": [], "builds": []}
+    if raw.get("schema") != PATCHES_SCHEMA:
+        raise ValueError(f"{PATCHES_RESOURCE}: schema {raw.get('schema')!r}, expected {PATCHES_SCHEMA}")
+    raw.setdefault("patches", [])
+    raw.setdefault("builds", [])
+    return raw
+
+
+def patch_keys(values: Mapping[str, Any], install: KiCadInstallation) -> dict[str, Any]:
+    """The `kiwrap.*` keys (docstring) from the manifest and an already-probed record.
+
+    Presence probes decide, never the version string or the install's own claim: a patch counts
+    only when every key it names is truthy; a build counts only by its commit.
+    """
+    manifest = load_patch_manifest()
+    patches = [
+        p["id"] for p in manifest["patches"] if p.get("keys") and all(values.get(k) for k in p["keys"])
+    ]
+    commit = install.extra.get("commit", "")
+    patched = bool(commit) and any(b.get("commit") == commit for b in manifest["builds"])
+    return {
+        "kiwrap.patches": patches,
+        "kiwrap.patched_build": patched,
+        "kiwrap.build_commit": commit,
+        "kiwrap.build_base": install.extra.get("base", ""),
+    }
+
+
+def patch_providing(values: Mapping[str, Any], key: str) -> str:
+    """`Capabilities.patch_for` over any record mapping (tools receive hand-built records in
+    tests): the present patch (listed in the record's `kiwrap.patches`) whose manifest `keys`
+    name `key`, else ""."""
+    present = set(values.get("kiwrap.patches", []) or [])
+    if not present:
+        return ""
+    for patch in load_patch_manifest()["patches"]:
+        if patch.get("id") in present and key in (patch.get("keys") or []):
+            return str(patch["id"])
+    return ""
 
 
 # --- `--help` parsing and the help tree probe ----------------------------------------------------
@@ -419,6 +555,7 @@ def flatten_help_tree(tree: dict[str, Any]) -> dict[str, Any]:
             "cli.has_stackup_json": "--format" in set(nodes.get("pcb export stackup", {}).get("flags", [])),
             "cli.has_sch_diff": "sch diff" in nodes,
             "cli.has_pcb_png": "pcb export png" in nodes,
+            "cli.has_ratsnest_export": "pcb export ratsnest" in nodes,
             "cli.drc_refill_flags": {"--refill-zones", "--save-board"} <= drc_flags,
             "cli.help_exit_code": max(
                 (n["exit_code"] for n in nodes.values()), default=tree.get("exit_code", 0)
@@ -479,12 +616,15 @@ def _cli_stat(install: KiCadInstallation) -> list[int]:
 
 
 def _matrix_digest() -> str:
-    """sha1 of the seed matrix file: a cache written from an older matrix (new keys such as
-    `cli.drc_error_limit` added by a kiwrap update) is stale even though the KiCad did not change."""
-    try:
-        return hashlib.sha1(matrix_path().read_bytes()).hexdigest()
-    except OSError:
-        return ""
+    """sha1 of the seed matrix AND the patch manifest: a cache written from an older matrix (new
+    keys such as `cli.drc_error_limit`) or an older manifest (a patch added, the base sha bumped)
+    is stale even though the KiCad did not change (docs/UPSTREAM.md §3.3 cache safety)."""
+    h = hashlib.sha1()
+    for path in (matrix_path(), patches_path()):
+        with contextlib.suppress(OSError):
+            h.update(path.read_bytes())
+        h.update(b"\0")
+    return h.hexdigest()
 
 
 def _read_cache(path: Path, install: KiCadInstallation, schema_key: str) -> dict[str, Any] | None:
@@ -572,7 +712,9 @@ def capabilities_for(
     if not refresh:
         cached = _read_cache(path, install, "values")
         if cached is not None:
-            return Capabilities(install, cached["values"], probed=bool(cached.get("probed")))
+            return Capabilities(
+                install, cached["values"], probed=bool(cached.get("probed")), storage_home=storage_home
+            )
 
     _seed, values, _exact, _note = seed_for(install.version)
     values.update(probe_static(install, system))
@@ -587,6 +729,14 @@ def capabilities_for(
         values.update(flatten_help_tree(tree))
         values["probe.ok"] = True
         probed = True
+    # The api-server is the probed kicad-cli binary, so a build whose --help tree lists the CLI half
+    # of the ratsnest patch carries its IPC half too (the manifest's patches are all-or-nothing on
+    # the integration branch); the first headless session with a board runs the presence probe
+    # (backends.ipc.presence) and Capabilities.refine records the live answer.
+    if values.get("ipc.headless") and values.get("cli.has_ratsnest_export"):
+        values["ipc.has_get_ratsnest"] = True
+    values["kiwrap.ipc_probed"] = []
+    values.update(patch_keys(values, install))
 
     _write_cache(
         path,
@@ -600,4 +750,4 @@ def capabilities_for(
             "values": values,
         },
     )
-    return Capabilities(install, values, probed=probed)
+    return Capabilities(install, values, probed=probed, storage_home=storage_home)

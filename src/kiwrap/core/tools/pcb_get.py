@@ -25,6 +25,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from kiwrap.capability import patch_providing
 from kiwrap.core import planner
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
@@ -60,7 +61,7 @@ BoardKind = Literal[
     "footprints", "pads", "tracks", "vias", "zones", "nets", "outline", "rules", "connectivity"
 ]
 LIST_KINDS: tuple[str, ...] = ("footprints", "pads", "tracks", "vias", "zones", "nets")
-ProviderArg = Literal["auto", "ipc11", "file"]
+ProviderArg = Literal["auto", "ipc11", "cli", "file"]  # cli: only the connectivity operation has one
 
 #: fields per detail level (`full` keeps everything)
 KEEP: dict[str, dict[str, tuple[str, ...]]] = {
@@ -356,12 +357,19 @@ def norm_unrouted(u: Any) -> dict[str, Any]:
         ref, pad = pick(er, "ref", "reference"), pick(er, "pad", "number")
         if ref is None and isinstance(ref_text, str):  # "R1.2" (pads) or "via" / "track"
             ref, _, pad = ref_text.partition(".")
-        return {
+        out = {
             "ref": ref or None,
             "pad": str(pad if pad is not None else ""),
             "x_mm": mm(pick(er, "x_mm", "x")) if pos is None else pos[0],
             "y_mm": mm(pick(er, "y_mm", "y")) if pos is None else pos[1],
         }
+        # KiCad-computed end points (GetRatsnest / pcb export ratsnest) also carry the item id and
+        # the copper layer of the anchor; the estimates do not.
+        for extra in ("uuid", "layer"):
+            value = pick(er, extra)
+            if value:
+                out[extra] = str(value)
+        return out
 
     a = end(pick(r, "a", "from", "start"), pick(r, "start_ref", "a_ref"))
     b = end(pick(r, "b", "to", "end"), pick(r, "end_ref", "b_ref"))
@@ -507,34 +515,62 @@ def ipc_unrouted(ratsnest: Any) -> list[dict[str, Any]] | None:
     """The canonical unrouted list from `kiwrap.backends.ipc.queries.ratsnest`'s `Ratsnest`
     (nets[].anchors[] / airwires[] with `from_item` / `to_item` KIIDs), joined to pad refs
     through the anchors. `None` when the object has no per-net structure (an already flat
-    airwire list is handled by `unrouted_list`)."""
+    airwire list is handled by `unrouted_list`). A KiCad-computed answer (`GetRatsnest`) also
+    carries `nets[].edges[]` with the anchor layers, which become the end points' `layer`."""
     r = rec(ratsnest)
     nets = pick(r, "nets")
     if nets is None:
         return None
     anchors: dict[str, dict[str, Any]] = {}
+    layers: dict[tuple[str, str, str], tuple[str, str]] = {}  # (net, from, to) -> (layer a, layer b)
     for net in nets:
-        for a in pick(rec(net), "anchors", default=()) or ():
+        nr = rec(net)
+        for a in pick(nr, "anchors", default=()) or ():
             ar = rec(a)
             key = pick(ar, "id", "uuid")
             if key is not None:
                 anchors[str(key)] = ar
+        for e in pick(nr, "edges", default=()) or ():
+            er = rec(e)
+            ea, eb = rec(pick(er, "a")), rec(pick(er, "b"))
+            key3 = (
+                str(pick(er, "net", default="")),
+                str(pick(ea, "id", default="")),
+                str(pick(eb, "id", default="")),
+            )
+            layers[key3] = (
+                str(pick(ea, "layer", default="") or ""),
+                str(pick(eb, "layer", default="") or ""),
+            )
     out: list[dict[str, Any]] = []
     for net in nets:
         for aw in pick(rec(net), "airwires", default=()) or ():
             wr = rec(aw)
             ends: list[dict[str, Any]] = []
-            for item_key, point_key in (("from_item", "start"), ("to_item", "end")):
-                anchor = anchors.get(str(pick(wr, item_key, default="")), {})
-                pos = mm_pair(pick(wr, point_key)) or mm_pair(pick(anchor, "position"))
-                ends.append(
-                    {
-                        "ref": pick(anchor, "ref") or None,
-                        "pad": str(pick(anchor, "number", "pad", default="")),
-                        "x_mm": None if pos is None else pos[0],
-                        "y_mm": None if pos is None else pos[1],
-                    }
+            edge_layers = layers.get(
+                (
+                    str(pick(wr, "net", default="")),
+                    str(pick(wr, "from_item", default="")),
+                    str(pick(wr, "to_item", default="")),
                 )
+            )
+            for index, (item_key, point_key) in enumerate((("from_item", "start"), ("to_item", "end"))):
+                item_id = str(pick(wr, item_key, default=""))
+                anchor = anchors.get(item_id, {})
+                pos = mm_pair(pick(wr, point_key)) or mm_pair(pick(anchor, "position"))
+                kind = pick(anchor, "kind")
+                ref = pick(anchor, "ref") or (kind if kind and kind != "pad" else None)
+                end: dict[str, Any] = {
+                    "ref": ref or None,
+                    "pad": str(pick(anchor, "number", "pad", default="")),
+                    "x_mm": None if pos is None else pos[0],
+                    "y_mm": None if pos is None else pos[1],
+                }
+                if item_id:
+                    end["uuid"] = item_id
+                if edge_layers and edge_layers[index]:
+                    end["layer"] = edge_layers[index]
+                ends.append(end)
             out.append(
                 {
                     "net": net_name(pick(wr, "net")),
@@ -579,6 +615,65 @@ def _net_count(session: Any) -> int:
     return sum(1 for n in nets if getattr(n, "name", "") and not str(n.name).startswith("unconnected-"))
 
 
+def cli_unrouted(report: Any, board_model: Any | None) -> list[dict[str, Any]]:
+    """The canonical unrouted list from `kiwrap.formats.reports.ratsnest.RatsnestReport`
+    (`kicad-cli pcb export ratsnest`): KiCad's airwires with the end items' uuids, anchor
+    positions and layers. Pad references / numbers come from joining the uuids to the file
+    model's pads (`board_model`, a `BoardFile`; None skips the join); other items get the kind
+    the file estimate uses as `ref` ("via", "track", "zone")."""
+    pads: dict[str, tuple[str, str]] = {}
+    kinds: dict[str, str] = {}
+    if board_model is not None:
+        try:
+            items = board_items(board_model)  # the reader contract, normalised (uuid, ref, number)
+            for pad in items["pads"]:
+                if pad.get("uuid"):
+                    pads[str(pad["uuid"])] = (str(pad.get("ref") or ""), str(pad.get("number") or ""))
+            for kind in ("track", "via", "zone"):
+                for item in items[kind + "s"]:
+                    if item.get("uuid"):
+                        kinds[str(item["uuid"])] = kind
+        except Exception:  # noqa: BLE001 - the join is a convenience; the export stands on its own
+            pads, kinds = {}, {}
+
+    def end(node: Any) -> dict[str, Any]:
+        ref, pad = pads.get(node.uuid, (None, ""))
+        if ref is None:
+            ref = kinds.get(node.uuid) or _kind_from_description(node.description)
+        return {
+            "ref": ref or None,
+            "pad": pad,
+            "x_mm": round(node.pos.x_mm, 6),
+            "y_mm": round(node.pos.y_mm, 6),
+            "uuid": node.uuid,
+            "layer": node.layer or None,
+        }
+
+    out: list[dict[str, Any]] = []
+    for net in report.nets:
+        for edge in net.edges:
+            out.append(
+                {
+                    "net": net.name or None,
+                    "a": end(edge.a),
+                    "b": end(edge.b),
+                    "length_mm": round(edge.length_mm, 6),
+                }
+            )
+    return out
+
+
+def _kind_from_description(text: str) -> str | None:
+    """Best effort item kind from KiCad's (localised) item description when the uuid is not in
+    the file model: "Pad ..." -> None (a pad we could not join), "Via ..." -> via, "Track ..."
+    -> track, "Zone ..." -> zone. English texts only; anything else -> None."""
+    lowered = (text or "").strip().lower()
+    for kind in ("via", "track", "zone"):
+        if lowered.startswith(kind):
+            return kind
+    return None
+
+
 def read_connectivity(
     ctx: ToolContext,
     install: Any,
@@ -590,16 +685,22 @@ def read_connectivity(
     files: _FileCache,
     prefer: str | None,
 ) -> planner.Outcome[list[dict[str, Any]]]:
-    """Unrouted connections, ipc11 first then the file estimate.
+    """Unrouted connections: ipc11, then the kicad-cli ratsnest export, then the file estimate.
 
-    ipc11 answers in one of two ways: the reader model carries KiCad's own airwires (a future
-    `GetRatsnest`; nothing to tag), or - what the installed nightly offers - KiCad's connectivity
-    clusters through `services.ipc_ratsnest` (`GetItemsByNet` + `GetConnectedItems` per net: the
-    unrouted count is KiCad's, the airwire end points are nearest-anchor guesses), which the
-    outcome tags `airwire_endpoints_estimated`. The file estimate is tagged `ratsnest_estimated`.
+    ipc11 answers in one of three ways: KiCad's own airwires through `GetRatsnest`
+    (`Ratsnest.exact`; nothing to tag; kiwrap patch ratsnest-export), the reader model's airwires
+    (nothing to tag), or - what the stock nightly offers - KiCad's connectivity clusters through
+    `services.ipc_ratsnest` (`GetItemsByNet` + `GetConnectedItems` per net: the unrouted count is
+    KiCad's, the airwire end points are nearest-anchor guesses), which the outcome tags
+    `airwire_endpoints_estimated`. When the install has `cli.has_ratsnest_export` but not
+    `ipc.has_get_ratsnest`, ipc11 is not attempted in auto mode: the export is exact and the
+    cluster walk is not. The file estimate is tagged `ratsnest_estimated`. The outcome's `patch`
+    names the kiwrap patch the exact answer relied on (`provider_used` shows it).
     """
     extra_tags: list[str] = []
     forced = prefer == planner.IPC11  # provider='ipc11': walk every net whatever the count
+    exact_cli = any(c.name == planner.CLI for c in planner.plan("connectivity", caps).candidates)
+    skip_ipc = exact_cli and not caps.has("ipc.has_get_ratsnest") and prefer != planner.IPC11
 
     def from_ipc() -> list[dict[str, Any]]:
         found = unrouted_list(ipc_model) if ipc_model is not None else None
@@ -633,7 +734,8 @@ def read_connectivity(
             if found is None:
                 found = unrouted_list(ratsnest)
             if found is not None:
-                extra_tags.append("airwire_endpoints_estimated")
+                if not bool(pick(rec(ratsnest), "exact", default=False)):
+                    extra_tags.append("airwire_endpoints_estimated")
                 return found
         raise KiwrapError(
             "E_UNSUPPORTED",
@@ -643,19 +745,31 @@ def read_connectivity(
             data={"capability": "ipc.ratsnest"},
         )
 
-    outcome = planner.run(
-        "connectivity",
-        caps,
-        {
-            planner.IPC11: from_ipc,
-            planner.FILE: lambda: unrouted_list(ctx.services.ratsnest_estimate(files.get())) or [],
-        },
-        install=install,
-        prefer=prefer,
-    )
+    def from_cli() -> list[dict[str, Any]]:
+        report = ctx.services.export_ratsnest(install, config, board)
+        model = None
+        try:
+            model = files.get()
+        except Exception:  # noqa: BLE001 - the join is a convenience; KiCad's answer stands alone
+            model = None
+        return cli_unrouted(report, model)
+
+    attempts: dict[str, Any] = {
+        planner.IPC11: from_ipc,
+        planner.CLI: from_cli,
+        planner.FILE: lambda: unrouted_list(ctx.services.ratsnest_estimate(files.get())) or [],
+    }
+    if skip_ipc:
+        del attempts[planner.IPC11]
+    outcome = planner.run("connectivity", caps, attempts, install=install, prefer=prefer)
     for tag in extra_tags:
         if tag not in outcome.degraded:
             outcome.degraded.append(tag)
+    if outcome.provider_name == planner.CLI or (
+        outcome.provider_name == planner.IPC11 and "airwire_endpoints_estimated" not in outcome.degraded
+    ):
+        key = "cli.has_ratsnest_export" if outcome.provider_name == planner.CLI else "ipc.has_get_ratsnest"
+        outcome.patch = patch_providing(caps, key)
     return outcome
 
 

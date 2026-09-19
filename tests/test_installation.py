@@ -137,6 +137,11 @@ class FakeMachine(System):
             return RunResult(args, 0, "", "")
         return RunResult(args, 2, "", f"unexpected {args}")
 
+    def read_text(self, path):
+        if path in self.written:
+            return self.written[path]
+        raise OSError(f"fake: {path} has no content")
+
     def write_text(self, path, text, *, executable=False):
         self.written[path] = text
         self.files.add(path)
@@ -177,7 +182,9 @@ def add_windows_install(
         m.registry.append(RegistryEntry(hive, key, "KiCad " + version[:-2], version, str(r)))
 
 
-@pytest.mark.skipif(os.name != "nt", reason="fakes rely on Windows path semantics (drive letters, backslashes)")
+@pytest.mark.skipif(
+    os.name != "nt", reason="fakes rely on Windows path semantics (drive letters, backslashes)"
+)
 class TestWindowsDiscovery:
     def test_registry_program_files_path_and_explicit(self, tmp_path):
         m = FakeMachine(env={"ProgramFiles": "C:\\Program Files", "PATH": ""})
@@ -256,6 +263,70 @@ class TestWindowsDiscovery:
         m.versions[str(renamed)] = "10.0.0"
         found = discover([renamed], platform=p, system=m, storage_home=tmp_path)
         assert len(found) == 1 and found[0].source == "explicit" and found[0].root == Path("D:/portable")
+
+    def test_registered_roots_env_file_and_metadata(self, tmp_path):
+        """docs/UPSTREAM.md §4.3: a bench build registered through KIWRAP_KICAD_ROOTS or
+        <storage>/installs.json is discovered as source "explicit", carries the string fields of
+        its kiwrap-install.json in `extra`, and sorts AFTER the stock install of the same version."""
+        import json
+
+        home = tmp_path / "home"
+        m = FakeMachine(
+            env={"ProgramFiles": r"C:\Program Files", "KIWRAP_KICAD_ROOTS": "C:/kiwrap-builds/abc-1"}
+        )
+        add_windows_install(m, "C:/Program Files/KiCad/10.99", "10.99.0")
+        add_windows_install(m, "C:/kiwrap-builds/abc-1", "10.99.0", registry=False)
+        add_windows_install(m, "D:/kicad-builds/def-3", "10.99.0", registry=False)
+        m.write_text(
+            Path("C:/kiwrap-builds/abc-1/kiwrap-install.json"),
+            json.dumps(
+                {
+                    "build_tree": "C:/src/kicad/build/x",
+                    "commit": "abc",
+                    "base": "aaa",
+                    "build_type": "Debug",
+                    "kiwrap_patches": ["p1", "p2"],
+                    "junk": 1,
+                }
+            ),
+        )
+        installation.register_root(Path("D:/kicad-builds/def-3"), home, system=m)
+        installation.register_root(Path("D:/kicad-builds/def-3"), home, system=m)  # idempotent
+        assert json.loads(m.written[home / "installs.json"]) == {
+            "schema": 1,
+            "roots": [r"D:\kicad-builds\def-3"],
+        }
+        assert installation.registered_roots(home, m.env, system=m) == [
+            Path("C:/kiwrap-builds/abc-1"),
+            Path("D:/kicad-builds/def-3"),
+        ]
+
+        installs = discover(platform=win_platform(tmp_path), system=m, storage_home=home)
+        assert [(i.root.name, i.source) for i in installs] == [
+            ("10.99", "registry"),
+            ("def-3", "explicit"),
+            ("abc-1", "explicit"),
+        ]
+        bench = installs[2]
+        assert bench.is_bench_build and bench.kiwrap_patches == ["p1", "p2"]
+        assert bench.extra == {
+            "build_tree": "C:/src/kicad/build/x",
+            "commit": "abc",
+            "base": "aaa",
+            "build_type": "Debug",
+            "kiwrap_patches": "p1,p2",
+        }
+        # snapshots are named after the BUILT commit, `.debug` for a Debug build; stock: the version
+        assert bench.snapshot_name == "10.99.0+abc.debug"
+        assert installs[0].snapshot_name == "10.99.0" and installs[1].snapshot_name == "10.99.0"
+        assert not installs[1].is_bench_build and installs[1].kiwrap_patches == []
+        assert find("10.99", installs).source == "registry"  # the stock install stays "newest"
+        assert "explicit (abc)" in describe(installs)
+
+        installation.unregister_root(Path("D:/kicad-builds/def-3"), home, system=m)
+        assert installation.registered_roots(home, {}, system=m) == []
+        m.written[home / "installs.json"] = "{not json"
+        assert installation.registered_roots(home, {}, system=m) == []  # malformed file is ignored
 
     def test_broken_binary_is_skipped_and_zero_installs_is_fine(self, tmp_path):
         m = FakeMachine(env={"ProgramFiles": "C:\\Program Files"})
@@ -481,8 +552,10 @@ def test_live_discovery_fields(installs):
         assert inst.kicad_cli.is_file() and inst.kicad_cli.parent == inst.root / "bin"
         assert inst.share.is_dir() and inst.dir("template").is_dir() and inst.dir("symbols").is_dir()
         assert inst.source in SOURCES
-        if current().is_windows:
+        if current().is_windows and not inst.is_bench_build:
             assert inst.major_minor == inst.root.name  # C:/Program Files/KiCad/<major.minor>
+        if inst.is_bench_build:  # a registered self-built KiCad (docs/dev/kicad-source-build.md)
+            assert inst.source == "explicit" and Path(inst.extra["build_tree"]).is_dir()
         # Windows bundles SWIG's interpreter under bin/ on 7-10 and drops it on 11 (nightly 10.99,
         # verified 2026-09-19); distro Linux uses the system python3 (CI, 10.0.6 from the PPA).
         bundled = inst.root / "bin" / current().python_name()

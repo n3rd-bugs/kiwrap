@@ -9,21 +9,32 @@ tests/test_ipc_live.py):
   vias, zones), i.e. one connectivity cluster. The source item is part of the answer.
 - `GetBoundingBox(items, mode)`: boards only. The schematic handler answers "no handler available".
 - `HitTest(id, position, tolerance)`: boards and schematics.
-- There is NO ratsnest / airwire / unrouted command (no `GetRatsnest`, nothing in `RunAction` that
-  returns data, no `RunDRC`; D17 tier 3 lists the upstream candidate). `ratsnest()` below is the
-  documented approximation: per net, group the copper items into clusters with
-  `GetConnectedItems` (one request per cluster), then connect the clusters with a greedy nearest
-  pad-to-pad spanning tree. Cluster count - 1 is exactly KiCad's unrouted-connection count for
-  that net; the airwire endpoints are a nearest-anchor guess, not KiCad's own topology.
+- Stock KiCad (up to 10.99.0-4083) has NO ratsnest / airwire / unrouted command. The
+  cluster walk in `ratsnest()` is the documented approximation for it: per net, group the copper
+  items into clusters with `GetConnectedItems` (one request per cluster), then connect the
+  clusters with a greedy nearest pad-to-pad spanning tree. Cluster count - 1 is exactly KiCad's
+  unrouted-connection count for that net; the airwire endpoints are a nearest-anchor guess.
+- `GetRatsnest` (docs/UPSTREAM.md G1; fork branch `mr/g1-ratsnest`, `Since: 11.0`) answers with
+  KiCad's own airwires: per net the edges of the ratsnest (RN_NET minimum spanning tree, the
+  set DRC reports as unconnected_items) with both end items (KIID), the anchor position the
+  editor draws from and the copper layer of that anchor. `get_ratsnest()` is its client and
+  `ratsnest()` prefers it: one request instead of one per cluster, exact endpoints. The
+  installed kicad-python (f79cebd) predates the proto, so the request / response classes are
+  built from a descriptor that mirrors `api/proto/board/board_commands.proto` of the branch
+  when `kipy.proto.board.board_commands_pb2` lacks them (`ratsnest_messages()`); a server
+  without the handler answers AS_UNHANDLED and `ratsnest()` falls back to the cluster walk.
+  Presence probe for the capability key `ipc.has_get_ratsnest`: `probe_get_ratsnest()`.
 """
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from kiwrap.backends.ipc.models import BBox, Point, to_json
+from kiwrap.backends.ipc.readers import layer_name
 from kiwrap.backends.ipc.units import mm_to_nm, nm_to_mm
 
 __all__ = [
@@ -31,13 +42,20 @@ __all__ = [
     "ConnectedItem",
     "NetConnectivity",
     "Ratsnest",
+    "RatsnestEdge",
+    "RatsnestNode",
     "bounding_box",
     "connected_items",
+    "get_ratsnest",
     "hit_test",
     "items_by_net",
     "net_connectivity",
+    "probe_get_ratsnest",
     "ratsnest",
+    "ratsnest_messages",
 ]
+
+CAPABILITY = "ipc.has_get_ratsnest"
 
 _BOARD_KINDS = {
     "Pad": "pad",
@@ -84,15 +102,46 @@ class Airwire:
 
 
 @dataclass(frozen=True)
+class RatsnestNode:
+    """One end of a KiCad airwire: the item, the anchor point the editor draws from (mm) and
+    the copper layer of that anchor (for a through item the layer it shares with the other end,
+    else its top-most copper layer)."""
+
+    id: str
+    position: Point
+    layer: str
+
+    def to_json(self) -> dict[str, Any]:
+        return to_json(self)
+
+
+@dataclass(frozen=True)
+class RatsnestEdge:
+    net: str
+    a: RatsnestNode
+    b: RatsnestNode
+    length: float  # mm, straight line
+    excluded: bool = False  # hidden by a DRC unconnected_items exclusion (not drawn, not counted)
+
+    def to_json(self) -> dict[str, Any]:
+        return to_json(self)
+
+
+@dataclass(frozen=True)
 class NetConnectivity:
     net: str
     anchors: tuple[ConnectedItem, ...]  # pads (and free vias) on the net
     clusters: tuple[tuple[str, ...], ...]  # item ids per copper-connected cluster
     airwires: tuple[Airwire, ...]
+    unrouted_count: int | None = None  # KiCad's own count (GetRatsnest); None = derive from clusters
+    edges: tuple[RatsnestEdge, ...] = ()  # KiCad's airwires with layers (GetRatsnest only), excluded ones too
 
     @property
     def unrouted(self) -> int:
-        """KiCad's unrouted count for the net: clusters - 1 (0 for a net with one anchor)."""
+        """KiCad's unrouted count for the net: the GetRatsnest count of edges that are not excluded
+        (what the editor shows) when KiCad answered, else clusters - 1 (0 for a net with one anchor)."""
+        if self.unrouted_count is not None:
+            return self.unrouted_count
         return max(0, len(self.clusters) - 1)
 
     def to_json(self) -> dict[str, Any]:
@@ -101,11 +150,20 @@ class NetConnectivity:
         return data
 
 
+CLUSTER_METHOD = "GetConnectedItems clusters + nearest-anchor spanning tree"
+KICAD_METHOD = "GetRatsnest"
+
+
 @dataclass(frozen=True)
 class Ratsnest:
     nets: tuple[NetConnectivity, ...]
     requests: int = 0  # API round trips spent (for chunk budgeting)
-    method: str = field(default="GetConnectedItems clusters + nearest-anchor spanning tree")
+    method: str = field(default=CLUSTER_METHOD)
+
+    @property
+    def exact(self) -> bool:
+        """True when KiCad computed the airwires (endpoints are the editor's, not guesses)."""
+        return self.method == KICAD_METHOD
 
     @property
     def unrouted(self) -> int:
@@ -296,9 +354,239 @@ def _spanning_airwires(
     return airwires
 
 
-def ratsnest(source: Any, nets: Iterable[str] | None = None) -> Ratsnest:
-    """Ratsnest approximation over every copper net (or `nets`). Skips the unnamed net and
-    `unconnected-*` nets (single-pad nets by construction)."""
+# --- GetRatsnest (KiCad's own airwires; docs/UPSTREAM.md G1) ------------------------------------------
+
+#: The fork's `api/proto/board/board_commands.proto` additions, as a FileDescriptorProto builder.
+#: Field numbers and names must stay identical to the branch (`mr/g1-ratsnest`); a regenerated
+#: kicad-python makes this fallback unused (`ratsnest_messages` prefers the generated classes).
+_RATSNEST_PROTO_FILE = "board/board_commands_ratsnest.proto"
+
+
+def _ratsnest_file_descriptor() -> Any:
+    from google.protobuf import descriptor_pb2
+
+    fd = descriptor_pb2.FileDescriptorProto()
+    fd.name = _RATSNEST_PROTO_FILE
+    fd.package = "kiapi.board.commands"
+    fd.syntax = "proto3"
+    fd.dependency.extend(["common/types/base_types.proto", "board/board_types.proto"])
+    fdp = descriptor_pb2.FieldDescriptorProto
+
+    def field(msg: Any, name: str, number: int, type_name: str, *, repeated: bool = False) -> None:
+        f = msg.field.add()
+        f.name, f.number = name, number
+        if type_name == "bool":
+            f.type = fdp.TYPE_BOOL
+        else:
+            f.type = fdp.TYPE_ENUM if type_name == ".kiapi.board.types.BoardLayer" else fdp.TYPE_MESSAGE
+            f.type_name = type_name
+        f.label = fdp.LABEL_REPEATED if repeated else fdp.LABEL_OPTIONAL
+
+    node = fd.message_type.add()
+    node.name = "RatsnestNode"
+    field(node, "id", 1, ".kiapi.common.types.KIID")
+    field(node, "position", 2, ".kiapi.common.types.Vector2")
+    field(node, "layer", 3, ".kiapi.board.types.BoardLayer")
+    edge = fd.message_type.add()
+    edge.name = "RatsnestEdge"
+    field(edge, "a", 1, ".kiapi.board.commands.RatsnestNode")
+    field(edge, "b", 2, ".kiapi.board.commands.RatsnestNode")
+    field(edge, "length", 3, ".kiapi.common.types.Distance")
+    field(edge, "excluded", 4, "bool")
+    net = fd.message_type.add()
+    net.name = "RatsnestNet"
+    field(net, "net", 1, ".kiapi.board.types.Net")
+    field(net, "edges", 2, ".kiapi.board.commands.RatsnestEdge", repeated=True)
+    field(net, "airline_length", 3, ".kiapi.common.types.Distance")
+    req = fd.message_type.add()
+    req.name = "GetRatsnest"
+    field(req, "board", 1, ".kiapi.common.types.DocumentSpecifier")
+    field(req, "nets", 2, ".kiapi.board.types.Net", repeated=True)
+    resp = fd.message_type.add()
+    resp.name = "GetRatsnestResponse"
+    field(resp, "nets", 1, ".kiapi.board.commands.RatsnestNet", repeated=True)
+    return fd
+
+
+_RATSNEST_CLASSES: tuple[type, type] | None = None
+
+
+def ratsnest_messages() -> tuple[type, type]:
+    """`(GetRatsnest, GetRatsnestResponse)` message classes: kicad-python's generated ones when
+    its protos know the command, else classes built from the descriptor above in kipy's own
+    descriptor pool (so `Any.Pack` yields the type url the fork's handler is registered for)."""
+    global _RATSNEST_CLASSES
+    if _RATSNEST_CLASSES is not None:
+        return _RATSNEST_CLASSES
+    from kipy.proto.board import board_commands_pb2 as commands
+
+    generated: Any = commands  # the pinned kicad-python (f79cebd) predates the proto (mypy)
+    if hasattr(generated, "GetRatsnest"):
+        _RATSNEST_CLASSES = (generated.GetRatsnest, generated.GetRatsnestResponse)
+        return _RATSNEST_CLASSES
+    from google.protobuf import message_factory
+
+    pool = commands.DESCRIPTOR.pool
+    try:
+        file_desc = pool.FindFileByName(_RATSNEST_PROTO_FILE)
+    except KeyError:
+        pool.Add(_ratsnest_file_descriptor())
+        file_desc = pool.FindFileByName(_RATSNEST_PROTO_FILE)
+    classes = message_factory.GetMessageClassesForFiles([file_desc.name], pool)
+    _RATSNEST_CLASSES = (
+        classes["kiapi.board.commands.GetRatsnest"],
+        classes["kiapi.board.commands.GetRatsnestResponse"],
+    )
+    return _RATSNEST_CLASSES
+
+
+def _send_get_ratsnest(source: Any, nets: Iterable[str] | None) -> Any:
+    """Raw `GetRatsnestResponse` (kipy `ApiError` when the server has no handler; `IpcError`
+    when `source` is not a kipy board with a document and a client, e.g. a test double)."""
+    from kiwrap.backends.ipc.sessions import IpcError
+
+    board = _board_of(source)
+    if getattr(board, "_doc", None) is None or getattr(board, "_kicad", None) is None:
+        raise IpcError("GetRatsnest needs a kipy Board bound to a document and a client")
+    request_cls, response_cls = ratsnest_messages()
+    request = request_cls()
+    request.board.CopyFrom(board._doc)
+    for name in nets or ():
+        request.nets.add().name = name
+    return board._kicad.send(request, response_cls)
+
+
+def _unhandled(exc: Exception) -> bool:
+    from kipy.proto.common import ApiStatusCode
+
+    code = getattr(exc, "code", None)
+    return code in (ApiStatusCode.AS_UNHANDLED, ApiStatusCode.AS_UNIMPLEMENTED) or "no handler" in str(exc)
+
+
+def _refine(source: Any, present: bool) -> None:
+    """Record the presence probe's outcome in the session's capability record (`ipc.has_get_ratsnest`,
+    docs/UPSTREAM.md §3.3) when `source` is a `HeadlessSession`; never lets a cache problem
+    surface into the query."""
+    caps = getattr(source, "capabilities", None) if hasattr(source, "board") else None
+    refine = getattr(caps, "refine", None)
+    if callable(refine):
+        with contextlib.suppress(Exception):
+            refine(CAPABILITY, present)
+
+
+def probe_get_ratsnest(source: Any) -> bool:
+    """Presence probe for `ipc.has_get_ratsnest`: one request against the open board; True when a
+    handler answered (AS_OK), False when the server has none (AS_UNHANDLED / AS_UNIMPLEMENTED).
+    Any other failure propagates (the probe must not mistake a broken session for absence). The
+    outcome is recorded in the session's capability record."""
+    from kipy.errors import ApiError
+
+    try:
+        _send_get_ratsnest(source, None)
+    except ApiError as exc:
+        if _unhandled(exc):
+            _refine(source, False)
+            return False
+        raise
+    _refine(source, True)
+    return True
+
+
+def get_ratsnest(source: Any, nets: Iterable[str] | None = None) -> Ratsnest:
+    """KiCad's ratsnest over `GetRatsnest` (mm). Every net that still has airwires (or `nets`).
+    Raises `IpcError` (E_UNSUPPORTED) when the connected server has no handler.
+
+    Two more requests join the endpoint KIIDs to pads (`GetItems` footprints) and item kinds
+    (`GetItemsById`) so the result carries the same `ConnectedItem` anchors the cluster walk does;
+    `NetConnectivity.clusters` stays empty (KiCad reports edges, not clusters)."""
+    from kipy.errors import ApiError
+
+    from kiwrap.backends.ipc.sessions import IpcError
+
+    board = _board_of(source)
+    try:
+        response = _send_get_ratsnest(board, nets)
+    except ApiError as exc:
+        if _unhandled(exc):
+            raise IpcError(
+                "the connected KiCad has no GetRatsnest handler",
+                why="GetRatsnest is a kiwrap fork addition (docs/UPSTREAM.md G1) not yet in this build",
+                fix="ratsnest() falls back to the GetConnectedItems cluster walk",
+            ) from exc
+        raise
+    owners = _pad_owners(board)
+    ids = sorted({node.id.value for net in response.nets for e in net.edges for node in (e.a, e.b)})
+    by_id: dict[str, Any] = {}
+    if ids:
+        from kipy.proto.common.types.base_types_pb2 import KIID
+
+        for item in board.get_items_by_id([KIID(value=i) for i in ids]):
+            by_id[item.proto.id.value] = item
+    results: list[NetConnectivity] = []
+    for net in response.nets:
+        name = net.net.name
+        anchors: dict[str, ConnectedItem] = {}
+        edges: list[RatsnestEdge] = []
+        airwires: list[Airwire] = []
+        for e in net.edges:
+            nodes = []
+            for node in (e.a, e.b):
+                pos = (nm_to_mm(node.position.x_nm), nm_to_mm(node.position.y_nm))
+                nodes.append(RatsnestNode(id=node.id.value, position=pos, layer=layer_name(node.layer)))
+                if node.id.value not in anchors:
+                    item = by_id.get(node.id.value)
+                    if item is not None:
+                        ci = _connected_item(item, owners)
+                        anchors[node.id.value] = ConnectedItem(
+                            ci.id, ci.kind, ci.net or name, pos, ci.ref, ci.number
+                        )
+                    else:
+                        anchors[node.id.value] = ConnectedItem(node.id.value, "item", name, pos)
+            length = nm_to_mm(e.length.value_nm)
+            edges.append(RatsnestEdge(net=name, a=nodes[0], b=nodes[1], length=length, excluded=e.excluded))
+            if e.excluded:
+                continue
+            airwires.append(
+                Airwire(
+                    net=name,
+                    start=nodes[0].position,
+                    end=nodes[1].position,
+                    from_item=nodes[0].id,
+                    to_item=nodes[1].id,
+                    length=length,
+                )
+            )
+        results.append(
+            NetConnectivity(
+                net=name,
+                anchors=tuple(anchors.values()),
+                clusters=(),
+                airwires=tuple(airwires),
+                unrouted_count=len(airwires),
+                edges=tuple(edges),
+            )
+        )
+    return Ratsnest(nets=tuple(results), requests=2 + (1 if ids else 0), method=KICAD_METHOD)
+
+
+def ratsnest(source: Any, nets: Iterable[str] | None = None, *, kicad: bool | None = None) -> Ratsnest:
+    """The board's ratsnest over IPC: KiCad's own airwires through `GetRatsnest` when the server
+    handles it (`kicad=None`, the default, tries it first; `True` requires it), else the cluster
+    approximation over every copper net (or `nets`; `kicad=False` skips the attempt). The
+    approximation skips the unnamed net and `unconnected-*` nets (single-pad nets by
+    construction)."""
+    from kiwrap.backends.ipc.sessions import IpcError
+
+    if kicad is not False:
+        try:
+            result = get_ratsnest(source, nets)
+        except IpcError:
+            _refine(source, False)
+            if kicad:
+                raise
+        else:
+            _refine(source, True)
+            return result
     board = _board_of(source)
     owners = _pad_owners(board)
     names = [n.name for n in board.get_nets() if n.name and not n.name.startswith("unconnected-")]

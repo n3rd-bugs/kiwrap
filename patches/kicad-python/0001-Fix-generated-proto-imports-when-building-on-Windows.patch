@@ -1,0 +1,118 @@
+From 72702924da5c68fff6ab589faa672ab9e47e7886 Mon Sep 17 00:00:00 2001
+From: Usama Masood <usama.masood.mirza@gmail.com>
+Date: Sat, 19 Sep 2026 19:10:12 +0500
+Subject: [PATCH] Fix generated proto imports when building on Windows
+
+On Windows a git install of kicad-python produces modules under
+kipy/proto that import top-level "common", "board" and "schematic"
+packages, and "from kipy import KiCad" fails with ModuleNotFoundError.
+Linux and macOS builds are fine, which is why the released wheels never
+showed it.
+
+Two things in generate_protos() go wrong on Windows:
+
+The "protoc" build requirement (protoc-wheel-0) installs a console
+script that os.execv()s the real compiler. On Windows execv spawns a
+new process and the script exits 0 immediately, so subprocess.run()
+returns before protoc has produced any output. Use the PROTOC_EXE path
+the package exports instead of the script when it is importable; the
+old PATH lookup stays as the fallback for a system protoc.
+
+protoletariat runs "protoc" a second time to get the FileDescriptorSet
+it rewrites imports from. That lookup goes through PATH and finds the
+same launcher script, so protol reads an empty descriptor set and
+rewrites nothing, without any error. Have the first protoc run write
+the descriptor set (--descriptor_set_out) and pass it to "protol raw",
+which also drops the redundant second protoc run.
+
+Verified on Windows 11 with Python 3.14, protoc-wheel-0 29.0 and
+protoletariat 3.3.10: before the change all 24 generated modules import
+"common.*"/"board.*"; after it they use relative imports and the wheel
+imports in a fresh venv. Linux (a real protoc on PATH) is unchanged.
+---
+ tools/generate_protos.py | 49 ++++++++++++++++++++++++++--------------
+ 1 file changed, 32 insertions(+), 17 deletions(-)
+
+diff --git a/tools/generate_protos.py b/tools/generate_protos.py
+index 07f9c7c..2be4963 100644
+--- a/tools/generate_protos.py
++++ b/tools/generate_protos.py
+@@ -24,7 +24,15 @@ import os
+ import platform
+ import subprocess
+ 
+-_default_protoc = "protoc.exe" if platform.system() == "Windows" else "protoc"
++try:
++    # protoc-wheel-0 exports the path of the compiler binary it ships. Its "protoc" console
++    # script is a Python launcher that os.execv()s that binary; on Windows execv starts a new
++    # process and the launcher exits 0 at once, so subprocess.run() returns before protoc has
++    # written anything.
++    from protoc import PROTOC_EXE as _default_protoc
++except ImportError:
++    _default_protoc = "protoc.exe" if platform.system() == "Windows" else "protoc"
++
+ _default_protol = "protol.exe" if platform.system() == "Windows" else "protol"
+ 
+ 
+@@ -42,12 +50,19 @@ def generate_protos(
+         for item in fnmatch.filter(files, "*.proto"):
+             proto_sources.append(os.path.join(input_path, str(root), item))
+ 
++    # Let protoc write the FileDescriptorSet protoletariat works from, rather than have protol
++    # run "protoc" again itself: that second run is looked up on PATH and, on Windows, hits the
++    # launcher script described above, so protol reads an empty set and rewrites no import.
++    descriptor_set = os.path.join(output_path, "descriptor_set.pb")
++
+     print("Generating Python classes from protobuf files...")
+     subprocess.run(
+         [
+             protoc,
+             "--python_out=" + output_path,
+             "--mypy_out=" + output_path,
++            "--descriptor_set_out=" + descriptor_set,
++            "--include_imports",
+             "--proto_path=" + input_path,
+             "--experimental_allow_proto3_optional",  # Needed for old protoc versions
+             *proto_sources,
+@@ -56,22 +71,22 @@ def generate_protos(
+     )
+ 
+     print("Post-processing with protoletariat...")
+-    subprocess.run(
+-        [
+-            protol,
+-            "--dont-create-package",
+-            "--in-place",
+-            "--exclude-google-imports",
+-            "--python-out",
+-            output_path,
+-            "protoc",
+-            "--experimental_allow_proto3_optional",  # Needed for old protoc versions
+-            "--proto-path",
+-            input_path,
+-            *proto_sources,
+-        ],
+-        check=True,
+-    )
++    try:
++        subprocess.run(
++            [
++                protol,
++                "--dont-create-package",
++                "--in-place",
++                "--exclude-google-imports",
++                "--python-out",
++                output_path,
++                "raw",
++                descriptor_set,
++            ],
++            check=True,
++        )
++    finally:
++        os.remove(descriptor_set)
+ 
+ 
+ if __name__ == "__main__":
+-- 
+2.45.1.windows.1
+

@@ -522,7 +522,13 @@ class DataBackend(FakeBackend):
     )
     off: list[Any] = field(
         default_factory=lambda: [
-            {"ref": "C1", "kind": "pad", "detail": "1", "bbox_mm": (58.8, 3.8, 61.2, 6.2), "outside_by_mm": 11.2},
+            {
+                "ref": "C1",
+                "kind": "pad",
+                "detail": "1",
+                "bbox_mm": (58.8, 3.8, 61.2, 6.2),
+                "outside_by_mm": 11.2,
+            },
             {"ref": "C1", "kind": "courtyard", "bbox_mm": (58.5, 3.5, 61.5, 6.5), "outside_by_mm": 11.5},
             {"ref": "J1", "kind": "courtyard", "bbox_mm": (-1.0, 20.0, 5.0, 30.0), "outside_by_mm": 1.0},
         ]
@@ -689,7 +695,13 @@ def test_catalog_has_the_data_tools_with_typed_output_schemas_in_process(tmp_pat
     assert "secondary" in by_name["kw_pcb_render"].description.lower()
     assert "secondary" in by_name["kw_sch_render"].description.lower()
     assert by_name["kw_pcb_get"].input_schema["properties"]["limit"]["maximum"] == 2000
-    assert by_name["kw_pcb_get"].input_schema["properties"]["provider"]["enum"] == ["auto", "ipc11", "file"]
+    # cli = the ratsnest export of a patched KiCad (kw_pcb_check / kw_pcb_get connectivity, UPSTREAM G1)
+    assert by_name["kw_pcb_get"].input_schema["properties"]["provider"]["enum"] == [
+        "auto",
+        "ipc11",
+        "cli",
+        "file",
+    ]
 
 
 async def _stdio_catalog(home: Path) -> dict[str, Any]:
@@ -762,7 +774,9 @@ def test_data_helpers():
     assert not matches(
         {"check": "unrouted", "a": {"x_mm": 300, "y_mm": 300}, "b": {"x_mm": 154.8, "y_mm": 111.9}}, far
     )
-    assert matches({"check": "unrouted", "a": {"x_mm": 300, "y_mm": 300}, "b": {"x_mm": 110, "y_mm": 110}}, far)
+    assert matches(
+        {"check": "unrouted", "a": {"x_mm": 300, "y_mm": 300}, "b": {"x_mm": 110, "y_mm": 110}}, far
+    )
 
 
 def test_chunk_by_budget_closes_the_page_before_the_result_budget():
@@ -799,8 +813,14 @@ def test_provider_vocabularies_are_canonical():
     from kiwrap.core.tools.pcb_get import norm_pad
     from kiwrap.core.tools.sch_get import norm_pin
 
-    ipc = norm_pad({"number": "1", "type": "pth", "shape": "rectangle", "layers": ["F.Cu", "F.Mask", "B.Cu", "B.Mask"]}, "C1")
-    file = norm_pad({"number": "1", "type": "thru_hole", "shape": "rect", "layers": ["F.Cu", "B.Cu", "F.Mask", "B.Mask"]}, "C1")
+    ipc = norm_pad(
+        {"number": "1", "type": "pth", "shape": "rectangle", "layers": ["F.Cu", "F.Mask", "B.Cu", "B.Mask"]},
+        "C1",
+    )
+    file = norm_pad(
+        {"number": "1", "type": "thru_hole", "shape": "rect", "layers": ["F.Cu", "B.Cu", "F.Mask", "B.Mask"]},
+        "C1",
+    )
     assert ipc["pad_type"] == file["pad_type"] == "thru_hole" and ipc["shape"] == file["shape"] == "rect"
     assert ipc["layers"] == file["layers"] == ["F.Cu", "B.Cu", "F.Mask", "B.Mask"]
     assert norm_pad({"type": "edge_connector", "shape": "chamferedrect"}, "J1")["pad_type"] == "connect"
@@ -942,8 +962,8 @@ def test_pcb_get_ipc11_provider_opens_and_closes_the_session(tmp_path: Path):
     assert conn["unrouted"] == [
         {
             "net": "GND",
-            "a": {"ref": "C1", "pad": "2", "x_mm": 60.8, "y_mm": 5.0},
-            "b": {"ref": "R2", "pad": "2", "x_mm": 11.3, "y_mm": 10.5},
+            "a": {"ref": "C1", "pad": "2", "x_mm": 60.8, "y_mm": 5.0, "uuid": "p-c1-2"},
+            "b": {"ref": "R2", "pad": "2", "x_mm": 11.3, "y_mm": 10.5, "uuid": "p-r2-2"},
             "length_mm": 49.8,
         }
     ]

@@ -10,9 +10,12 @@ Evidence used, in order of authority:
 
 1. **T5 handler snapshot** `conformance/snapshots/ipc-handlers/10.99.0.json` — 129 command
    messages of kicad-python f79cebd sent to a headless `kicad-cli api-server` of
-   10.99.0-4083-g6dd893f7d1 with the ecc83 board and schematic open; summary pcb: handled 52 /
-   bad_request 37 / unhandled 40; schematic: handled 28 / bad_request 25 / unhandled 76; stable
-   over three runs. Every "not available headless" claim below cites a row of that file as
+   10.99.0-4083-g6dd893f7d1 with the ecc83 board and schematic open; summary pcb: handled 67 /
+   bad_request 37 / unhandled 25; schematic: handled 34 / bad_request 26 / unhandled 69 (the
+   first snapshot read 52/37/40 and 28/25/76 because the probe's minimal instance left the
+   nested `RunJobSettings.document` empty, so the 22 job commands answered `AS_UNHANDLED` — a
+   probe artifact, fixed 2026-09-19 in `handlers._minimal_instance`, see G6); stable over
+   repeated runs and EQUAL on the bench builds. Every "not available headless" claim below cites a row of that file as
    `T5: <Command> <doc> -> <status>`. A command that is *absent from the 129-message inventory*
    does not exist in the nightly's protos at all (the inventory is derived from the descriptor
    pool by rule, `kiwrap.backends.ipc.handlers.command_messages`); those are cited as
@@ -62,7 +65,7 @@ flagged **kiwrap TODO** so they are not confused with KiCad gaps.
 | Symbol placement from a library with real pins | 2 | `writes.place_symbol` (`PlaceSymbolFromLibrary` after `LoadAllLibraries`) | T5: `LoadAllLibraries schematic -> AS_OK`; `PlaceSymbolFromLibrary schematic -> AS_BAD_REQUEST` with an empty lib_id (handler present). ≤ 10: file writer only |
 | Library search ("never guess library ids") | 1 **kiwrap TODO** / 2 | file: read `sym-lib-table` rows + `.kicad_sym` names through the CST; IPC: `GetLibraryItems` / `SearchLibraries` | T5: `GetLibraryItems`, `GetLibraryTable`, `SearchLibraries`, `GetItemsFromLibrary` `-> AS_UNHANDLED` on **both** documents on 10.99.0-4083 even though master carries the handlers (12cdf280 09-15) → gap **G11** (re-probe on the next nightly first) |
 | Text variables (`${VAR}`) resolved | 2 partial | `ExpandTextVariables` | T5: `ExpandTextVariables -> AS_OK` both; `GetTextVariables`/`SetTextVariables -> AS_UNHANDLED` both (read the `.kicad_pro` JSON instead — tier 1) |
-| Editing a second instance of a shared library symbol over IPC | 3 (bug) | — | `UpdateItems` wedges the nightly server (capability `ipc.schematic_update_shared_lib_symbol_hangs`) → gap **G13**; workaround: file engine |
+| Editing a second unit of a multi-unit symbol over IPC | 3 (bug) | — | `UpdateItems` on two different units of one multi-unit symbol wedges the nightly server (capability `ipc.schematic_update_shared_lib_symbol_hangs`, true on the matrix's own `10.99.0` entry, which `seed_for` now reads) → gap **G13**; workaround: file engine |
 
 ### 1.2 Placement
 
@@ -90,7 +93,7 @@ flagged **kiwrap TODO** so they are not confused with KiCad gaps.
 | Tracks, arcs, vias, zones with nets, layers, widths | 1 / 2 | `BoardFile` / `read_board` | file: vme-wren 25k tracks; IPC: ecc83 59 tracks |
 | Copper connectivity: which items are connected, items per net | 2 | `queries.connected_items`, `items_by_net` (`GetConnectedItems`, `GetItemsByNet`, `GetItemsByNetClass`) | T5: `GetItemsByNet`/`GetItemsByNetClass pcb -> AS_OK`; `GetConnectedItems -> AS_BAD_REQUEST` with an empty id list (handler present). Also on GUI 10.0.1+ |
 | Unrouted count per net | 1 (exact, slow) / 2 (approx.) / 1 est. | `pcb drc --format json` `unconnected_items` / `queries.ratsnest` (clusters − 1 per net, one `GetConnectedItems` per cluster) / `ratsnest_estimate` | DRC is KiCad's answer but costs a full DRC run (seconds) and needs the file on disk; the IPC count equals KiCad's but the **airwire endpoints are nearest-anchor guesses** |
-| Airwires with both endpoints and item ids (what to route next, how far) | **3** | — | no `GetRatsnest` (T5: not in inventory), no `pcb export ratsnest` (`cli.subcommands` of 10.99.0 has none), nothing open upstream → gap **G1** |
+| Airwires with both endpoints and item ids (what to route next, how far) | **3** (stock) / 1 + 2 on the fork build | `structured.export_ratsnest` (`cli.has_ratsnest_export`), `queries.get_ratsnest` (`ipc.has_get_ratsnest`) | stock nightly: no `GetRatsnest` (T5: not in inventory), no `pcb export ratsnest`; gap **G1**, implemented on the fork (`mr/g1-ratsnest`, `kiwrap-build/6dd893f7d1-4`): pairs == DRC `unconnected_items`, anchors == what the editor draws, exclusions flagged; kiwrap prefers it behind the keys, cluster walk / estimate stay the stock fallback |
 | Routed length per net, via count | 1 | `structured.export_ipc2581` (`Ipc2581Net.track_length_mm`, 8.0+) or sum over `BoardFile.tracks` | IPC-2581 sums `Line` features only (arcs skipped); no KiCad oracle for the sum → gap **G5** (also airline length) |
 | Clearance / width / short / crossing violations with mm positions | 1 | `pcb drc --format json` | correct mm on 8–10.99 (`drc.v1`) |
 | Zone refill after routing | 1 / 2 | `pcb drc --refill-zones --save-board` (`cli.drc_refill_flags`, 10+) / `RefillZones` | T5: `RefillZones pcb -> AS_OK` |
@@ -120,7 +123,7 @@ flagged **kiwrap TODO** so they are not confused with KiCad gaps.
 | Stackup (thickness, materials, εr, finish) | 1 | `structured.export_stackup` (`pcb export stackup --format json`, `cli.has_stackup_json`, nightly; board-file fallback on ≤ 10) | !2691; nightly rejects `report` |
 | 2-D layer PNGs for human review | 1 (secondary) | `structured.export_png` (`pcb export png`, `cli.has_pcb_png`) | nightly only |
 | Gerber round-trip checks | 1 | `gerber info`, `gerber diff`, `gerber convert png` (nightly `cli.subcommands`) | not wrapped yet (kiwrap TODO) |
-| Exports over the live IPC session | 2 **on GUI only** | `RunBoardJobExport*` (15), `RunSchematicJobExport*` (7) | T5: **all 22 `-> AS_UNHANDLED` on both documents** headless (`ipc.headless_jobs = false` on 10.99.0-4083) → gap **G6**; kicad-cli stays the export path on 11 |
+| Exports over the live IPC session | 2 | `backends.ipc.jobs` (`run_job`, `export_board_stats`, `export_board_svg`, `export_schematic_netlist`) over `RunBoardJobExport*` (15) / `RunSchematicJobExport*` (7) | T5: every board job `handled` on pcb, every schematic job `handled` (netlist `bad_request` without a format) on schematic, `unhandled` on the other document type; `ipc.headless_jobs = true` on 10.99.0-4083 (verified, `tests/test_ipc_patch_g6.py`). The first snapshot's "all 22 unhandled" was a probe artifact (G6, closed). kicad-cli stays `kw_fab_export`'s default |
 | Board file written by the nightly round-trips through the CST | 1 **unverified** | `formats.sexpr` | the nightly ships no demo in its own newest format; run a nightly-written board through `BoardFile` once (T9 canary) |
 
 ### 1.6 Signals that are *not* gaps (decided)
@@ -145,41 +148,61 @@ Effort figures are calendar days for one engineer with a working source build, f
 [dev/upstream-workflow.md §3](dev/upstream-workflow.md); the build itself is §4 below.
 "Detection" names the capability key that flips true on a build that has the change (§3.3).
 
-### G1 — Ratsnest / airwires with endpoints (priority 1)
+### G1 — Ratsnest / airwires with endpoints (priority 1) — implemented on the fork
 
 - **Why the agent needs it:** placement quality (total airline length, crossings) and "what is
-  left to route and where" are the two numbers the placement and routing loops iterate on. Today
-  the count is exact only through a full DRC run and the endpoints are guesses.
-- **Workaround today:** `formats.analysis.ratsnest_estimate` (MST between connected groups; no
-  oracle) tagged `ratsnest_estimated` in `kw_pcb_check`; `backends.ipc.queries.ratsnest`
-  (cluster count − 1 = KiCad's unrouted count; nearest-anchor endpoints) on the nightly; exact
-  count from `pcb drc` `unconnected_items` (items and positions of the two ends *are* in that
-  report, so a DRC run is the slow exact fallback for endpoints too).
-- **Upstream status:** nothing (no issue, no MR; live check 2026-09-19). Precedents: !2707
+  left to route and where" are the two numbers the placement and routing loops iterate on. On
+  stock KiCad the count is exact only through a full DRC run and the endpoints are guesses.
+- **Status 2026-09-19:** implemented on the fork branch `mr/g1-ratsnest` (= `base/6dd893f7d1` +
+  two commits: job + CLI + schema + `qa_pcbnew`/`qa_cli` tests, then proto + handler + `qa_api`
+  e2e case), built as `kiwrap-build/6dd893f7d1-4` (integration branch `kiwrap/6dd893f7d1` =
+  base + `mr/g6-headless-jobs` + `mr/g1-ratsnest`, built commit `4a04900fd2`), installed and
+  registered as `C:/kiwrap-builds/6dd893f7d1-4`. Issue not filed (draft
+  `docs/upstream/drafts/g1-issue.md`), MR not opened (`g1-mr.md`); manifest status `local`.
+- **What it is:** `JOB_EXPORT_PCB_RATSNEST` run by `pcbnew_jobs_handler` after the loader's
+  `BuildConnectivity()`; `kicad-cli pcb export ratsnest [--units mm|in|mils] [--nets N1,N2]
+  [--include-routed] [-o FILE] BOARD` (JSON only — no `--format` with a single option; schema
+  `resources/schemas/ratsnest.v1.json`: `{$schema, source, date, kicad_version, coordinate_units,
+  unrouted_count, airline_length, nets:[{name, unrouted_count, airline_length, edges:[{a:{uuid,
+  description, pos, layer}, b:{...}, length, excluded?}]}]}`); the shared collector
+  `pcbnew/ratsnest/ratsnest_report.{h,cpp}` (`CollectRatsnestAirwires` over
+  `CONNECTIVITY_DATA::RunOnUnconnectedEdges` = exactly the `DRCE_UNCONNECTED_ITEMS` set, anchors
+  = `CN_ANCHOR::Pos()` after `OptimizeRNEdges`); `board_commands.proto` `GetRatsnest` /
+  `GetRatsnestResponse` / `RatsnestNet` / `RatsnestEdge` (`excluded`) / `RatsnestNode`, all
+  `Since: 11.0`; `API_HANDLER_PCB::handleGetRatsnest` (document check, then busy check, no
+  frame). Decisions taken in review: an item pair the project excludes as a DRC
+  `unconnected_items` violation is listed with `excluded: true` and left out of the counts and
+  lengths, so `unrouted_count` equals the editor's "Unrouted" and the DRC JSON marks the same
+  pairs (keyed like DRC: marker position + the two items); the layer of a through item's end
+  (THT pad, through via) is the layer it shares with the other end, else its top-most copper
+  layer (fixture `qa/data/pcbnew/ratsnest_layers.kicad_pcb`); no `GetSettingsDialogTitle`
+  override and no dead enum; `RunBoardJobExportRatsnest` (the job over IPC) is deliberately not
+  included — `GetRatsnest` returns the data without a file round trip, the CLI/jobset half runs
+  the job, and the extra proto/enum-converter/QA surface is a follow-up once `GetRatsnest` lands.
+- **Verified:** export pairs == DRC `unconnected_items` pair for pair (issue8883 7/7; issue17429
+  35 listed, 7 excluded, `unrouted_count` 28; ecc83 with 30 % of its copper removed 9/9); end
+  points are the pad positions / track ends of the board file; `GetRatsnest` == the export
+  (uuids, positions, layers, `excluded`); the file estimate agrees per net; the old cluster walk
+  reproduces the count but 1/9 of the pairs. QA on the fork: `qa_pcbnew` `RatsnestReport` 5/5,
+  `qa_cli` `test_pcb_export_ratsnest` + `_exclusions`, `qa_api` `ApiE2E/GetRatsnest`; full
+  `qa_api` 108/110 (the two known test-side failures, `issue-qa-api-windows-findings.md`).
+- **kiwrap side:** `structured.export_ratsnest` + `formats.reports.ratsnest` (parser/model,
+  `RatsnestEdge.excluded`, `active_edges`), `backends.ipc.queries.get_ratsnest` /
+  `ratsnest(kicad=None)` (GetRatsnest first, cluster walk fallback; message classes built from a
+  descriptor while kicad-python predates the proto), planner `connectivity` = ipc11 → cli → file,
+  `kw_pcb_check` / `kw_pcb_get` `provider_used` `cli:10.99.0+ratsnest-export` /
+  `ipc11:10.99.0+ratsnest-export` with `degraded` empty and `uuid` + `layer` per end point.
+  Detection keys `cli.has_ratsnest_export` (help tree) and `ipc.has_get_ratsnest` (derived from
+  the same binary, confirmed by the presence probe the first headless session with a board runs,
+  §3.3). Tests `tests/test_ratsnest_patch_g1.py` (`kicad_patch("ratsnest-export")`).
+- **Upstream plan:** two MRs in sequence, not one (§3.4 size rule; the commits already split):
+  the job + CLI + schema + tests first, `GetRatsnest` once it has landed. Precedents: !2707
   (merged 2026-08-02) added `RN_NET::GetTotalAirlineLength()` because Wayne blocked per-call
   `GetEdges()` sorting; `9624684909` + `eff7182892` made `BOARD::CompileRatsnest()` frame-free.
-- **Proposed change (one job class → CLI + jobset + IPC):**
-  - `common/jobs/job_export_pcb_ratsnest.{h,cpp}` (`JOB_EXPORT_PCB_RATSNEST`: output path,
-    format json, optional net filter, `--include-routed=false`), run by
-    `pcbnew/pcbnew_jobs_handler.cpp` after `CompileRatsnest()`.
-  - CLI `kicad-cli pcb export ratsnest --format json [-o FILE] [--nets N1,N2] BOARD`
-    (`kicad/cli/command_pcb_export_ratsnest.{cpp,h}`), JSON via `include/rc_json_schema.h`
-    style structs, schema `resources/schemas/ratsnest.v1.json`:
-    `{source, coordinate_units, nets:[{name, unrouted_count, airline_length, edges:[{a:{id,pos,layer}, b:{id,pos,layer}, length}]}]}`.
-  - IPC: `api/proto/board/board_jobs.proto` `RunBoardJobExportRatsnest` (jobs convention, the
-    part Jon calls stable) **and** `api/proto/board/board_commands.proto`
-    `GetRatsnest { DocumentSpecifier board = 1; repeated string nets = 2; }` →
-    `GetRatsnestResponse { repeated RatsnestNet nets = 1; }` with `RatsnestEdge { KIID a; KIID b;
-    Vector2 a_pos; Vector2 b_pos; BoardLayer a_layer; BoardLayer b_layer; Distance length; }`,
-    all `// Since: 11.0`; handler `API_HANDLER_PCB::handleGetRatsnest` (document check → busy
-    check), QA case in `qa/tests/api/test_api_e2e.cpp` on `api_kitchen_sink.kicad_pcb`.
-  - kipy: `Board.get_ratsnest(nets=None) -> list[RatsnestNet]`; kiwrap: `queries.ratsnest`
-    becomes the client of `GetRatsnest` when `ipc.has_get_ratsnest`, `structured.export_ratsnest`
-    when `cli.has_ratsnest_export`, estimate otherwise.
-- **Effort:** 2–3 d (job + CLI + QA) + 1–2 d (IPC + kipy). **Detection:** `cli.has_ratsnest_export`
-  (`--help` tree lists `pcb export ratsnest`), `ipc.has_get_ratsnest` (T5 row `GetRatsnest pcb ->
-  AS_OK`). Pitch: end goal ("external placement grading / routing needs unrouted connections with
-  endpoints"), reference the DRC JSON conventions, avoid per-net `GetEdges()` loops.
+  Pitch: end goal ("external placement grading / routing needs unrouted connections with
+  endpoints"), reference the DRC JSON conventions, no per-net `GetEdges()` loops.
+- **Open:** the kicad-python wrapper (`Board.get_ratsnest()`), to be built against the fork
+  commit (steps in `g1-mr.md`); the T5 inventory cannot see `GetRatsnest` until then.
 
 ### G2 — DRC and ERC over IPC as jobs, with structured markers (priority 2)
 
@@ -203,7 +226,9 @@ Effort figures are calendar days for one engineer with a working source build, f
   `Board.run_drc()` / `Schematic.run_erc()`. Raise the 199/499 caps question (G12) in the same
   issue thread. Frame it as "the DRC/ERC job over the jobs API like the exports", never "RunDRC".
 - **Effort:** 3–5 d. **Acceptance:** medium. **Detection:** `ipc.has_drc_job`, `ipc.has_erc_job`
-  (T5 rows). Depends on G6 for headless job dispatch (§ G6) — do G6 first or in the same MR.
+  (T5 rows). No dependency on G6 (closed, not a gap): a `RunBoardJobDrc` handler copies
+  `handleRunBoardJobExportStats` (`api_handler_pcb.cpp`) and runs headless the same way — with
+  the document check before the busy check, unlike upstream's own job handlers.
 
 ### G3 — ERC JSON positions ×100 (priority 2, first KiCad MR)
 
@@ -249,21 +274,18 @@ Effort figures are calendar days for one engineer with a working source build, f
   a bonus once G1's job exists.
 - **Effort:** 1–2 d. **Detection:** `ipc.has_net_statistics`.
 
-### G6 — Job exports (and future jobs) dispatched on the headless server (priority 3)
+### G6 — Job exports on the headless server: **closed, not a gap** (2026-09-19)
 
-- **Why:** on the nightly, every `RunBoardJobExport*` / `RunSchematicJobExport*` answers "no
-  handler available" headless (T5: 22 commands, both documents `-> AS_UNHANDLED`), so a live
-  session cannot export without a second process, and G2 would inherit the same hole.
-- **Workaround:** kicad-cli for every export (`kw_fab_export`, `structured.*`) — complete, so the
-  cost is latency and the double process only.
-- **Upstream status:** the job handlers exist for GUI frames (46da153141, fee17a9580 "Switch
-  schematic job handlers to using context"); they are not registered on the headless
-  `HEADLESS_BOARD_CONTEXT` / `HEADLESS_SCH_CONTEXT`. Probably an omission rather than a decision —
-  ask in an issue before patching.
-- **Proposed change:** register the job handlers in the headless contexts
-  (`pcbnew/api/headless_board_context.cpp`, `eeschema/api/headless_sch_context.cpp`) and add a
-  `RunBoardJobExportStats` e2e case. **Effort:** 1–2 d. **Detection:** `ipc.headless_jobs` (key
-  exists, false on 10.99.0-4083).
+The 22 `RunBoardJobExport*` / `RunSchematicJobExport*` handlers are registered in the
+`API_HANDLER_PCB` / `API_HANDLER_SCH` constructors (`api_handler_pcb.cpp:170-196`,
+`api_handler_sch.cpp:159-172`, unconditional) and run through `KIWAY::ProcessJob` on the
+context's KIWAY, which the headless contexts carry; upstream's `ApiJobs` e2e suite drives them
+through `kicad-cli api-server` (6/6 on the pristine bench). The first T5 snapshot sent an empty
+nested `job_settings.document` and `validateDocument` answered `AS_UNHANDLED` by design. Probe
+fixed (`handlers._minimal_instance` fills any one-level-nested `DocumentSpecifier`), snapshots
+regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`. Live exports:
+`backends.ipc.jobs`. The fork branch `mr/g6-headless-jobs` carries only a QA e2e case
+(`ApiJobs/ExportBoardStats`); do not open it standalone (`docs/upstream/drafts/g6-mr.md`).
 
 ### G7 — Schematic `GetBoundingBox` (priority 4)
 
@@ -322,7 +344,8 @@ Effort figures are calendar days for one engineer with a working source build, f
   has the handlers (12cdf280, a97e2521, 09-15) but the installed nightly (HEAD 6dd893f7d1, 09-17)
   answers "no handler", so either they are GUI-frame-only or the build predates registration.
   **Action:** re-run T5 on the next nightly bump before writing anything; if still unhandled, the
-  fix is registering them on the headless contexts (same shape as G6). **Effort:** 0.5–1 d.
+  fix is registering them on the headless contexts (check first whether it is another
+  probe artifact like G6). **Effort:** 0.5–1 d.
   **Detection:** `ipc.headless_library_queries` (T5 rows).
 
 ### G12 — DRC report capped at 199/499 violations per type (priority 5)
@@ -332,22 +355,37 @@ Effort figures are calendar days for one engineer with a working source build, f
   fixes. Proposed change: a `--max-violations` CLI/job option (or unlimited for the job path).
   Raise in G2's issue thread. **Effort:** 0.5 d. **Detection:** `cli.drc_unlimited_violations`.
 
-### G13 — `UpdateItems` wedges the headless server on a second instance of a shared library symbol (priority 2 as a bug report)
+### G13 — `UpdateItems` wedges the headless server on the second unit of a multi-unit symbol (priority 2 as a bug report)
 
-- Verified on 10.99.0-4083 (capability `ipc.schematic_update_shared_lib_symbol_hangs`); repro
-  scripts `scratchpad/ipc-backend/probe10..14.py`. Workaround: no update helper in
-  `backends.ipc.writes`; edits of symbol instances go through the file engine; `close()` still
-  terminates the process. **Action:** file the issue with the minimal repro (no MR from us
-  unless assigned); likely touches the new connectivity engine (!2807) — expect the maintainers
-  to fix it fast because it is a hang, not a feature. Effort 0.5 d to report.
+- Verified on 10.99.0-4083, the RelWithDebInfo and the Debug bench (12/12 runs; capability
+  `ipc.schematic_update_shared_lib_symbol_hangs`, verified on the matrix's `10.99.0` entry —
+  `seed_for` reads that entry since 2026-09-19, so the live record of the nightly says true).
+  Condition: `UpdateItems` on two different units of one multi-unit symbol (even unchanged
+  items); the same unit twice, two single-unit instances of one library symbol and power symbols
+  do not hang. Cause (Debug build + cdb): `PackSymbol` serialises the non-placed units' pins
+  from the library symbol, whose pin KIIDs every instance shares; `SCH_SYMBOL::Deserialize`
+  adopts them, so after two units two `SCH_PIN`s share a KIID and the connectivity engine throws
+  `Duplicate connectivity source identity` (`conn_facts.cpp:495`) inside
+  `SCH_COMMIT::Push`; `handleApiRequestString` does not catch it, `Reply()` never runs and the
+  nng thread waits forever. Minimal repro `patches/repro/g13_repro.py`; issue draft
+  `docs/upstream/drafts/g13-issue.md`; live guard test
+  `tests/test_kipy_packaging.py::test_hang_guard_matches_the_live_repro`. Workaround: no update
+  helper in `backends.ipc.writes`; edits of symbol instances go through the file engine;
+  `close()` still terminates the process. **Action:** file the issue with the repro (no MR from
+  us unless assigned); expect a fast fix because it is a hang, not a feature. Effort 0.5 d.
 
 ### G14 — kicad-python packaging and launcher (priority 1, Python only, no KiCad build)
 
-- (a) `tools/generate_protos.py`: use `protoc.PROTOC_EXE` and `protol … protoc --protoc-path`,
-  root-caused (protoc-wheel-0 `os.execv` on Windows + protoletariat's open temp file); until
-  merged kiwrap ships a hatchling force-included `.pth` + import-time fallback (documented in
-  `backends/ipc/_pth`, known to put top-level `common`/`board`/`schematic` on `sys.path`). Open a
-  kicad-python issue linking #82/#140, MR of ~5 lines, then drop the `.pth`.
+- (a) `tools/generate_protos.py`: use `protoc.PROTOC_EXE` and feed `--descriptor_set_out` to
+  `protol raw`. Root causes (reproduced 2026-09-19, `patches/kicad-python/0001-*.patch`):
+  protoc-wheel-0's console script `os.execv`s the compiler, so on Windows `subprocess.run`
+  returns rc=0 before anything is written; and protoletariat's own `protoc` lookup hits the same
+  launcher (plus `shlex.split` strips backslashes from `--protoc-path`). The earlier "open
+  NamedTemporaryFile blocks protoc" theory was refuted. Until merged kiwrap ships a hatchling
+  force-included `.pth` + import-time fallback (documented in `backends/ipc/_pth`, known to put
+  top-level `common`/`board`/`schematic` on `sys.path`). Open a kicad-python issue linking
+  #82/#140, MR of ~5 lines (draft `docs/upstream/drafts/g14-mr-generate-protos.md`), then drop
+  the `.pth`.
   (b) `KiCadServer(..., env=None)` so `KiCad(headless=True)` can carry the sandbox env; kiwrap's
   `_ApiServerProcess` stays as the launcher regardless (tree kill, transcript, readiness by
   `Ping` as in `qa/tests/api/api_e2e_utils.h`).
@@ -357,12 +395,12 @@ Summary table (priority = order of work; "P" = priority):
 
 | P | Gap | Kind | Effort | Acceptance | Detection key |
 |---|---|---|---|---|---|
-| 1 | G1 ratsnest export (CLI job + `GetRatsnest`) | feature | 3–5 d | medium-high | `cli.has_ratsnest_export`, `ipc.has_get_ratsnest` |
+| 1 | G1 ratsnest export (CLI job + `GetRatsnest`) — **on the fork**, two MRs to open | feature | done (3–5 d) | medium-high | `cli.has_ratsnest_export`, `ipc.has_get_ratsnest` |
 | 1 | G14 kicad-python protoc fix + `env=` | Python | 1 d | high | — |
 | 2 | G3 ERC JSON ×100 (#25582) | bug fix | 1 d | high | `cli.erc_json_pos_scale == 1` |
 | 2 | G13 UpdateItems hang | bug report | 0.5 d | — | `ipc.schematic_update_shared_lib_symbol_hangs == false` |
 | 2 | G2 DRC/ERC jobs over IPC | feature | 3–5 d | medium | `ipc.has_drc_job`, `ipc.has_erc_job` |
-| 3 | G6 job handlers on headless contexts | fix/feature | 1–2 d | medium-high | `ipc.headless_jobs` |
+| — | G6 job handlers headless — **closed, not a gap** (probe artifact) | — | 0 | — | `ipc.headless_jobs` (true) |
 | 3 | G11 library queries headless | fix | 0.5–1 d | high | `ipc.headless_library_queries` |
 | 3 | G5 per-net statistics | feature | 1–2 d | medium | `ipc.has_net_statistics` |
 | 3 | G4 DRC marker pos (!2780) | parser only | 0.5 d | — | `cli.drc_json_has_marker_pos` |
@@ -381,13 +419,16 @@ Summary table (priority = order of work; "P" = priority):
 - Stock KiCad always works: every tool branches on a capability key (`caps.has(...)`), never on
   "is this our build". A patched build only flips keys to true.
 - Upstream first: one issue per change, assigned before coding; one MR per change; human-written
-  prose; `Assisted-by:` trailers; integration tests on real fixtures; KiCad style. Nothing is
+  prose; `Assisted-by: Claude Code` trailer on every fork commit an LLM helped write (KiCad's
+  tool-generated-content policy, dev/upstream-workflow.md §1.7 — the trailer travels with the
+  commit, the MR description carries the prose disclosure); integration tests on real fixtures;
+  KiCad style. Nothing is
   shipped to users *from the fork* — the fork exists so kiwrap's CI and the owner's machine can run
   the patched build while MRs are in review.
 - No batches: after Escain's 25 MRs were closed in a day, kiwrap submits at most two MRs at a time
   and lets the first one land before the next.
 
-### 3.2 Branches, tags and the patch series in `n3rd-bugs/kicad-source-mirror`
+### 3.2 Branches, tags and the patch series in `n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-fork` carries none of our refs)
 
 The fork tracks the read-only GitHub mirror; MRs go to GitLab (`upstream` remote =
 `https://gitlab.com/kicad/code/kicad.git`, [dev/kicad-source-build.md](dev/kicad-source-build.md)).
@@ -398,7 +439,7 @@ The fork tracks the read-only GitHub mirror; MRs go to GitLab (`upstream` remote
 | `base/<kicad-sha12>` | the exact upstream commit the current nightly / patched build is on (today `base/6dd893f7d1` for 10.99.0-4083) | moves only when the pinned nightly moves (D16 re-probe) |
 | `mr/<issue>-<slug>` | one branch per upstream MR, rebased on `master` (or `10.0` for stable-only fixes such as G3) | this is what the GitLab MR points at; force-pushed on rebase; deleted after merge |
 | `kiwrap/<kicad-sha12>` | integration branch = `base/<sha>` + every `mr/*` branch cherry-picked in priority order + `patches/kiwrap-version.patch` | rebuilt by script, never edited by hand; this is what the bench builds |
-| tag `kiwrap-build/<kicad-sha12>-<n>` | an integration branch state that was built, T5-snapshotted and installed | immutable; `n` increments per rebuild |
+| tag `kiwrap-build/<kicad-sha12>-<n>` | an integration branch state that was built, T5-snapshotted and installed | immutable; `n` increments per rebuild; **lightweight tags only** — an annotated tag becomes `git describe`'s output, KiCad's CMake takes it for the version and every reconfigure fails (found 2026-09-19); keep `git fetch upstream --tags` current for the same reason |
 
 The kiwrap repo carries the manifest `src/kiwrap/data/kiwrap_patches.json` (proposed; the
 `data/` package is allowed to name versions and commits):
@@ -424,13 +465,18 @@ presence, never by version string:
 - **CLI patches** are detected by the existing `--help` tree probe: a new subcommand appears in
   `cli.subcommands` and `flatten_help_tree` derives `cli.has_ratsnest_export` from it, exactly as
   `cli.has_sch_diff` / `cli.has_pcb_png` are derived today.
-- **IPC patches** are detected by a cheap live probe on first use of the headless backend: send
-  the new command's minimal instance (the T5 mechanism, `backends.ipc.handlers.probe` restricted
-  to the commands the manifest names) and set `ipc.has_get_ratsnest` etc. from the outcome
-  (`AS_UNHANDLED` → false). The T5 snapshot for a patched build is written as
-  `conformance/snapshots/ipc-handlers/<version>+<kicad-sha12>.json` so it never collides with the
-  stock nightly's file; `compare()` runs stock-vs-patched as a drift check (only the manifest's
-  commands may differ).
+- **IPC patches** are detected by a cheap live probe on first use of the headless backend:
+  `capabilities_for` first DERIVES the key from the CLI half of the same patch (the api-server is
+  the probed kicad-cli binary; a build carrying one half only is not supported), and the first
+  `HeadlessSession` that has a board open runs every probe in `backends.ipc.presence` whose key
+  the record has not probed yet (`queries.probe_get_ratsnest`: one request, `AS_UNHANDLED` →
+  false), recording the answer through `Capabilities.refine` (`kiwrap.ipc_probed`, cache
+  rewritten — once per install). The T5 snapshot for a bench build is written as
+  `conformance/snapshots/ipc-handlers/<version>+<built commit>[.debug].json`
+  (`KiCadInstallation.snapshot_name`; the BUILT commit, i.e. the integration branch's sha, never
+  the base — a pristine and a patched build of one base must not share a file; T4 uses the same
+  name) so it never collides with the stock nightly's file; `compare()` runs stock-vs-patched as
+  a drift check (only the manifest's commands may differ; `scripts/dev/t5_bench_snapshot.py`).
 - **Bug-fix patches** (G3, G13) are detected by the quirk probes that already define the key
   (`cli.erc_json_pos_scale` from an ERC run on the T6 fixture;
   `ipc.schematic_update_shared_lib_symbol_hangs` from the live repro under a short timeout).
@@ -481,10 +527,11 @@ has the recipe (unexecuted); the order below is what makes the first day pay for
    path as an explicit install (`kiwrap.installation` explicit-setting path), so every kiwrap
    test that takes `installs` sees the patched build as one more KiCad; the sandbox env, seed and
    `%APPDATA%\kicad` hash assertion apply unchanged.
-4. **First patches, in this order:** G6 (register job handlers headless — smallest C++ change,
-   validates the handler/QA loop and unblocks G2) → G1 (ratsnest job + CLI + `GetRatsnest`, the
-   top agent signal) → G3 (ERC ×100 on `10.0` and `master`, proves a stable-branch MR) → G2 →
-   G5 → G7/G8. G14 (Python only) and the G13 bug report go out before the bench exists.
+4. **First patches, in this order:** G1 (ratsnest job + CLI + `GetRatsnest`, the top agent
+   signal — done on the fork, `mr/g1-ratsnest`) → G3 (ERC ×100 on `10.0` and `master`, proves a
+   stable-branch MR) → G2 → G5 → G7/G8. G6 turned out to be a T5 probe artifact (closed); the
+   `mr/g6-headless-jobs` branch only carries the `ApiJobs/ExportBoardStats` e2e case. G14 (Python
+   only, patches in `patches/kicad-python/`) and the G13 bug report go out before the bench exists.
 5. **Bench outputs that must exist before the first MR:** the `kiwrap/<sha>` integration branch
    script, the manifest, `conformance/snapshots/ipc-handlers/<version>+<sha>.json`, the
    `kicad_patch(<id>)` pytest marker, and a CI job (self-hosted runner, D14) that rebuilds the

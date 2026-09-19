@@ -13,6 +13,9 @@ a file path. Capability keys decide the path taken (never a version number):
     export_ipcd356   "pcb export ipcd356"  (9.0+)                                -> TestPoints
     export_position  "pcb export pos --format csv"  (all versions)               -> PositionFile
     export_png       cli.has_pcb_png       `pcb export png -o <dir> --layers ..` -> list[Path]
+    export_ratsnest  cli.has_ratsnest_export `pcb export ratsnest`                -> RatsnestReport
+                     (kiwrap fork addition, docs/UPSTREAM.md G1; KiCad's own airwires with both
+                     end items, anchor positions and layers; the pairs equal DRC's unconnected_items)
 
 Verified live (scratchpad structured/probe1-3.py, 2026-09-19) on 10.99.0-4083 and 10.0.6, plus
 9.0.9 / 8.0.9 / 7.0.6 for the subcommands they have:
@@ -61,6 +64,7 @@ from kiwrap.capability import Capabilities, Unsupported
 from kiwrap.formats.reports.ipc2581 import Ipc2581Board, parse_ipc2581
 from kiwrap.formats.reports.ipcd356 import TestPoints, parse_ipcd356
 from kiwrap.formats.reports.position import PositionFile, parse_pos
+from kiwrap.formats.reports.ratsnest import RatsnestReport, parse_ratsnest_json
 from kiwrap.formats.reports.schdiff import SchDiff, parse_sch_diff_json
 from kiwrap.formats.reports.stackup import Stackup, parse_stackup_board, parse_stackup_csv, parse_stackup_json
 from kiwrap.formats.reports.stats import BoardStats, parse_stats_json
@@ -73,6 +77,7 @@ __all__ = [
     "export_ipcd356",
     "export_png",
     "export_position",
+    "export_ratsnest",
     "export_stackup",
     "export_stats",
     "read_aux_origin",
@@ -86,6 +91,7 @@ OLDEST_WITH: dict[str, str] = {
     "cli.has_stackup_json": "11.0.0",
     "cli.has_sch_diff": "11.0.0",
     "cli.has_pcb_png": "11.0.0",
+    "cli.has_ratsnest_export": "11.0.0",  # fork branch mr/g1-ratsnest; not in any release yet
     "cli.subcommands:pcb export ipc2581": "8.0.0",
     "cli.subcommands:pcb export ipcd356": "9.0.0",
     "cli.subcommands:pcb export stackup": "11.0.0",
@@ -98,6 +104,7 @@ _DERIVE: dict[str, tuple[str, str | None]] = {
     "cli.has_stackup_json": ("pcb export stackup", "--format"),
     "cli.has_sch_diff": ("sch diff", None),
     "cli.has_pcb_png": ("pcb export png", None),
+    "cli.has_ratsnest_export": ("pcb export ratsnest", None),
 }
 
 _AUX_ORIGIN_RE = re.compile(r"\(aux_axis_origin\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)")
@@ -186,6 +193,57 @@ def export_stats(
     )
     path = next((f for f in files if f.suffix == ".json"), files[0])
     return parse_stats_json(_read(path), source=str(board), kicad_version=install.version)
+
+
+# --- ratsnest (fork addition, docs/UPSTREAM.md G1) ---------------------------------------------------
+
+
+def export_ratsnest(
+    install: KiCadInstallation,
+    config: ConfigRoot,
+    board: Path,
+    *,
+    nets: Sequence[str] | None = None,
+    include_routed: bool = False,
+    out_dir: Path | None = None,
+    caps: Capabilities | None = None,
+    timeout_s: float = 300,
+) -> RatsnestReport:
+    """`pcb export ratsnest --units mm [--nets N1,N2] [--include-routed]` -> `RatsnestReport`
+    (mm): KiCad's unrouted connections per net with both end items (uuid, description, anchor
+    position, copper layer), lengths and the `excluded` flag of edges a DRC unconnected_items
+    exclusion hides (those are listed but not counted). The export is JSON only (no `--format`;
+    the schema is resources/schemas/ratsnest.v1.json). Requires `cli.has_ratsnest_export` (the kiwrap fork
+    branch `mr/g1-ratsnest`; no release has it), else `Unsupported(fallback="drc")`: `pcb drc
+    --format json` `unconnected_items` lists the same item pairs with the item positions.
+    `nets` is an exact-name filter; net names containing commas cannot be filtered this way
+    (kicad-cli splits `--nets` on commas) and raise `ValueError`."""
+    caps = resolve_caps(install, caps)
+    _require(caps, "cli.has_ratsnest_export", fallback="drc")
+    board = Path(board)
+    out = _out_dir(config, board, out_dir) / f"{board.stem}_ratsnest.json"
+    args: list[str] = ["pcb", "export", "ratsnest", "--units", "mm"]
+    if nets:
+        if any("," in n for n in nets):
+            raise ValueError("net names containing ',' cannot be passed through --nets; export all nets")
+        args += ["--nets", ",".join(nets)]
+    if include_routed:
+        args.append("--include-routed")
+    args += ["-o", str(out), str(board)]
+    res = run_kicad_cli(
+        install,
+        args,
+        config=config,
+        caps=caps,
+        timeout_s=timeout_s,
+        watch_dirs=[out.parent],
+        accept=(EXIT_OK,),
+    )
+    if not out.is_file():
+        raise FileNotFoundError(
+            f"kicad-cli pcb export ratsnest exited 0 but did not write {out}\n{res.stderr}"
+        )
+    return parse_ratsnest_json(_read(out), source=str(board), kicad_version=install.version)
 
 
 # --- stackup --------------------------------------------------------------------------------------

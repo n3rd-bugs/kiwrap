@@ -27,7 +27,7 @@ def real_env(config_root, storage_home):
 def test_every_install_end_to_end(installs, real_env, tmp_path: Path):
     for install in installs:
         cfg, caps = real_env(install)
-        proj = tmp_path / install.major_minor
+        proj = tmp_path / install.root.name  # not the version: a bench build shares the nightly's
         shutil.copytree(install.dir("demos") / "ecc83", proj)
         sch, pcb = proj / "ecc83-pp.kicad_sch", proj / "ecc83-pp.kicad_pcb"
 

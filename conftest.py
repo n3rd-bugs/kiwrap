@@ -10,11 +10,18 @@ r"""Session-wide pytest hooks and fixtures for every test tree (`tests/`, `confo
   parametrised `install` argument. No test module runs its own discovery or spawns kicad-cli
   while collecting.
 - A test that takes an `install` argument is parametrised over every discovered install (ids are
-  the versions) and is skipped when none is installed.
+  `<version>@<root name>`, unique even when a bench build shares the nightly's semver) and is
+  skipped when none is installed.
+- `kicad_patch("<id>")` (docs/UPSTREAM.md §3.3): a test that needs a kiwrap-patched KiCad. It is
+  skipped unless some discovered install's capability record lists the id in `kiwrap.patches`
+  (the presence probes decided, never the version string). The `patched_installs(id)` fixture
+  returns those installs. Both live here, not in `tests/conftest.py`, because pytest loads that
+  file only when something under `tests/` is collected: `uv run pytest conformance/...` alone
+  would otherwise run a marked conformance test on stock installs.
 
 Session fixtures (shared by every tree): `installs`, `install10`, `newest`, `storage_home`,
-`config_root`, `cli_installs`, `corpus`. The unit-test-only fixtures (`cli_envs`, `cli_scratch`,
-`user_config_untouched`) stay in `tests/conftest.py`.
+`config_root`, `cli_installs`, `corpus`, `patched_installs`. The unit-test-only fixtures
+(`cli_envs`, `cli_scratch`, `user_config_untouched`) stay in `tests/conftest.py`.
 """
 
 from __future__ import annotations
@@ -42,9 +49,29 @@ def discovered_installs() -> list[Any]:
     return _DISCOVERED
 
 
+def _patched_by_id() -> dict[str, list]:
+    """patch id -> installs whose capability record lists it (probes are cached per session)."""
+    from kiwrap.capability import capabilities_for
+
+    out: dict[str, list] = {}
+    for install in discovered_installs():
+        for patch_id in capabilities_for(install).get("kiwrap.patches", []):
+            out.setdefault(patch_id, []).append(install)
+    return out
+
+
+def _manifest_ids() -> set[str]:
+    from kiwrap.capability import load_patch_manifest
+
+    return {p["id"] for p in load_patch_manifest()["patches"]}
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_configure(config):
     config.addinivalue_line("markers", "kicad_version(spec): needs an installed KiCad matching spec")
+    config.addinivalue_line(
+        "markers", "kicad_patch(id): needs a KiCad whose capability record lists kiwrap patch id"
+    )
     # trylast: pytest's tmpdir plugin has registered `config._tmp_path_factory` by now. The base
     # temp is pytest's own (it keeps the last three sessions), so nothing is left in the repo or in
     # the real storage home. Set before collection because `pytest_generate_tests` /
@@ -55,23 +82,44 @@ def pytest_configure(config):
         os.environ["KIWRAP_HOME"] = str(factory.mktemp("kiwrap-home"))
 
 
+def install_id(install) -> str:
+    """Parametrisation id: `<version>@<root name>` (two installs of one semver - the nightly and a
+    bench build of it - must not collide, in ids or in per-install scratch directories)."""
+    return f"{install.version}@{install.root.name}"
+
+
 def pytest_generate_tests(metafunc):
-    """Parametrise every test taking `install` over the discovered installs (one id per version)."""
+    """Parametrise every test taking `install` over the discovered installs (`install_id` ids)."""
     if "install" in metafunc.fixturenames and "install" not in metafunc._arg2fixturedefs:
         found = discovered_installs()
-        metafunc.parametrize("install", found, ids=[i.version for i in found], scope="module")
+        metafunc.parametrize("install", found, ids=[install_id(i) for i in found], scope="module")
 
 
 def pytest_collection_modifyitems(config, items):
-    """Apply `kicad` / `kicad_version` skips centrally."""
+    """Apply `kicad` / `kicad_version` / `kicad_patch` skips centrally."""
     found = discovered_installs()
     versions = {i.major_minor for i in found}
+    known_patches: set[str] | None = None
+    patched: dict[str, list] | None = None
     for item in items:
         if item.get_closest_marker("kicad") and not found:
             item.add_marker(pytest.mark.skip(reason="no KiCad installed"))
         m = item.get_closest_marker("kicad_version")
         if m and m.args and m.args[0] not in versions:
             item.add_marker(pytest.mark.skip(reason=f"KiCad {m.args[0]} not installed"))
+        m = item.get_closest_marker("kicad_patch")
+        if m:
+            patch_id = m.args[0] if m.args else ""
+            # Ids the manifest does not know cannot be present anywhere: skip them without
+            # probing (the probe costs one `--help` tree per install, once per session).
+            if known_patches is None:
+                known_patches = _manifest_ids()
+            if patch_id in known_patches:
+                if patched is None:
+                    patched = _patched_by_id()
+                if patch_id in patched:
+                    continue
+            item.add_marker(pytest.mark.skip(reason=f"no installed KiCad carries kiwrap patch {patch_id!r}"))
 
 
 # ---- session fixtures ------------------------------------------------------------------------------
@@ -127,3 +175,17 @@ def cli_installs(installs):
 def corpus() -> Path:
     """The committed conformance corpus (`conformance/corpus/<major.minor>/...`, byte-exact files)."""
     return Path(__file__).resolve().parent / "conformance" / "corpus"
+
+
+@pytest.fixture(scope="session")
+def patched_installs():
+    """`patched_installs("ratsnest-export")` -> the installs whose `kiwrap.patches` lists the id."""
+    patched = _patched_by_id()
+
+    def _get(patch_id: str) -> list:
+        found = patched.get(patch_id, [])
+        if not found:
+            pytest.skip(f"no installed KiCad carries kiwrap patch {patch_id!r}")
+        return found
+
+    return _get

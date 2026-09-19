@@ -1,8 +1,9 @@
 # Building KiCad from source (the bench)
 
-Status: **executed on 2026-09-19** — Debug build of the fork at the nightly's commit
-`6dd893f7d1` (= installed 10.99.0-4083) at `C:\src\kicad`, preset `msvc-win64-debug`, QA tests
-on. Decision D17 ([DECISIONS.md](../DECISIONS.md)) made the bench *planned*: kiwrap extends
+Status: **executed and accepted on 2026-09-19** — Debug and RelWithDebInfo builds of the fork at
+the nightly's commit `6dd893f7d1` (= installed 10.99.0-4083) at `C:\src\kicad` (presets
+`msvc-win64-debug` / `msvc-win64-release`, QA tests on), installed under `C:\kiwrap-builds\`,
+registered as kiwrap installs, T5-equal to the stock nightly ("Bench acceptance" below). Decision D17 ([DECISIONS.md](../DECISIONS.md)) made the bench *planned*: kiwrap extends
 KiCad's CLI/IPC upstream ([UPSTREAM.md](../UPSTREAM.md) has the ranked gap cards and the
 fork/patch workflow). Stock installers remain what kiwrap ships against; a patched build only
 unlocks more.
@@ -12,19 +13,277 @@ unlocks more.
 | Step | Outcome |
 |---|---|
 | VS 2022 17.9 → **17.14.37710 (MSVC 14.44.35207)** | `vs_community.exe update --installPath … --quiet --norestart --wait` via the current bootstrapper (the old installer's `setup.exe --update` / `update` returned 87 = invalid parameter). ~25 min. |
-| vcpkg at the win-builder pin `66c0373d` at `C:cpkg`, `bootstrap-vcpkg.bat -disableMetrics` | OK (tool 2025-12-16). Run the batch file from PowerShell, not Git Bash. |
+| vcpkg at the win-builder pin `66c0373d` at `C:\vcpkg`, `bootstrap-vcpkg.bat -disableMetrics` | OK (tool 2025-12-16). Run the batch file from PowerShell, not Git Bash. |
 | `kicad-gitlab` NuGet source, `VCPKG_BINARY_SOURCES=clear;nuget,kicad-gitlab,read` | Feed reachable anonymously (HTTP 200) but **every package was NotFound**: our `cl` is 19.44.35229 (a newer 14.44 servicing than CI's 35207) and the ABI hash includes it. Expect a full local dependency build. |
 | Fork clone (`--filter=blob:none` not used; full clone ~2 GB), `git checkout 6dd893f7d1` | OK. `CMakePresets.json.sample` hardcodes `VCPKG_ROOT: E:/vcpkg2/` — patch the copy to `C:/vcpkg/`; its `test-base` test preset lacks `"hidden": true` and CMake 3.31 rejects the file — add it. |
-| `cmake --preset msvc-win64-debug` (vcpkg installs 143 packages) | 141 built in **84 min**; `wxwidgets-33` failed: wxWidgets downloads the WebView2 SDK with `file(DOWNLOAD)`, and vcpkg had picked the **MinGW `cmake.exe` from `%USERPROFILE%	ools\mingw64in`** (no Windows certificate store → "SSL peer certificate" error). Put `C:\Program Files\CMakein` first on PATH and drop the mingw64 dir; the retry configured in 70 min (wxWidgets + KiCad configure). |
+| `cmake --preset msvc-win64-debug` (vcpkg installs 143 packages) | 141 built in **84 min**; `wxwidgets-33` failed: wxWidgets downloads the WebView2 SDK with `file(DOWNLOAD)`, and vcpkg had picked the **MinGW `cmake.exe` from `%USERPROFILE%\tools\mingw64\bin`** (no Windows certificate store → "SSL peer certificate" error). Put `C:\Program Files\CMake\bin` first on PATH and drop the mingw64 dir; the retry configured in 70 min (wxWidgets + KiCad configure). |
 | `cmake --build build\msvc-win64-debug --parallel 22` | **10 min**, 3648 targets, 0 errors: `kicad-cli.exe`, `kicad.exe`, `pcbnew.exe`, `eeschema.exe`, `qa_api.exe`, `qa_pcbnew.exe`, `qa_eeschema.exe`, … |
-| Running from the build tree | Needs every KiCad DLL directory of the build tree on PATH (`kicommon.dll` in `common\`, `kigal.dll` in `common\gal`, `kicad_3dsg.dll`, …) plus `vcpkg_installedd-windows\debugin`, and `KICAD_RUN_FROM_BUILD_DIR=1`; otherwise exit 0xC0000135. `C:\src\kicad-env.ps1` (outside the repo; copy in [`../../scripts/dev/kicad-env.ps1`](../../scripts/dev/kicad-env.ps1)) sets all of it with a sandboxed `KICAD_*_HOME` and a short `TEMP`. `kicad-cli version --format plain` → `10.99.0`; `api-server` present. |
-| `qa_api.exe` (KiCad's IPC API suite) | 99/108 cases pass. The 9 failures are harness environment (it resolves `qa/tests/schemas/api.v1.schema.json` relative to the working directory, then `ApiJobs/*` time out on `OpenDocument`; one mock expectation in `ApiWizards`) — rerun from the source `qa/` layout before treating any as real. `test_api_e2e.cpp` + `api_e2e_utils.h` are the template for new handler tests. |
-| Disk | vcpkg 31 GB (`buildtrees` 18 GB can be deleted), build tree 14 GB. |
+| Running from the build tree | Needs every KiCad DLL directory of the build tree on PATH (`kicommon.dll` in `common\`, `kigal.dll` in `common\gal`, `kicad_3dsg.dll`, …) plus `vcpkg_installed\x64-windows\debug\bin`, and `KICAD_RUN_FROM_BUILD_DIR=1`; otherwise exit 0xC0000135. `C:\src\kicad-env.ps1` (outside the repo; copy in [`../../scripts/dev/kicad-env.ps1`](../../scripts/dev/kicad-env.ps1)) sets all of it with a sandboxed `KICAD_*_HOME` and a short `TEMP`. `kicad-cli version --format plain` → `10.99.0`; `api-server` present. |
+| `qa_api.exe` (KiCad's IPC API suite) | Debug: 99/108; RelWithDebInfo: **106/108**. Every failure is classified below ("Bench acceptance"): none is a server behaviour difference from the stock nightly. The cwd does NOT matter (paths are exe-relative / compiled in); run it with [`scripts/dev/run_qa_api.ps1`](../../scripts/dev/run_qa_api.ps1). `test_api_e2e.cpp` + `api_e2e_utils.h` are the template for new handler tests. |
+| `msvc-win64-release` (RelWithDebInfo) second build tree | `cmake --preset msvc-win64-release -DVCPKG_INSTALLED_DIR=<debug tree>/vcpkg_installed -DVCPKG_MANIFEST_INSTALL=OFF -DCMAKE_INSTALL_PREFIX=C:/kiwrap-builds/6dd893f7d1-2` reuses the already-built vcpkg packages (vcpkg builds release and debug variants of every port; the NuGet cache misses anyway): configure 15 s, build **13 min 40 s** (3566 targets). This is the acceptance build (UPSTREAM §4.2 asked for RelWithDebInfo; the Debug tree stays for stepping). |
+| Disk | vcpkg 31 GB (`buildtrees` 18 GB can be deleted), Debug tree 14 GB, RelWithDebInfo tree ~6 GB, installed prefixes ~0.7 GB (Debug) / ~0.4 GB (RelWithDebInfo). |
 
-Next on the bench (per [UPSTREAM.md §4](../UPSTREAM.md#4-what-the-source-build-bench-must-enable-first)):
-`cmake --install` into `C:\kiwrap-buildsdd893f7d1-1`, register it as an explicit install, run T5
-against it and require equality with `conformance/snapshots/ipc-handlers/10.99.0.json`, then branch
-`mr/g6-headless-jobs` and `mr/g1-ratsnest`.
+Done on the same day: both trees installed under `C:\kiwrap-builds\6dd893f7d1-{1,2}`, registered
+as explicit kiwrap installs, T5 of the RelWithDebInfo build **equal** to
+`conformance/snapshots/ipc-handlers/10.99.0.json`, fork tagged/branched (`base/6dd893f7d1`,
+`kiwrap/6dd893f7d1`, `kiwrap-build/6dd893f7d1-{1,2}`, pushed to the GitHub mirror) — see "Bench
+acceptance" below. G6 turned out to be a T5 probe artifact (§3); `mr/g1-ratsnest` is implemented
+and built as `kiwrap-build/6dd893f7d1-4` = `C:\kiwrap-builds\6dd893f7d1-4` (§5).
+
+**Three things learned the hard way on the same day (read before touching the bench):**
+
+1. **Never create annotated tags in the fork.** KiCad's CMake takes `git describe` for the
+   version string; an annotated tag such as `kiwrap-build/6dd893f7d1-1` becomes the describe
+   output, `KICAD_MAJOR_MINOR_PATCH_VERSION` ends up empty and every reconfigure fails with a
+   `set_target_properties` error. All fork tags are now **lightweight** (same commits, force-pushed)
+   and upstream's tags are fetched (`git fetch upstream --tags`), so the build reports
+   `10.99.0-4083-g6dd893f7d1` at base and `10.99.0-40xx-g<sha>` on the integration branch.
+2. **One build tree installs into one prefix at a time, and only after a reconfigure.** KiCad
+   bakes `KICAD_DATA` / `KICAD_DOCS` / `KICAD_PLUGINS` / `KICAD_DEMOS` / `KICAD_TEMPLATE` as
+   absolute cache strings under `CMAKE_INSTALL_PREFIX` (and into `config.h`), so
+   `cmake --install --prefix <other>` puts `bin/` under `<other>` and the `share/` tree under the
+   baked prefix. Installing `-3` from the tree configured for `-2` overwrote `-2`'s `share/` and the
+   first version of the install script then moved it away, leaving `-2` with `bin/` only
+   (`kicad-cli` could not even print its version). `scripts/dev/install_kicad_build.ps1` now
+   reconfigures the tree for the requested prefix (`-D` of every baked path), rebuilds the
+   `config.h` dependents (~1 min) and refuses to touch any other prefix; `-2` was reinstalled from a
+   pristine `base/6dd893f7d1` checkout and re-accepted (T5 EQUAL, T4 tree identical to the stock
+   nightly's). The Debug tree (`msvc-win64-debug`, prefix `-1`) was never affected.
+3. **The install metadata records the BUILT commit.** `commit` in `kiwrap-install.json` is the
+   source tree's HEAD when the tree was built (`4a04900fd2` for `-4`, the integration branch's
+   sha), `base` is the upstream commit (`6dd893f7d1`); T4/T5 snapshots are named
+   `<version>+<built commit>[.debug].json` (`KiCadInstallation.snapshot_name`), so a pristine and
+   a patched build of one base never share a file. The first `-3` install had recorded the base as
+   `commit` and overwrote the pristine build's snapshots; it was uninstalled.
+
+## Bench acceptance (2026-09-19)
+
+### 1. Running `qa_api.exe` correctly, and the true baseline
+
+Facts (from `qa/CMakeLists.txt` `setup_qa_env`, `common/paths.cpp`, `qa/tests/api/api_e2e_utils.h`):
+
+- **The working directory is irrelevant.** Test data is compiled in (`QA_PCBNEW_DATA_LOCATION`,
+  `QA_KICAD_CLI_PATH`, overridable with `KICAD_TEST_PCBNEW_DATA_DIR` / `KICAD_TEST_EESCHEMA_DATA_DIR`).
+  With `KICAD_RUN_FROM_BUILD_DIR=1` (which ctest sets and the e2e server needs), stock data
+  resolves to the *executable's parent directory* (`PATHS::getWindowsKiCadRoot()` = `<exe dir>/..`):
+  for `kicad/kicad-cli.exe` that is the build root, which has `schemas/`; for
+  `qa/tests/api/qa_api.exe` it is `qa/tests/`, hence the "`qa\tests\schemas\api.v1.schema.json` not
+  found" line. A directory junction `qa/tests/schemas -> <build>/schemas` fixes it (the runner
+  script creates it); KiCad's own `test_remote_provider_client.cpp` works around the same thing on
+  macOS with `KICAD_STOCK_DATA_HOME`.
+- ctest's registered environment prepends `kicad/`, `common/`, `api/`, `common/gal/`, `pcbnew/`,
+  `eeschema/`, `cvpcb/` and vcpkg's `[debug/]bin` to PATH; `ctest -R qa_api` also applies a
+  **180 s TIMEOUT** property, which a Debug run exceeds (below), so run the exe directly:
+  `.\scripts\dev\run_qa_api.ps1 -BuildDir C:\src\kicad\build\msvc-win64-release [-RunTest ApiJobs]`.
+  The runner uses `Start-Process`, not a pipeline: the shared e2e api-server (a `kicad-cli` child)
+  outlives `qa_api.exe` and holds the stdout pipe open otherwise.
+- The e2e client's nng timeout is 10 s (`common/api/api_client.cpp`), so anything that wedges the
+  shared server cascades into every later e2e case.
+
+**True baseline at 6dd893f7d1 on Windows** (`--log_level=test_suite`, junction in place, sandboxed
+`KICAD_*_HOME`, TEMP `C:\src\kicad-sandbox\tmp`):
+
+| Build | Result | Wall time |
+|---|---|---|
+| RelWithDebInfo (`msvc-win64-release`) | **106 / 108** passed, 4039 / 4042 assertions | 3.8 s module, 5 s total |
+| Debug (`msvc-win64-debug`) | 99 / 108 passed, 3946 / 3962 assertions | 189 s (timeouts) |
+
+Every failure, with the evidence that classifies it (draft issue texts in
+[`../upstream/drafts/issue-qa-api-windows-findings.md`](../upstream/drafts/issue-qa-api-windows-findings.md)):
+
+| Case | Builds | Class | Evidence |
+|---|---|---|---|
+| `ApiE2E/CreateDocument` (2 assertions, line 614) | both | **real, test-side, platform-independent** | `projectWithExt.GetPath( true )` is `GetPath( wxPATH_GET_VOLUME )` (int parameter, `0x0001`) → no trailing separator; the server returns `PROJECT::GetProjectPath()` = `GetPathWithSep()`. Reproduced through kicad-python against the stock nightly and both bench builds: `project.path == 'C:\...\kicC129.tmp\'` for all three (identical server behaviour). Fix is `wxPATH_GET_VOLUME \| wxPATH_GET_SEPARATOR`. |
+| `ApiE2E/CreateDocumentRejectsUnsavedModifications` | Debug only | **real handler defect, Debug-only manifestation** | The case sends `SetPageSettings` with only `orientation`; `FromProtoEnum<PAGE_SIZE_TYPE, PageSize>` hits `wxASSERT( false )` ("Unhandled case", `common/api/api_enums.cpp:822`) on `PS_UNKNOWN`; in a Debug build the assert wedges `kicad-cli api-server` (alive, never answers). Captured from the server's stderr through `HeadlessSession.transcript()`. The stock (release) nightly answers `AS_OK` in 0.0 s. |
+| `ApiJobs/*` (6 cases, `OpenDocument ... nng_recv failed: Timed out`) | Debug only | **cascade** from the wedged server | `qa_api.exe --run_test=ApiJobs` alone: 6 / 6 pass in 5.8 s (Debug). `OpenDocument` of `ZoneFill-4.0.7.kicad_pcb` on the Debug server takes 0.4 s when measured directly. |
+| `ApiWizards/QueryWizards` | both | **Windows QA-harness gap** | `API_PLUGIN_MANAGER::ReloadPlugins` → `#ifdef _WIN32` `FindKicadFile( "pythonw.exe" )` → `Pgm().IsKicadEnvVariableDefined()`, which `MOCK_PGM_BASE` has no expectation for (the Linux CI path never calls it). Not reachable on Linux, not a server defect. |
+
+Also found this way: `SetBoardDesignRules` with an empty `rules` message reaches
+`JSON_SETTINGS::Migrate`'s `assert "m_migrators.count( filever ) > 0"` (`json_settings.cpp:778`)
+through the `BOARD_DESIGN_SETTINGS` copy in the handler and wedges a Debug server the same way
+(that is the single T5 difference of the Debug build, §3).
+
+### 2. Installing the build as a kiwrap install
+
+[`scripts/dev/install_kicad_build.ps1`](../../scripts/dev/install_kicad_build.ps1) does all of
+this; what it encodes:
+
+- `cmake --install <build> --prefix <prefix>` relocates `bin/` only: KiCad bakes `KICAD_DATA`
+  (and `KICAD_DOCS`, `KICAD_PLUGINS`, `KICAD_DEMOS`, `KICAD_TEMPLATE`, `KICAD_LIBRARY_DATA`) as
+  **absolute cache strings** at configure time, so `share/kicad/{demos,template,schemas,plugins,
+  resources,libwmf}` land under the CMakeCache's `CMAKE_INSTALL_PREFIX`. The script therefore
+  reconfigures the tree for the requested prefix first (`cmake -B <build> -DCMAKE_INSTALL_PREFIX=…
+  -DKICAD_DATA=… …`, 15 s, then an incremental build of the 21 `config.h` dependents) and never
+  touches another prefix; `-Force` replaces an existing install at the prefix (unlinking the
+  library junctions first — `Remove-Item -Recurse` would follow them into the nightly's libraries).
+  Run it from the developer shell (`$env:KICAD_BUILD_PRESET='msvc-win64-release'; . C:\src\kicad-env.ps1`).
+  At run time KiCad on Windows resolves `share/` relative to the exe, so the baked path never matters.
+- `X_VCPKG_APPLOCAL_DEPS_INSTALL` is OFF: the vcpkg DLLs are not installed. `kicad-win-builder`'s
+  `build.ps1` copies `vcpkg_installed/<triplet>/bin/*.dll` into the package `bin/`; the script does
+  the same (`debug/bin` for a Debug build: 214 DLLs in `bin/` afterwards). The debug CRT
+  (`vcruntime140d`, `msvcp140d`, `ucrtbased`) is not redistributable and comes from `System32`
+  on a machine with VS installed. `cmake --install` also drops the release CRT redistributables.
+- Libraries are separate packages. The nightly's tables reference **`KICAD10_*`**
+  (`KICAD_MAJOR_MINOR_PATCH_TUPLE {10, 99, 0}` → `ENV_VAR::GetVersionedEnvVarName` uses major 10;
+  verified in `sym-lib-table`: 223 rows of `${KICAD10_SYMBOL_DIR}`), and `kiwrap.sandbox` already
+  exports `KICAD<major>_SYMBOL_DIR/FOOTPRINT_DIR/3DMODEL_DIR/TEMPLATE_DIR` from the install's own
+  `share/kicad/<dir>`. So the prefix gets directory junctions `share/kicad/{symbols,footprints,
+  3dmodels}` → `C:\Program Files\KiCad\10.99\share\kicad\...` plus a copy of the nightly's
+  `template/{sym,fp}-lib-table` (the source tree's `template/` only ships `kicad.kicad_pro`).
+  `demos/` (incl. ecc83) and `schemas/api.v1.schema.json` (kiwrap's `ipc.available` probe) come
+  from the source install.
+- `<prefix>/kiwrap-install.json` records `build_tree`, `source_tree`, `commit` (the BUILT commit:
+  `git rev-parse --short=10 HEAD` of the source tree, refused when the tree is dirty), `base`
+  (`-Base`, the upstream commit), `branch`, `tag`, `kiwrap_patches`, `preset`, `build_type`,
+  `installed_at` (written without BOM — Windows PowerShell's `-Encoding utf8` adds one, and kiwrap
+  reads `utf-8-sig` anyway).
+- The installed `kicad-cli.exe` runs from a plain shell with no dev-shell PATH:
+  `version --format plain` → `10.99.0`; `version --format commit` → the built commit (the script
+  clears `KICAD_RUN_FROM_BUILD_DIR` for this check, otherwise the binary looks for
+  `<prefix>/schemas` instead of `<prefix>/share/kicad/schemas`).
+
+**Discovery.** `kiwrap.installation.discover()` now reads explicit roots from `KIWRAP_KICAD_ROOTS`
+(`;`-separated) and `<storage>/installs.json` (`python -m kiwrap.installation --register <root>`),
+reports them with source `explicit` and the metadata file's fields in `extra`
+(`KiCadInstallation.is_bench_build`, `.kiwrap_patches`), and sorts explicit roots after native
+installs of the same semver (bench builds last), so `find("10.99")` / `newest` still return the
+installer's nightly. pytest redirects `KIWRAP_HOME` per session, so for the test suite the env var
+is the mechanism:
+
+```powershell
+$env:KIWRAP_KICAD_ROOTS = "C:\kiwrap-builds\6dd893f7d1-2;C:\kiwrap-builds\6dd893f7d1-4"; uv run pytest -q --timeout 900
+```
+
+(`-2` = the pristine acceptance build, `-4` = the patched integration build; three installs then
+share the semver 10.99.0, which the suite handles: parametrisation ids are `<version>@<root name>`
+and per-install scratch directories use the root name.) `python -m kiwrap.installation --no-probe`
+on this machine (the Debug `-1` is on disk but not registered — wx asserts wedge some handlers):
+
+```
+version  source                 root                           python  share
+10.99.0  registry               C:\Program Files\KiCad\10.99   -       C:\Program Files\KiCad\10.99\share\kicad
+10.99.0  explicit (4a04900fd2)  C:\kiwrap-builds\6dd893f7d1-4  -       C:\kiwrap-builds\6dd893f7d1-4\share\kicad
+10.99.0  explicit (6dd893f7d1)  C:\kiwrap-builds\6dd893f7d1-2  -       C:\kiwrap-builds\6dd893f7d1-2\share\kicad
+10.0.6   registry               C:\Program Files\KiCad\10.0    ...
+```
+
+The full capability records of the stock nightly and the pristine bench (`--help` tree of
+69 subcommands, `ipc.available`, `ipc.headless`, `swig.available=false`) differ **only** in the
+informational keys `kiwrap.patched_build` (true for the bench), `kiwrap.build_commit`
+(`6dd893f7d1`) and `kiwrap.build_base`. `kiwrap.patches` is `[]` on both; on `-4` it is
+`["ratsnest-export"]` (`cli.has_ratsnest_export` from the help tree, `ipc.has_get_ratsnest`
+derived from it and confirmed by the presence probe the first headless session with a board runs,
+`kiwrap.ipc_probed`). The manifest `src/kiwrap/data/kiwrap_patches.json` (base `6dd893f7d1`,
+one patch, `builds: [-1, -2, -3 (superseded), -4]`) is part of the capability cache key.
+
+### 3. T5 equality and the kiwrap suite
+
+`uv run python scripts/dev/t5_bench_snapshot.py [<root>]` probes every registered bench build,
+writes `conformance/snapshots/ipc-handlers/<version>+<built commit>.json` (`.debug.json` for a
+Debug build; `KiCadInstallation.snapshot_name`, the same rule `conformance/tests/t5_ipc_handlers.py`
+and T4 use) and diffs against the stock `<version>.json` with `handlers.compare` (only commands a
+manifest patch lists may differ):
+
+| Build | Snapshot | Result |
+|---|---|---|
+| RelWithDebInfo `6dd893f7d1-2` (pristine, reinstalled) | `10.99.0+6dd893f7d1.json` | **EQUAL** to `10.99.0.json` — pcb handled 67 / bad_request 37 / unhandled 25; schematic 34 / 26 / 69 (after the G6 probe fix; 52/37/40 and 28/25/76 before); 57 s |
+| RelWithDebInfo `6dd893f7d1-4` (integration, `4a04900fd2`) | `10.99.0+4a04900fd2.json` | **EQUAL** to `10.99.0.json` (the inventory cannot see `GetRatsnest` until kicad-python is regenerated, so equality proves the patch changed nothing else) |
+| Debug `6dd893f7d1-1` | `10.99.0+6dd893f7d1.debug.json` | one row: `SetBoardDesignRules [pcb]: handled -> timeout` (the Debug assert above); 118 s |
+
+**The bench acceptance test (UPSTREAM §4.2) passes on the RelWithDebInfo build.** The Debug build
+is the stepping tree; do not use it for T5 or for the `installs`-parametrised suite.
+
+**Full kiwrap suite with the bench registered** (`KIWRAP_KICAD_ROOTS="C:\kiwrap-builds\6dd893f7d1-2;C:\kiwrap-builds\6dd893f7d1-4"
+uv run pytest -q --timeout 900`, `%APPDATA%\kicad` hash unchanged before/after): **881 passed,
+9 skipped, 0 failed in 20 min 35 s** (2026-09-19, stock nightly + `-2` + `-4`, three installs of
+10.99.0; the skips are the documented pre-existing reasons plus the `kicad_patch` canary). The
+failures the first runs had are fixed:
+
+| Test | Cause | Status |
+|---|---|---|
+| `tests/test_installation.py::TestFind::test_no_match_raises_with_found_list` | `find("<missing path>")` probes `discover([path])`, which now also lists the registered roots, and accepted the bench as "the explicit install" | fixed in `installation.find()`: a probed install counts only when its root / kicad-cli IS the spec |
+| `tests/test_cli_integration.py::test_every_install_end_to_end` | scratch dir `tmp_path / install.major_minor` collided for two 10.99 installs (`FileExistsError`) | fixed: `tmp_path / install.root.name` |
+| `conformance/tests/t5_ipc_handlers.py::test_t5_ipc_handler_snapshot` | same collision, and a bench build was compared against the stock `10.99.0.json` | fixed: scratch dir by root name, snapshot `<version>+<built commit>[.debug].json` (`KiCadInstallation.snapshot_name`); the root `conftest.py` parametrises `install` with ids `<version>@<root name>` |
+| `conformance/tests/t4_cli_help_snapshot.py` | `-2` and `-3` (both `commit: 6dd893f7d1`) shared one snapshot file and failed each other (`pcb export ratsnest` removed/added) | fixed by recording the built commit: `10.99.0+6dd893f7d1.json` (pristine) and `10.99.0+4a04900fd2.json` (patched) |
+
+Every live test that ran on the bench install (CLI adapters, sandbox, structured exports, IPC
+sessions, T1–T9 where parametrised over `installs`) passed with the same outcomes as on the stock
+nightly.
+
+**G6 is a T5 probe artifact, not a KiCad gap.** While classifying the `ApiJobs` failures it turned
+out the job handlers ARE registered on the headless server (`API_HANDLER_PCB` constructor,
+`api_handler_pcb.cpp:170-190`, unconditional): sending `RunBoardJobExportSvg` with
+`job_settings.document` set to the open board returns `JS_SUCCESS` + the SVG path in 0.1 s on the
+**stock** nightly, and `RunSchematicJobExportNetlist` (`SNF_KICAD_XML`) returns `JS_SUCCESS` on the
+schematic (same on the bench). The T5 "minimal instance" only fills top-level `DocumentSpecifier` /
+`ItemHeader` fields; the job requests carry the document inside `RunJobSettings job_settings`, so
+the probe sent an empty document, `validateDocument` answered `AS_UNHANDLED` and the server reported
+"no handler available" — the 22 `RunBoardJobExport*` / `RunSchematicJobExport*` rows of the first
+`10.99.0.json`. Consequences (all done 2026-09-19): `ipc.headless_jobs` is `true` for 10.99.0
+(verified, `tests/test_ipc_patch_g6.py`) and 11.0.0 in the matrix; `handlers._minimal_instance`
+fills any one-level-nested `DocumentSpecifier` (`RunJobSettings.document` included) and the stock
+and bench snapshots were regenerated (22 rows `unhandled -> handled`/`bad_request`); live exports
+run through `backends.ipc.jobs`; the `mr/g6-headless-jobs` branch only carries the
+`ApiJobs/ExportBoardStats` e2e case (kept in the integration branch, not to be opened standalone).
+
+### 4. Fork refs (all on the GitHub mirror github.com/n3rd-bugs/kicad-fork, nothing on GitLab)
+
+**Remote names on this checkout:** in `C:\src\kicad` the mirror is the remote named **`public`**
+(`https://github.com/n3rd-bugs/kicad-fork.git`); `origin` is an unreachable ssh remote of
+a different fork (`git@github.com:n3rd-bugs/kicad-fork.git`) and `upstream` is GitLab with its
+push URL set to `DISABLED` (`git remote set-url --push upstream DISABLED`), so a slip cannot reach
+GitLab. Push with `git push public <ref>`; renaming `public` to `origin` (after removing the ssh
+remote) makes the `git push origin` wording of UPSTREAM.md literal — it needs a permission the
+fixer session did not have. All tags below are **lightweight** (annotated tags break `git describe`
+and every CMake reconfigure, see the top of this file).
+
+| Ref | Points at | Pushed |
+|---|---|---|
+| tag `base/6dd893f7d1` | `6dd893f7d1` | yes |
+| branch `mr/g6-headless-jobs` | `517c0ccfea` = base + the `ApiJobs/ExportBoardStats` e2e case | yes |
+| branch `mr/g1-ratsnest` | base + `5d40bcb51c` (job + CLI + schema + qa_pcbnew/qa_cli) + `f2f299b687` (proto + handler + qa_api), both with `Assisted-by: Claude Code` | yes (force-pushed after the review rework) |
+| branch `kiwrap/6dd893f7d1` | `4a04900fd2` = base + merge `mr/g6-headless-jobs` + merge `mr/g1-ratsnest` | yes (force-pushed) |
+| tag `kiwrap-build/6dd893f7d1-1` | `6dd893f7d1`, the Debug install | yes |
+| tag `kiwrap-build/6dd893f7d1-2` | `6dd893f7d1`, the RelWithDebInfo pristine install (acceptance build) | yes |
+| tag `kiwrap-build/6dd893f7d1-3` | `c7cb37b80a`, the first integration install (superseded, uninstalled) | yes |
+| tag `kiwrap-build/6dd893f7d1-4` | `4a04900fd2`, the RelWithDebInfo integration install | yes |
+
+`master` was not touched; the checkout is on `kiwrap/6dd893f7d1` with the release tree built from
+it (= the installed `-4`).
+
+**State of the mirror on 2026-09-19 22:25 local (17:25Z):** the GitHub events API shows eight
+`DeleteEvent`s by the `n3rd-bugs` account (17:24:52Z-17:25:10Z) removing every kiwrap ref listed
+above — the three branches and the five tags — 30 minutes after the fixer's force-pushes of
+`mr/g1-ratsnest` (`f2f299b687`) and `kiwrap/6dd893f7d1` (`4a04900fd2`) at 16:55Z; the mirror now
+carries `master` only. The fixer did not re-push (an unexplained deliberate deletion is not
+something to fight). Every ref is intact in `C:\src\kicad`; to restore the mirror once the owner
+confirms it should carry them:
+
+```powershell
+cd C:\src\kicad
+git push public base/6dd893f7d1 kiwrap-build/6dd893f7d1-1 kiwrap-build/6dd893f7d1-2 kiwrap-build/6dd893f7d1-3 kiwrap-build/6dd893f7d1-4
+git push public mr/g6-headless-jobs mr/g1-ratsnest kiwrap/6dd893f7d1
+```
+
+### 5. Rebuilding after a patch change (the loop that works)
+
+```powershell
+$env:KICAD_BUILD_PRESET = 'msvc-win64-release'; . C:\src\kicad-env.ps1
+cd C:\src\kicad; git checkout mr/g1-ratsnest            # edit, amend (Assisted-by trailer), clang-format --dry-run
+git checkout -B kiwrap/6dd893f7d1 base/6dd893f7d1; git merge --no-ff mr/g6-headless-jobs; git merge --no-ff mr/g1-ratsnest
+cmake --build C:\src\kicad\build\msvc-win64-release --parallel 22      # 2-3 min incremental
+.\scripts\dev\run_qa_api.ps1 -BuildDir C:\src\kicad\build\msvc-win64-release   # expect 108/110
+.\build\msvc-win64-release\qa\tests\pcbnew\qa_pcbnew.exe --run_test=RatsnestReport
+# qa/tests/cli needs numpy + pillow + cairosvg: a scratch venv (uv venv; uv pip install pytest numpy pillow cairosvg),
+# then $env:KICAD_CLI=<build>\kicad\kicad-cli.exe; $env:KICAD_BUILD_PATHS=1; python -m pytest test_pcb.py -k ratsnest
+cd C:\Upwork\KiCad
+.\scripts\dev\install_kicad_build.ps1 -BuildDir C:\src\kicad\build\msvc-win64-release -Prefix C:\kiwrap-builds\6dd893f7d1-<n> `
+    -Base 6dd893f7d1 -Patches ratsnest-export -Tag kiwrap-build/6dd893f7d1-<n> -Register
+git -C C:\src\kicad tag kiwrap-build/6dd893f7d1-<n> kiwrap/6dd893f7d1     # LIGHTWEIGHT
+uv run python scripts/dev/t5_bench_snapshot.py C:\kiwrap-builds\6dd893f7d1-<n>   # EQUAL expected
+# add the build to src/kiwrap/data/kiwrap_patches.json builds[] (commit = built sha, snapshot = <version>+<sha>.json)
+$env:KIWRAP_KICAD_ROOTS = "C:\kiwrap-builds\6dd893f7d1-2;C:\kiwrap-builds\6dd893f7d1-<n>"; uv run pytest -q --timeout 900
+```
 
 ## When a build is the honest tool (the named triggers)
 
@@ -47,12 +306,12 @@ itself 30–60 min for a Debug/RelWithDebInfo build, minutes incremental; **40�
 
 ## Where the source lives
 
-The fork exists already: <https://github.com/n3rd-bugs/kicad-source-mirror> (fork of
+The fork exists already: <https://github.com/n3rd-bugs/kicad-fork> (fork of
 `KiCad/kicad-source-mirror`, default branch `master`, created with `gh repo fork`). Clone it
 **outside this repo** and at a short path (vcpkg and MSVC both choke on long paths):
 
 ```powershell
-git clone https://github.com/n3rd-bugs/kicad-source-mirror.git C:\src\kicad
+git clone https://github.com/n3rd-bugs/kicad-fork.git C:\src\kicad
 cd C:\src\kicad
 git remote add upstream https://gitlab.com/kicad/code/kicad.git   # MRs go to GitLab, not GitHub
 git fetch upstream --tags
@@ -204,7 +463,7 @@ sudo apt-get install -y ninja-build ccache lld
 # swig4.0|swig4.1, python3-wxgtk4.0, libocct-*-dev >= 7.6.3, libngspice-kicad-dev, libnng-dev,
 # libprotobuf-dev + protobuf-compiler, libgit2-dev, libsecret-1-dev, libboost-all-dev, libcairo2-dev, libglew-dev.
 
-git clone https://github.com/n3rd-bugs/kicad-source-mirror.git ~/src/kicad && cd ~/src/kicad
+git clone https://github.com/n3rd-bugs/kicad-fork.git ~/src/kicad && cd ~/src/kicad
 git remote add upstream https://gitlab.com/kicad/code/kicad.git && git fetch upstream --tags && git checkout 10.0
 cp CMakePresets.json.sample CMakePresets.json
 cmake --preset linux-debug -DCMAKE_CXX_FLAGS=-fuse-ld=lld -DKICAD_BUILD_QA_TESTS=ON   # build/linux-debug, Ninja

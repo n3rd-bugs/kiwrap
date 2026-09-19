@@ -4,19 +4,25 @@ kw_pcb_drc summary from the project history. The tool never gates a stage (kw_pc
 is the cheap, structured "look" after every placement or routing edit (docs/DECISIONS.md D17).
 
 Providers (kiwrap.core.planner): `overlaps` and off-board are `file` only (courtyard polygons /
-bounding boxes from the lossless CST); `connectivity` is ipc11 -> file. ipc11 answers from
-KiCad's connectivity clusters (`kiwrap.backends.ipc.queries.ratsnest`: the unrouted count is
-KiCad's, the pad pairs are nearest-anchor guesses -> `airwire_endpoints_estimated`); the file
-provider is kiwrap's estimate (`ratsnest_estimated`; measured 2026-09-19 against `kicad-cli pcb
-drc` unconnected_items on demo boards with 30 % of their tracks deleted: 15/17 boards agree per
-net on the nightly and 14/17 on 10.0.6, the rest being boards whose DRC count hits KiCad's
-499-item cap - the DRC oracle only validates counts below `cli.drc_extended_error_limit`; see
-tests/test_ratsnest_drc_live.py). KiCad has no ratsnest export today (D17 tier 3); when it lands
-upstream the `connectivity` operation gains a KiCad-computed provider and this tool's `degraded`
-list empties by itself.
+bounding boxes from the lossless CST); `connectivity` is ipc11 -> cli -> file. ipc11 answers
+with KiCad's own airwires when the server handles `GetRatsnest` (kiwrap patch ratsnest-export,
+docs/UPSTREAM.md G1; nothing degraded, `provider_used` = `ipc11:<v>+ratsnest-export`), else
+from KiCad's connectivity clusters (`kiwrap.backends.ipc.queries.ratsnest`: the unrouted count
+is KiCad's, the pad pairs are nearest-anchor guesses -> `airwire_endpoints_estimated`); `cli` is
+`kicad-cli pcb export ratsnest` (same patch, `cli.has_ratsnest_export`; exact end
+items with uuid, anchor position and copper layer, pair-for-pair equal to DRC's
+unconnected_items; `degraded` empty, `provider_used` = `cli:<v>+ratsnest-export`), attempted
+before the ipc11 cluster walk whenever the export is available; the file provider is kiwrap's
+estimate (`ratsnest_estimated`; measured 2026-09-19 against `kicad-cli pcb drc` unconnected_items
+on demo boards with 30 % of their tracks deleted: 15/17 boards agree per net on the nightly and
+14/17 on 10.0.6, the rest being boards whose DRC count hits KiCad's 499-item cap - the DRC
+oracle only validates counts below `cli.drc_extended_error_limit`; see
+tests/test_ratsnest_drc_live.py). Stock KiCad has no ratsnest export (D17 tier 3); once the
+patch lands upstream the stock nightly gets the exact providers by presence probe.
 
 Items (`data.items`, chunked): `{check, severity, refs[], net, pos{x_mm,y_mm}, bbox_mm,
-description, fix}` with check in courtyard_overlap | off_board | unrouted. off_board is graded by
+description, fix}` with check in courtyard_overlap | off_board | unrouted; an unrouted item's
+`a` / `b` end points carry `uuid` and `layer` when KiCad computed them. off_board is graded by
 WHAT is outside: pad copper outside the outline is `must_fix` (KiCad DRC `copper_edge_clearance`
 fails), a courtyard-only overhang is `review` (KiCad has no such rule; the ecc83 demo's P4 and
 the jetson baseboard's ten edge connectors overhang by design and pass DRC) and carries
@@ -139,7 +145,9 @@ def merge_off_board(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             by_ref[ref] = dict(it)
             order.append(ref)
             continue
-        keep, other = (it, cur) if it["severity"] == "must_fix" and cur["severity"] != "must_fix" else (cur, it)
+        keep, other = (
+            (it, cur) if it["severity"] == "must_fix" and cur["severity"] != "must_fix" else (cur, it)
+        )
         merged = dict(keep)
         merged["pads"] = sorted(set(keep.get("pads", [])) | set(other.get("pads", [])), key=ref_key)
         merged["courtyard_bbox_mm"] = keep.get("courtyard_bbox_mm") or other.get("courtyard_bbox_mm")
@@ -154,6 +162,14 @@ def merge_off_board(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [by_ref[r] for r in order]
 
 
+def _end_label(e: dict[str, Any]) -> str:
+    """`R1.2` for a pad, `via`/`track`/`zone` (+ the layer when known) for other items."""
+    if e.get("pad"):
+        return f"{e.get('ref') or '?'}.{e['pad']}"
+    label = str(e.get("ref") or "item")
+    return f"{label} on {e['layer']}" if e.get("layer") else label
+
+
 def norm_unrouted_item(u: dict[str, Any]) -> dict[str, Any]:
     a, b = u["a"], u["b"]
     refs = sorted({r for r in (a["ref"], b["ref"]) if r}, key=ref_key)
@@ -165,13 +181,13 @@ def norm_unrouted_item(u: dict[str, Any]) -> dict[str, Any]:
         "severity": "info",
         "refs": refs,
         "net": u["net"],
-        "layer": None,
+        "layer": a.get("layer") if a.get("layer") == b.get("layer") else None,
         "pos": pos,
         "bbox_mm": None,
         "a": a,
         "b": b,
         "length_mm": u["length_mm"],
-        "description": f"net {u['net']}: {a['ref']}.{a['pad']} -> {b['ref']}.{b['pad']} ({u['length_mm']} mm)",
+        "description": f"net {u['net']}: {_end_label(a)} -> {_end_label(b)} ({u['length_mm']} mm)",
         "fix": "route it (routing tools are planned; route in KiCad for now) or accept it until routing",
     }
 
@@ -212,11 +228,15 @@ class PcbCheckArgs(BaseModel):
         default=None, description="only unrouted connections on these nets (overlaps / off_board have no net)"
     )
     bbox_mm: list[float] | None = Field(
-        default=None, description="[x1, y1, x2, y2] in mm: items whose box / position / airwire extent intersects it"
+        default=None,
+        description="[x1, y1, x2, y2] in mm: items whose box / position / airwire extent intersects it",
     )
     cursor: str | None = Field(default=None, description="continue a chunked listing")
     limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="items per page")
-    provider: ProviderArg = Field(default="auto", description="connectivity provider: auto | ipc11 | file")
+    provider: ProviderArg = Field(
+        default="auto",
+        description="connectivity provider: auto | ipc11 | cli (kicad-cli pcb export ratsnest, patched KiCad) | file",
+    )
 
 
 class PcbCheckData(BaseModel):
@@ -365,7 +385,8 @@ SPEC = ToolSpec(
     description=(
         "Placement/routing feedback as actionable items (refs + mm): courtyard overlaps, footprints off the "
         "board outline (copper outside = must_fix, courtyard-only overhang = review), unrouted connections "
-        "(ratsnest; estimated when KiCad exposes none) and the last kw_pcb_drc summary. ok = no copper off-board "
+        "(ratsnest: KiCad's own airwires with end items and layers on a KiCad that exports them, else "
+        "estimated and tagged in degraded) and the last kw_pcb_drc summary. ok = no copper off-board "
         "and no overlaps, computed before filters. Cheap; call after every placement change, before kw_pcb_drc."
     ),
     input_model=PcbCheckArgs,

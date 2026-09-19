@@ -785,3 +785,38 @@ def test_oldest_kicad_with_skips_nightlies():
 def test_ipc_error_shape():
     err = sessions.SessionStartError("boom", why="w", fix="f", details="d")
     assert err.to_json() == {"code": "E_IPC_START", "message": "boom", "why": "w", "fix": "f", "details": "d"}
+
+
+def test_presence_probes_run_once_per_key(monkeypatch):
+    """docs/UPSTREAM.md §3.3: the first session with a board runs every manifest presence probe
+    whose key the record has not probed yet; a probed key (`kiwrap.ipc_probed`) is skipped and a
+    probe that fails for another reason is swallowed and left for the next session."""
+    from kiwrap.backends.ipc import presence
+
+    assert presence.PROBES["ipc.has_get_ratsnest"] is queries.probe_get_ratsnest
+    calls: list[str] = []
+
+    def probe_ok(session):
+        calls.append("ok")
+        session.capabilities.refine("ipc.fake_ok", True)
+        return True
+
+    def probe_boom(session):
+        calls.append("boom")
+        raise RuntimeError("session broken")
+
+    monkeypatch.setattr(
+        presence, "PROBES", {"ipc.fake_ok": probe_ok, "ipc.done": probe_ok, "ipc.fake_boom": probe_boom}
+    )
+    caps = Capabilities(_install(), {"ipc.headless": True, "kiwrap.ipc_probed": ["ipc.done"]}, probed=True)
+
+    class Session:
+        capabilities = caps
+
+    assert presence.run_pending(Session()) == ["ipc.fake_ok"]
+    assert calls == ["ok", "boom"]
+    assert caps["ipc.fake_ok"] is True and caps["kiwrap.ipc_probed"] == ["ipc.done", "ipc.fake_ok"]
+    # the next session probes only what is still pending
+    calls.clear()
+    assert presence.run_pending(Session()) == []
+    assert calls == ["boom"]

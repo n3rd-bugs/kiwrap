@@ -39,6 +39,7 @@ Seed for `kiwrap.capability.capabilities_for()`. Layout:
 |---|---|
 | `cli.subcommands`, `cli.flags.<subcommand>`, `cli.has_*`, `cli.drc_refill_flags`, `cli.help_exit_code` | Live `kicad-cli … --help` tree probes of 7.0.6 / 8.0.1 / 9.0.5 / 10.0.0 on 2026-09-19 (`kiwrap.capability.probe_help_tree` + `flatten_help_tree`), cross-checked against `spikes/versioning-strategy/cli_flag_drift.txt` (100 of 100 availability/drift rows agree; the spike's only disagreement, `pcb export` "missing" on 10.0, is a spike artifact — the command exists). The conformance test `conformance/tests/t4_cli_help_snapshot.py` re-snapshots these live. |
 | `cli.erc_json_pos_scale` | docs/VERIFICATION.md claim 1 (×100 on 8.0.1–10.0.0, still on 10.0.6 and master). |
+| `cli.has_ratsnest_export`, `ipc.has_get_ratsnest` | The kiwrap fork patch `ratsnest-export` (docs/UPSTREAM.md G1, `kiwrap_patches.json`): false for every release and the stock nightly (verified 2026-09-19 on 10.99.0-4083: no `pcb export ratsnest`, `GetRatsnest` unhandled). The `--help` tree probe flips the first on a build that carries the patch; the second is derived from it for a headless build and confirmed by the IPC presence probe (`backends.ipc.presence`, run by the first headless session that has a board open; recorded in `kiwrap.ipc_probed`). |
 | `cli.gerbers_creates_outdir`, `cli.writes_prl_on_read`, `cli.help_exit_code` | docs/ARCHITECTURE.md §2, `spikes/versioning-strategy/kicad_version_matrix.json`; help exit code re-verified live. |
 | `cli.sch_stamp_gate_needs_generator_version` | docs/VERIFICATION.md claim 9. |
 | `swig.*` | docs/VERIFICATION.md claims 6 and 7, docs/ARCHITECTURE.md §2 and §14; removal in 11 from dev-docs (docs/research/02-swig-pcbnew.md). |
@@ -58,3 +59,21 @@ release: run `python -m kiwrap.installation --refresh` (which probes every insta
 trees under `<storage>/capabilities/`), copy the `cli.*` keys of the new version's cached record
 into a new `versions.<semver>` entry with `inherits` pointing at the nearest older release, and
 mark the provenance of anything that was not observed live as `docs`.
+
+## `kiwrap_patches.json`
+
+The fork's patch manifest (docs/UPSTREAM.md §3.2–3.3), read by `kiwrap.capability.load_patch_manifest()`:
+
+- `base`: the upstream sha the pinned nightly and the `kiwrap/<sha>` integration branch are on.
+- `patches[]`: `id`, `gap` (G-card), `branch`, `issue`, `mr`, `status`, `keys` (capability keys
+  that must ALL probe true for `kiwrap.patches` to list the id) and `commands` (IPC commands whose
+  T5 outcome may differ from the stock snapshot; `scripts/dev/t5_bench_snapshot.py` tolerates them).
+- `builds[]`: the `kiwrap-build/<base sha>-<n>` tags (lightweight: annotated tags break
+  `git describe` and every CMake reconfigure) that were built, T5-snapshotted and installed, each
+  with `commit` = the BUILT commit (the integration branch's sha; the base's for a pristine build),
+  `base`, `branch`, `preset`, `patches` and `snapshot` = `<version>+<commit>[.debug].json`;
+  `kiwrap.patched_build` is true for an install whose `commit` (from `<root>/kiwrap-install.json`)
+  matches one.
+
+Its digest is part of the capability cache key next to the matrix's, so editing it re-probes every
+install on next use.

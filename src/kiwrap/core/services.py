@@ -22,8 +22,8 @@ contract modules named below (the integrator reconciles names if the real module
     file_read_schematic(path) -> kiwrap.formats.schematic.Hierarchy.load (the sheet tree)
     courtyard_overlaps / off_board / ratsnest_estimate (board) and pin_connectivity /
     netlist_from_file (schematic) -> kiwrap.formats.analysis
-    export_stats / export_stackup (install, config, board) and sch_diff (install, config, a, b)
-    -> kiwrap.backends.cli.structured (parsed JSON dicts)
+    export_stats / export_stackup / export_ratsnest (install, config, board) and sch_diff
+    (install, config, a, b) -> kiwrap.backends.cli.structured (parsed JSON dicts)
 """
 
 from __future__ import annotations
@@ -123,6 +123,8 @@ DATA_BACKENDS: dict[str, tuple[str, str, str]] = {
     "netlist_from_file": ("kiwrap.formats.analysis", "netlist_from_file", "the file netlist"),
     "export_stats": ("kiwrap.backends.cli.structured", "export_stats", "kicad-cli pcb export stats"),
     "export_stackup": ("kiwrap.backends.cli.structured", "export_stackup", "kicad-cli pcb export stackup"),
+    # kiwrap fork patch ratsnest-export (docs/UPSTREAM.md G1): KiCad's airwires as JSON
+    "export_ratsnest": ("kiwrap.backends.cli.structured", "export_ratsnest", "kicad-cli pcb export ratsnest"),
     "sch_diff": ("kiwrap.backends.cli.structured", "sch_diff", "kicad-cli sch diff"),
 }
 
@@ -160,6 +162,7 @@ class Services:
     netlist_from_file: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     export_stats: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     export_stackup: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    export_ratsnest: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     sch_diff: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     # caches (per server process)
     _installs: list[Install] | None = field(default=None, repr=False)

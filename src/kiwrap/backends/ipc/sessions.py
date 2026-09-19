@@ -205,7 +205,7 @@ def _windows_job() -> Any:
         if _job_handle is not None:
             return _job_handle or None
         try:
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+            kernel32 = getattr(ctypes, "windll").kernel32  # noqa: B009 - Windows only (mypy on Linux)
             handle = kernel32.CreateJobObjectW(None, None)
             if not handle:
                 _job_handle = 0
@@ -256,8 +256,9 @@ def _assign_to_job(proc: subprocess.Popen[str]) -> bool:
     if job is None:
         return False
     try:
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-        return bool(kernel32.AssignProcessToJobObject(job, int(proc._handle)))  # type: ignore[attr-defined]
+        kernel32 = getattr(ctypes, "windll").kernel32  # noqa: B009 - Windows only (mypy on Linux)
+        proc_handle = getattr(proc, "_handle", 0)  # Popen's Windows process handle
+        return bool(kernel32.AssignProcessToJobObject(job, int(proc_handle)))
     except Exception as exc:  # noqa: BLE001
         log.debug("AssignProcessToJobObject failed: %s", exc)
         return False
@@ -269,7 +270,7 @@ def _linux_preexec() -> None:  # pragma: no cover - runs in the child
     with contextlib.suppress(Exception):
         libc = ctypes.CDLL(None, use_errno=True)
         libc.prctl(_PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
-    os.setsid()
+    getattr(os, "setsid", lambda: None)()  # POSIX only
 
 
 def _records_dir(temp_dir: Path | None = None) -> Path:
@@ -279,7 +280,7 @@ def _records_dir(temp_dir: Path | None = None) -> Path:
 
 def _pid_alive(pid: int) -> bool:
     if sys.platform.startswith("win"):
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        kernel32 = getattr(ctypes, "windll").kernel32  # noqa: B009 - Windows only (mypy on Linux)
         handle = kernel32.OpenProcess(0x1000, False, int(pid))  # PROCESS_QUERY_LIMITED_INFORMATION
         if not handle:
             return False
@@ -474,7 +475,9 @@ class _ApiServerProcess:
         )
         if sys.platform.startswith("win"):
             self.in_job = _assign_to_job(self.process)
-        self.record = _write_record(self.socket_path.parent.parent, self.process.pid, self.argv, self.socket_path, self.file)
+        self.record = _write_record(
+            self.socket_path.parent.parent, self.process.pid, self.argv, self.socket_path, self.file
+        )
         for stream, sink in ((self.process.stdout, self._stdout_q), (self.process.stderr, self._stderr_q)):
             threading.Thread(target=_drain, args=(stream, sink), daemon=True).start()
 
@@ -616,6 +619,7 @@ class HeadlessSession:
         self._server: _ApiServerProcess | None = None
         self._kicad: Any = None  # kipy.KiCad
         self.started_at: float | None = None
+        self._presence_probed = False  # docs/UPSTREAM.md §3.3 probes ran (once per session)
 
     # -- lifecycle ------------------------------------------------------------------------------
 
@@ -790,8 +794,20 @@ class HeadlessSession:
         return self.kicad()._client
 
     def board(self) -> Any:
-        """`kipy.board.Board` for the open board (raises kipy `ApiError` when none is open)."""
-        return self.kicad().get_board()
+        """`kipy.board.Board` for the open board (raises kipy `ApiError` when none is open).
+
+        The first call of a session also runs the pending IPC presence probes of the patch
+        manifest (`kiwrap.backends.ipc.presence`, docs/UPSTREAM.md §3.3): a derived `ipc.*` key
+        such as `ipc.has_get_ratsnest` is confirmed or flipped by one live request and cached, so
+        a build carrying only the CLI half of a patch stops advertising the IPC half after its
+        first headless use."""
+        board = self.kicad().get_board()
+        if not self._presence_probed:
+            self._presence_probed = True
+            from kiwrap.backends.ipc import presence
+
+            presence.run_pending(self)
+        return board
 
     def schematic(self) -> Any:
         """`kipy.schematic.Schematic` for the open schematic."""
@@ -1050,7 +1066,9 @@ def release_project(directory: str | Path, *, timeout_s: float = 60.0) -> dict[s
     directory = Path(directory).resolve()
     closed = SESSION_POOL.close_project(directory, timeout_s=timeout_s)
     busy = [
-        str(s.file) for s in live_sessions() if s.file is not None and s.running and _is_under(s.file, directory)
+        str(s.file)
+        for s in live_sessions()
+        if s.file is not None and s.running and _is_under(s.file, directory)
     ]
     return {"closed": [str(p) for p in closed], "busy": busy}
 

@@ -154,7 +154,7 @@ export ratsnest --format json` or an IPC `GetRatsnest`), `RunDRC`/`RunERC` over 
 on master), per-net length/trace statistics, and a full structured dump (`pcb/sch export json`).
 **Consequence:** the ARCHITECTURE "non-negotiable" that no shipped component may require a
 patched KiCad is relaxed to: stock KiCad always works; a patched or nightly build unlocks more,
-and every patch is carried in the fork (`n3rd-bugs/kicad-source-mirror`) until merged upstream.
+and every patch is carried in the fork (`n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-fork` carries none of our refs)) until merged upstream.
 The T5 handler snapshot of the nightly is the authoritative gap list for tier 3.
 
 ## D18 — Windows only, VS Code only (supersedes D12; narrows D13)
@@ -168,3 +168,14 @@ remain as a Python-portability canary only); WSL/Xpra/Broadway display routes ar
 the display-forwarding recommendation is Windows-native; generated MCP configs for other clients
 are dropped from the deliverables; the VS Code extension is the one front end (its own webview
 hosts the forwarded KiCad display and the previews).
+
+## D19 — Everything stays private until an end-to-end solution exists
+
+**Choice (owner, 2026-09-20):** no upstream MRs or issues, no public repos, no external posts
+until the end-to-end flow works. Upstream contributions are prepared as drafts under
+`docs/upstream/drafts/`; the KiCad tree with our patches lives in the **private**
+`n3rd-bugs/kicad-fork` (GitHub forks of public repos cannot be made private, so the public fork
+`n3rd-bugs/kicad-source-mirror` was stripped of every kiwrap ref and is now only a stale mirror).
+**Consequence:** `origin` of `C:\src\kicad` is the private repo; `public` is the read-only mirror
+remote; nothing is pushed to gitlab.com. The KiCad-side commits keep the `Assisted-by:` trailer
+KiCad's contribution policy requires, ready for the day they are submitted.

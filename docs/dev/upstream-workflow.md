@@ -5,7 +5,7 @@ actually enforces (from their dev-docs and from the 2026 MR discussions), and th
 contributions kiwrap should make first. Evidence for every claim is in
 [research/10-kicad-upstream-mrs.md](../research/10-kicad-upstream-mrs.md); the source build the
 recipe needs is in [kicad-source-build.md](kicad-source-build.md) (D17 makes it "planned,
-Phase 1"). Patches live in the fork `n3rd-bugs/kicad-source-mirror` (and, for the Python side, a
+Phase 1"). Patches live in the fork `n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-fork` carries none of our refs) (and, for the Python side, a
 fork of `kicad-python`) until they are merged; kiwrap always keeps working on stock KiCad and
 branches on capability keys, never on "our patch is present".
 

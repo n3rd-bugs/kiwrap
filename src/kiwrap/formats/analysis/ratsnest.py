@@ -298,15 +298,15 @@ def ratsnest_estimate(
             ]
             for m in touching[1:]:
                 uf.union(touching[0], m)
-        groups: dict[int, list[int]] = {}
+        clusters: dict[int, list[int]] = {}
         for i in range(n):
-            groups.setdefault(uf.find(i), []).append(i)
-        if len(groups) <= 1:
+            clusters.setdefault(uf.find(i), []).append(i)
+        if len(clusters) <= 1:
             unrouted[name] = 0
             continue
         # candidate points per group: pads first, else any node
         reps: list[list[int]] = []
-        for members in groups.values():
+        for members in clusters.values():
             pads = [i for i in members if nodes[i].pad is not None]
             reps.append(pads or members)
         edges: list[tuple[float, int, int, int, int]] = []
@@ -739,7 +739,9 @@ def _touch(a: _Node, b: _Node, tol: float, pad_hit: bool) -> bool:
                 if other.radius > 0 and _within(poly.boundary_distance(other.pos), other.radius, tol):
                     return True
                 if other.seg is not None and (
-                    _within(point_segment_distance(pad_node.pos, other.seg[0], other.seg[1]), other.radius, tol)
+                    _within(
+                        point_segment_distance(pad_node.pos, other.seg[0], other.seg[1]), other.radius, tol
+                    )
                     or any(
                         _within(point_segment_distance(v, other.seg[0], other.seg[1]), other.radius, tol)
                         for v in poly.points

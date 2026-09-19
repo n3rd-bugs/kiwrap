@@ -92,7 +92,9 @@ def test_netlist_ranks_cli_above_file_and_tags_the_file_estimate():
     op = planner.operation("netlist")
     assert op.names() == ["ipc11", "cli", "file"]
     assert op.providers[2].degraded == ("netlist_estimated",)
-    assert planner.operation("connectivity").providers[1].degraded == ("ratsnest_estimated",)
+    connectivity = planner.operation("connectivity")
+    assert connectivity.names() == ["ipc11", "cli", "file"]  # cli = the ratsnest export (kiwrap patch G1)
+    assert connectivity.providers[2].degraded == ("ratsnest_estimated",)
 
 
 # ---- run() ----------------------------------------------------------------------------------------------

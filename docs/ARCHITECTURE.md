@@ -537,7 +537,7 @@ card per gap with workaround, upstream status, proposed proto/CLI change, effort
 
 **The non-negotiable, relaxed.** "No shipped component may require a patched KiCad" becomes:
 stock KiCad always works and is the only thing certified as *supported*; a patched or nightly
-build unlocks more; every patch lives in `n3rd-bugs/kicad-source-mirror` (branches `mr/<issue>-<slug>`,
+build unlocks more; every patch lives in `n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-fork` carries none of our refs) (branches `mr/<issue>-<slug>`,
 integration branch `kiwrap/<kicad-sha>`, tags `kiwrap-build/<sha>-<n>`) until merged upstream, and
 is detected by presence probes that flip ordinary capability keys (`cli.has_ratsnest_export`,
 `ipc.has_get_ratsnest`, …) plus an informational `kiwrap.patches` list; tools never branch on the

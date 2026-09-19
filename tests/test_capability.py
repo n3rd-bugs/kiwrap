@@ -148,15 +148,39 @@ class TestSeedFor:
 
     def test_nightly_seeds_from_the_next_major(self):
         """Finding: 10.99.x (a nightly of 11) seeded from 10.0.7 and inherited SWIG=yes / no
-        headless api-server / the 10.0 format epochs."""
+        headless api-server / the 10.0 format epochs. A nightly version the matrix has NO entry
+        for seeds from the next major's entry."""
         m = load_matrix()
-        seed, values, exact, note = seed_for("10.99.0")
+        assert "10.99.1" not in m.versions
+        seed, values, exact, note = seed_for("10.99.1")
         assert seed == "11.0.0" and not exact and "nightly of major 11" in note
         assert values["seed.version"] == "11.0.0" and values["seed.note"] == note
-        assert values == {**m.versions["11.0.0"], "seed.version": "11.0.0", "seed.exact": False, "seed.note": note}
+        assert values == {
+            **m.versions["11.0.0"],
+            "seed.version": "11.0.0",
+            "seed.exact": False,
+            "seed.note": note,
+        }
         # a nightly of a major the matrix does not know yet still lands on the closest entry
         seed, _values, _exact, note = seed_for("11.99.0")
         assert seed == "11.0.0" and "nightly of major 12" in note
+
+    def test_nightly_with_its_own_entry_seeds_from_it(self):
+        """Finding (G13 component, 2026-09-19): the matrix's verified `10.99.0` entry was never
+        read - every 10.99.x went straight to 11.0.0, so a nightly-only value such as
+        `ipc.schematic_update_shared_lib_symbol_hangs` (true, verified) reached no live record."""
+        m = load_matrix()
+        assert "10.99.0" in m.versions
+        seed, values, exact, note = seed_for("10.99.0")
+        assert seed == "10.99.0" and exact and "matrix's own 10.99.0 entry" in note
+        assert values == {
+            **m.versions["10.99.0"],
+            "seed.version": "10.99.0",
+            "seed.exact": True,
+            "seed.note": note,
+        }
+        assert values["ipc.schematic_update_shared_lib_symbol_hangs"] is True
+        assert m.versions["11.0.0"]["ipc.schematic_update_shared_lib_symbol_hangs"] is False
 
     def test_unknown_major_falls_back(self):
         m = load_matrix()
@@ -299,6 +323,101 @@ def test_capabilities_for_seeds_probes_and_caches(tmp_path):
     assert len(system.calls) > calls
 
 
+def test_kiwrap_patch_keys_come_from_probes_and_the_manifest(tmp_path, monkeypatch):
+    """docs/UPSTREAM.md §3.3: `kiwrap.patches` lists a manifest patch only when EVERY key it names
+    probed true; `kiwrap.patched_build` is decided by the install's commit against `builds`; a
+    manifest change invalidates the capability cache (the digest covers both data files)."""
+    manifest = {
+        "schema": 1,
+        "base": "abc",
+        "patches": [
+            {"id": "erc-probe", "keys": ["cli.has_erc"]},  # probed true by the fake --help tree
+            {"id": "drc-probe", "keys": ["cli.has_erc", "cli.has_drc"]},  # cli.has_drc is false
+            {"id": "keyless"},
+        ],
+        "builds": [{"tag": "kiwrap-build/abc-1", "commit": "abc", "patches": []}],
+    }
+    monkeypatch.setattr(capability, "load_patch_manifest", lambda: manifest)
+    version = load_matrix().known()[-1]
+    stock = make_install(tmp_path, version)
+    home = tmp_path / "home"
+    caps = capabilities_for(stock, storage_home=home, system=FakeSystem())
+    assert caps["kiwrap.patches"] == ["erc-probe"]
+    assert caps["kiwrap.patched_build"] is False and caps["kiwrap.build_commit"] == ""
+
+    bench = KiCadInstallation(
+        stock.root,
+        stock.kicad_cli,
+        stock.share,
+        version,
+        "explicit",
+        extra={"commit": "abc", "build_tree": "x"},
+    )
+    caps = capabilities_for(bench, storage_home=home / "bench", system=FakeSystem())
+    assert caps["kiwrap.patched_build"] is True and caps["kiwrap.build_commit"] == "abc"
+    other = KiCadInstallation(
+        stock.root, stock.kicad_cli, stock.share, version, "explicit", extra={"commit": "zzz"}
+    )
+    caps = capabilities_for(other, storage_home=home / "other", system=FakeSystem())
+    assert caps["kiwrap.patched_build"] is False and caps["kiwrap.build_commit"] == "zzz"
+    assert caps["kiwrap.build_base"] == "" and caps["kiwrap.ipc_probed"] == []
+
+    # a live presence probe records its key (once) and rewrites the cache; the same answer again
+    # is a no-op, a different answer flips the key and the patch list
+    manifest["patches"].append({"id": "ipc-probe", "keys": ["cli.has_erc", "ipc.probe_key"]})
+    caps = capabilities_for(other, storage_home=home / "other", system=FakeSystem(), refresh=True)
+    assert "ipc-probe" not in caps["kiwrap.patches"]
+    caps.refine("ipc.probe_key", True)
+    assert caps["kiwrap.ipc_probed"] == ["ipc.probe_key"] and "ipc-probe" in caps["kiwrap.patches"]
+    cached = json.loads(cache_file(other, home / "other").read_text(encoding="utf-8"))["values"]
+    assert cached["ipc.probe_key"] is True and cached["kiwrap.ipc_probed"] == ["ipc.probe_key"]
+    caps.refine("ipc.probe_key", False)
+    assert caps["kiwrap.ipc_probed"] == ["ipc.probe_key"] and "ipc-probe" not in caps["kiwrap.patches"]
+    reloaded = capabilities_for(other, storage_home=home / "other", system=FakeSystem())
+    assert reloaded["ipc.probe_key"] is False and reloaded["kiwrap.ipc_probed"] == ["ipc.probe_key"]
+
+    # the cache digest covers the manifest file: a changed manifest rewrites the record (the
+    # `--help` tree cache is keyed on the binary only, so no kicad-cli run is needed for that)
+    system = FakeSystem()
+    capabilities_for(stock, storage_home=home, system=system)
+    assert system.calls == []
+    before = json.loads(cache_file(stock, home).read_text(encoding="utf-8"))["matrix_digest"]
+    monkeypatch.setattr(capability, "patches_path", lambda: tmp_path / "other-manifest.json")
+    (tmp_path / "other-manifest.json").write_text("{}")
+    capabilities_for(stock, storage_home=home, system=system)
+    after = json.loads(cache_file(stock, home).read_text(encoding="utf-8"))["matrix_digest"]
+    assert before != after
+
+
+def test_shipped_patch_manifest_is_consistent():
+    """Every patch names capability keys; every build has a BUILT commit and a base; the tag is
+    named after the base; a patched build's commit differs from its base (the integration branch
+    sha), a pristine one's equals it; every snapshot a build names is committed under the name
+    `KiCadInstallation.snapshot_name` gives."""
+    manifest = capability.load_patch_manifest()
+    assert manifest["schema"] == capability.PATCHES_SCHEMA and manifest["base"]
+    for patch in manifest["patches"]:
+        assert patch["id"] and patch["keys"] and patch["gap"] and patch["status"]
+    snapshots = Path(__file__).resolve().parents[1] / "conformance" / "snapshots" / "ipc-handlers"
+    for build in manifest["builds"]:
+        assert build["tag"].startswith("kiwrap-build/") and build["commit"] and build["base"]
+        assert build["tag"].split("/")[1].startswith(build["base"] + "-")
+        if build["patches"]:
+            assert build["commit"] != build["base"], build["tag"]
+        else:
+            assert build["commit"] == build["base"], build["tag"]
+        if build.get("snapshot"):
+            suffix = ".debug" if "debug" in build["preset"] else ""
+            assert build["snapshot"] == f"{manifest['base_version']}+{build['commit']}{suffix}.json"
+            assert (snapshots / build["snapshot"]).is_file(), build["snapshot"]
+
+
+@pytest.mark.kicad_patch("no-such-patch")
+def test_kicad_patch_marker_skips_on_stock_installs():
+    """Canary for the `kicad_patch` marker (tests/conftest.py): this must be skipped, never run."""
+    raise AssertionError("kicad_patch('no-such-patch') was not skipped")
+
+
 def test_capabilities_for_keeps_seed_when_probe_fails(tmp_path):
     version = load_matrix().known()[-1]
     inst = make_install(tmp_path, version)
@@ -368,9 +487,22 @@ def test_live_probe_agrees_with_matrix(installs, storage_home):
         if not caps["seed.exact"]:
             continue  # a point release newer than the matrix; only the seed rule applies
         seed = matrix.versions[inst.version]
+        # a kiwrap-patched bench build legitimately differs in what its patches add (the keys
+        # the manifest names and the new subcommands); a pristine bench build must match exactly
+        patched = {
+            k
+            for p in capability.load_patch_manifest()["patches"]
+            if p["id"] in (caps.get("kiwrap.patches") or [])
+            for k in p["keys"]
+        }
         for key in seed:
             if key.startswith("cli."):
-                assert caps[key] == seed[key], (inst.version, key)
+                if key in patched:
+                    continue
+                if key == "cli.subcommands" and patched:
+                    assert set(seed[key]) <= set(caps[key]), (inst.root.name, key)
+                    continue
+                assert caps[key] == seed[key], (inst.root.name, key)
         assert caps["swig.available"] == seed["swig.available"], inst.version
         assert caps["ipc.available"] == seed["ipc.available"], inst.version
         # shipped templates/demos never carry a stamp newer than what the release writes
@@ -381,5 +513,7 @@ def test_live_probe_agrees_with_matrix(installs, storage_home):
         ):
             stamps = shipped_stamps(inst, suffix)
             assert stamps and max(stamps) <= caps[key], (inst.version, key)
+        # same rule for .kicad_pro: a release's demos were saved by it (equal), the nightly's demos
+        # predate its writer (10.99.0 writes schema 4, common/project/project_file.cpp; demos say 3)
         metas = shipped_pro_meta(inst)
-        assert metas and max(metas) == caps["formats.pro"], inst.version
+        assert metas and max(metas) <= caps["formats.pro"], inst.version

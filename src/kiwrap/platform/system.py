@@ -107,6 +107,11 @@ class System:
             return RunResult(tuple(args), -1, "", f"{type(exc).__name__}: {exc}")
         return RunResult(tuple(args), proc.returncode, proc.stdout, proc.stderr)
 
+    def read_text(self, path: Path) -> str:
+        """Text of a small settings file (`installs.json`, `kiwrap-install.json`); raises OSError.
+        `utf-8-sig`: PowerShell's `Out-File -Encoding utf8` writes a BOM, which `json.loads` rejects."""
+        return path.read_text(encoding="utf-8-sig")
+
     def write_text(self, path: Path, text: str, *, executable: bool = False) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8", newline="\n")

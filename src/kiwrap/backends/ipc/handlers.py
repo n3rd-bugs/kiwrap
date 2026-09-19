@@ -11,8 +11,9 @@ unhandled.
 
 `probe()` sends a minimal instance of each command to a server that has the ecc83 board or
 schematic open. "Minimal" = an empty message plus, when the message has one, its document field
-(`document` / `board` / `header.document` set to the open document) so the answer distinguishes
-"handled" from "no document" rejections. Replies are classified:
+(`document` / `board` / `header.document` / `job_settings.document` set to the open document) so
+the answer distinguishes "handled" from "no document" rejections (`_minimal_instance` explains
+why the nested job document matters). Replies are classified:
     handled      AS_OK
     bad_request  AS_BAD_REQUEST / AS_UNIMPLEMENTED / AS_BUSY (a handler ran and refused the input)
     unhandled    AS_UNHANDLED ("no handler available for request of type ...")
@@ -42,6 +43,7 @@ from typing import Any
 
 from kiwrap.backends.ipc import ensure_kipy_importable
 from kiwrap.backends.ipc.sessions import HeadlessSession, SessionStartError
+from kiwrap.platform import current
 
 __all__ = ["CommandInfo", "ProbeResult", "Snapshot", "command_messages", "compare", "probe"]
 
@@ -196,8 +198,30 @@ def command_messages() -> dict[str, CommandInfo]:
     return commands
 
 
+def _nested_document_field(desc: Any) -> str | None:
+    """The name of a `DocumentSpecifier` field one level down (`ItemHeader.document`,
+    `RunJobSettings.document`), or None."""
+    for f in desc.fields:
+        if f.message_type is not None and f.message_type.name == "DocumentSpecifier":
+            return str(f.name)
+    return None
+
+
 def _minimal_instance(info: CommandInfo, document: Any) -> Any:
-    """An empty message with its document field(s) pointed at the open document."""
+    """An empty message with its document field(s) pointed at the open document.
+
+    "Document field" means a top-level `DocumentSpecifier` (`document` / `board` / `schematic`)
+    or one nested one level down in a wrapper message: `ItemHeader.document` of the item commands
+    and `RunJobSettings.document` of the 22 `RunBoardJobExport*` / `RunSchematicJobExport*`
+    commands. The nested job document was not filled by the first snapshot (2026-09-19), so every
+    job command read `unhandled`: `API_HANDLER_EDITOR::validateDocument` answers AS_UNHANDLED to an
+    empty specifier (type DOCTYPE_UNKNOWN) and the server reports "no handler available" -
+    the handlers themselves are registered on the headless server (docs/UPSTREAM.md G6 was a
+    probe artifact; verified on 10.99.0-4083: RunBoardJobExportStats with the nested document
+    set answers AS_OK / JS_SUCCESS in 0.02 s). Nothing else is set: an empty output path makes
+    a job write its default file name into the server's working directory (the sandbox root's
+    temp dir), and unknown enum values are the handler's problem to validate.
+    """
     mod = importlib.import_module(info.module)
     msg = getattr(mod, info.name)()
     for f in msg.DESCRIPTOR.fields:
@@ -205,8 +229,8 @@ def _minimal_instance(info: CommandInfo, document: Any) -> Any:
             continue
         if f.message_type.name == "DocumentSpecifier":
             getattr(msg, f.name).CopyFrom(document)
-        elif f.message_type.name == "ItemHeader":
-            getattr(msg, f.name).document.CopyFrom(document)
+        elif (nested := _nested_document_field(f.message_type)) is not None:
+            getattr(getattr(msg, f.name), nested).CopyFrom(document)
     return msg
 
 
@@ -245,6 +269,29 @@ def _document_of(session: HeadlessSession, doc_kind: str) -> Any:
     return session.board().document if doc_kind == "pcb" else session.schematic().document
 
 
+def _job_outputs(config_root: Any) -> tuple[Path, set[str]]:
+    """The api-server's working directory (the sandbox root's temp dir, `HeadlessSession.start`)
+    and the names already in it. A job command probed with an empty output path writes its
+    default file name there (`ecc83-pp.svg`, `ecc83-pp-odb.zip`, ...); `probe()` removes what
+    it created so the drift canary leaves no exports behind."""
+    cwd = config_root.temp_dir(current())
+    try:
+        return cwd, {entry.name for entry in cwd.iterdir()}
+    except OSError:
+        return cwd, set()
+
+
+def _remove_new_files(cwd: Path, before: set[str]) -> None:
+    try:
+        entries = list(cwd.iterdir())
+    except OSError:
+        return
+    for entry in entries:
+        if entry.name not in before and entry.is_file():
+            with contextlib.suppress(OSError):
+                entry.unlink()
+
+
 def probe(
     install: Any,
     board_file: Path,
@@ -257,12 +304,14 @@ def probe(
 ) -> Snapshot:
     """Run the handler probe against scratch copies of a board and a schematic (never originals)."""
     from kiwrap.backends.ipc import client_version
+    from kiwrap.sandbox import ensure
 
+    config_root = config_root if config_root is not None else ensure(install)
     inventory = commands if commands is not None else command_messages()
     snap = Snapshot(version=install.version, client=client_version(), commands=inventory)
     snap.notes.append(
-        "minimal instance = empty message + document fields set to the open document; "
-        "stateful commands run in a fresh server each"
+        "minimal instance = empty message + document fields (top-level, ItemHeader.document, "
+        "RunJobSettings.document) set to the open document; stateful commands run in a fresh server each"
     )
     for doc_kind, file in (("pcb", board_file), ("schematic", schematic_file)):
         shared: HeadlessSession | None = None
@@ -271,6 +320,7 @@ def probe(
             s = HeadlessSession(install, path, config_root=config_root, request_timeout_ms=request_timeout_ms)
             return s.start()
 
+        cwd, before = _job_outputs(config_root)
         try:
             shared = open_shared()
             for name, info in sorted(inventory.items()):
@@ -307,6 +357,7 @@ def probe(
         finally:
             if shared is not None:
                 shared.close()
+            _remove_new_files(cwd, before)
     return snap
 
 

@@ -103,7 +103,9 @@
    "cli.drc_error_limit": "verified",
    "cli.drc_extended_error_limit": "verified",
    "cli.drc_extended_error_types": "verified",
-   "cli.netlist_pinfunction_suffix": "verified"
+   "cli.netlist_pinfunction_suffix": "verified",
+   "cli.has_ratsnest_export": "docs",
+   "ipc.has_get_ratsnest": "docs"
   },
   "10.0.6": {
    "cli.drc_refill_flags": "verified",
@@ -402,7 +404,9 @@
    "cli.drc_error_limit": "docs",
    "cli.drc_extended_error_limit": "docs",
    "cli.drc_extended_error_types": "docs",
-   "cli.netlist_pinfunction_suffix": "docs"
+   "cli.netlist_pinfunction_suffix": "docs",
+   "cli.has_ratsnest_export": "docs",
+   "ipc.has_get_ratsnest": "docs"
   },
   "7.0.6": {
    "cli.drc_refill_flags": "verified",
@@ -479,7 +483,9 @@
    "ipc.headless_libraries_need_load": "docs",
    "ipc.headless_jobs": "docs",
    "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
-   "cli.netlist_pinfunction_suffix": "docs"
+   "cli.netlist_pinfunction_suffix": "docs",
+   "cli.has_ratsnest_export": "docs",
+   "ipc.has_get_ratsnest": "docs"
   },
   "8.0.1": {
    "cli.drc_refill_flags": "verified",
@@ -565,7 +571,9 @@
    "cli.drc_error_limit": "docs",
    "cli.drc_extended_error_limit": "docs",
    "cli.drc_extended_error_types": "docs",
-   "cli.netlist_pinfunction_suffix": "docs"
+   "cli.netlist_pinfunction_suffix": "docs",
+   "cli.has_ratsnest_export": "docs",
+   "ipc.has_get_ratsnest": "docs"
   },
   "9.0.5": {
    "cli.drc_refill_flags": "verified",
@@ -661,7 +669,9 @@
    "cli.drc_error_limit": "docs",
    "cli.drc_extended_error_limit": "docs",
    "cli.drc_extended_error_types": "docs",
-   "cli.netlist_pinfunction_suffix": "docs"
+   "cli.netlist_pinfunction_suffix": "docs",
+   "cli.has_ratsnest_export": "docs",
+   "ipc.has_get_ratsnest": "docs"
   },
   "10.99.0": {
    "cli.subcommands": "verified",
@@ -705,7 +715,10 @@
    "cli.drc_error_limit": "verified",
    "cli.drc_extended_error_limit": "verified",
    "cli.drc_extended_error_types": "verified",
-   "cli.netlist_pinfunction_suffix": "verified"
+   "cli.netlist_pinfunction_suffix": "verified",
+   "cli.has_ratsnest_export": "verified",
+   "ipc.has_get_ratsnest": "verified",
+   "formats.pro": "verified"
   },
   "9.0.9": {
    "cli.flags.pcb export drill": "verified",
@@ -1042,7 +1055,9 @@
     "ipc.headless_libraries_need_load": false,
     "ipc.headless_jobs": false,
     "ipc.schematic_update_shared_lib_symbol_hangs": false,
-    "cli.netlist_pinfunction_suffix": false
+    "cli.netlist_pinfunction_suffix": false,
+    "cli.has_ratsnest_export": false,
+    "ipc.has_get_ratsnest": false
    }
   },
   "8.0.1": {
@@ -1493,7 +1508,9 @@
      "clearance",
      "unconnected_items"
     ],
-    "cli.netlist_pinfunction_suffix": false
+    "cli.netlist_pinfunction_suffix": false,
+    "cli.has_ratsnest_export": false,
+    "ipc.has_get_ratsnest": false
    }
   },
   "8.0.9": {
@@ -2230,7 +2247,9 @@
      "clearance",
      "unconnected_items"
     ],
-    "cli.netlist_pinfunction_suffix": false
+    "cli.netlist_pinfunction_suffix": false,
+    "cli.has_ratsnest_export": false,
+    "ipc.has_get_ratsnest": false
    }
   },
   "9.0.9": {
@@ -3160,7 +3179,9 @@
      "clearance",
      "unconnected_items"
     ],
-    "cli.netlist_pinfunction_suffix": true
+    "cli.netlist_pinfunction_suffix": true,
+    "cli.has_ratsnest_export": false,
+    "ipc.has_get_ratsnest": false
    }
   },
   "10.0.6": {
@@ -3251,7 +3272,7 @@
   },
   "10.99.0": {
    "inherits": "11.0.0",
-   "note": "probed live on windows 10.99.0 — nightly; re-run refresh_matrix.py after every nightly bump | ipc.* verified 2026-09-19 by tests/test_ipc_live.py + conformance/tests/t5_ipc_handlers.py (build 10.99.0-4083-g6dd893f7d1, kicad-python f79cebd)",
+   "note": "probed live on windows 10.99.0 — nightly; re-run refresh_matrix.py after every nightly bump | ipc.* verified 2026-09-19 by tests/test_ipc_live.py + conformance/tests/t5_ipc_handlers.py (build 10.99.0-4083-g6dd893f7d1, kicad-python f79cebd) ipc.headless_jobs=true re-verified 2026-09-19: RunBoardJobExportSvg and RunSchematicJobExportNetlist answer JS_SUCCESS on the headless api-server when job_settings.document names the open document; the earlier false came from the T5 minimal instance, which left the nested document empty (validateDocument -> AS_UNHANDLED -> 'no handler available'). Probe fixed the same day (handlers._minimal_instance fills RunJobSettings.document): the regenerated 10.99.0.json shows all 22 job rows handled / bad_request on their own document type; live proof tests/test_ipc_patch_g6.py + backends.ipc.jobs.probe_headless_jobs. | cli.has_ratsnest_export / ipc.has_get_ratsnest verified false on the stock nightly 2026-09-19 (no `pcb export ratsnest`; GetRatsnest answers 'no handler available'); both true only on kiwrap fork builds carrying patch ratsnest-export (docs/UPSTREAM.md G1), by presence probe. | formats.pro=4 verified 2026-09-19 from common/project/project_file.cpp (projectFileSchemaVersion) at 6dd893f7d1; the shipped demos still carry meta.version 3",
    "values": {
     "cli.subcommands": [
      "api-server",
@@ -3786,8 +3807,9 @@
     "ipc.schematic": true,
     "ipc.commit_needs_document": true,
     "ipc.headless_libraries_need_load": true,
-    "ipc.headless_jobs": false,
-    "ipc.schematic_update_shared_lib_symbol_hangs": true
+    "ipc.headless_jobs": true,
+    "ipc.schematic_update_shared_lib_symbol_hangs": true,
+    "formats.pro": 4
    }
   },
   "11.0.0": {
@@ -3873,8 +3895,10 @@
     "cli.has_sch_diff": true,
     "cli.has_pcb_png": true,
     "ipc.headless_libraries_need_load": true,
-    "ipc.headless_jobs": false,
-    "ipc.schematic_update_shared_lib_symbol_hangs": false
+    "ipc.headless_jobs": true,
+    "ipc.schematic_update_shared_lib_symbol_hangs": false,
+    "cli.has_ratsnest_export": false,
+    "ipc.has_get_ratsnest": false
    }
   }
  }

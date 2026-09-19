@@ -6,6 +6,7 @@ Modules
 - `queries`   connectivity, ratsnest approximation, bounding boxes, hit tests.
 - `writes`    the minimal mutating path (commit -> create_items -> push -> save_as).
 - `handlers`  the T5 command inventory / handler probe (conformance/tests/t5_ipc_handlers.py).
+- `jobs`      RunBoardJobExport* / RunSchematicJobExport* over the live session (`ipc.headless_jobs`).
 - `units`     exact nm <-> mm conversion (integer / Decimal, never float accumulation).
 
 Client: kicad-python 0.9.0.dev0 from git (f79cebd1c09f6ef1d16e74d538da521e68c2d9f1), MIT; pinned
@@ -17,22 +18,21 @@ Packaging: why `kipy` needs a sys.path entry (verified 2026-09-19, Windows, uv 0
 kicad-python's `build.py` runs protoc (`protoc-wheel-0==29`) and then `protol` (protoletariat
 3.3.10, `--in-place --dont-create-package`) to rewrite protoc's absolute imports
 (`from common.types import base_types_pb2 ...`) into package-relative ones. On Windows that second
-step is a silent no-op, for two independent reasons found by re-running the build by hand
-(scratchpad/ipc-backend/buildprobe):
+step is a silent no-op, for two independent reasons (re-verified 2026-09-19 by the G14 component
+in an isolated build env, scratchpad/g14-g13; the earlier "open NamedTemporaryFile" theory was
+refuted: protoc writes into the open temp file fine, 124594 bytes read back):
 
-1. `protoletariat.fdsetgen.Protoc.generate_file_descriptor_set_bytes` keeps its
-   `NamedTemporaryFile` OPEN while protoc writes `--descriptor_set_out` into it; on Windows the
-   open handle makes protoc's write fail (sharing violation), so the FileDescriptorSet read back is
-   empty and there is nothing to rewrite.
-2. `protoc-wheel-0`'s `protoc.exe` launcher `os.execv`s the real binary; on Windows execv spawns a
-   child and the launcher returns 0 immediately, so protoc's failure (and even its completion) is
-   invisible to protoletariat's `check=True`.
+1. `protoc-wheel-0`'s `protoc.exe` console script `os.execv`s the real binary; on Windows execv
+   spawns a child and the launcher returns 0 after ~90 ms with nothing written, so protoc's
+   completion is invisible to whoever waits on it (`build.py`'s own protoc call included).
+2. protoletariat's own `protoc` lookup hits the same launcher (0 bytes, silent), and its
+   `--protoc-path` goes through `shlex.split`, which strips Windows backslashes.
 
 The result is a wheel whose `kipy/proto/**/*_pb2.py` import bare top-level packages `common`,
 `board`, `schematic`, and `from kipy import KiCad` dies with `ModuleNotFoundError: common`.
-Linux/macOS builds do not have the problem, which is why upstream never saw it. (Upstream fix:
-close the temp file before running protoc in protoletariat, or have kicad-python pass the real
-`protoc.PROTOC_EXE` path to `protol` — both reported in this component's findings.)
+Linux/macOS builds do not have the problem, which is why upstream never saw it. (Upstream fix,
+`patches/kicad-python/0001-*.patch`: `generate_protos.py` runs `protoc.PROTOC_EXE` itself and
+feeds `--descriptor_set_out` to `protol raw`; verified wheel: 0/24 bare imports.)
 
 kiwrap's fix, in order of precedence:
 0. A REPAIRED wheel: `scripts/ci/build_kicad_python_wheel.py` builds kicad-python once from a

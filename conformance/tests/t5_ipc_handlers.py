@@ -8,6 +8,11 @@ timeout / error) are written to `conformance/snapshots/ipc-handlers/<version>.js
 run and compared on later runs: any outcome change fails the test (drift canary; the snapshot is
 also D17's authoritative gap list for tier 3).
 
+A kiwrap bench build (`KiCadInstallation.is_bench_build`, docs/UPSTREAM.md §3.3) shares its semver
+with the nightly it was built from, so its snapshot is `<version>+<built commit>[.debug].json`
+(`KiCadInstallation.snapshot_name`) and is written / compared on its own; the stock-vs-bench diff
+(only manifest-listed commands may differ) is `scripts/dev/t5_bench_snapshot.py`.
+
 KiCad 10.x is deliberately NOT covered: it has no headless server, and its handlers can only be
 probed from a sandboxed GUI session (Phase 3, `gui` marker). Installs without `ipc.headless` are
 skipped with that reason.
@@ -51,7 +56,7 @@ def test_t5_ipc_handler_snapshot(installs, storage_home, config_root, tmp_path):
     drift: list[str] = []
     try:
         for install in headless:
-            project = _demo_copy(install, tmp_path / install.version.replace(".", "_"))
+            project = _demo_copy(install, tmp_path / install.root.name)
             snap = handlers.probe(
                 install,
                 project / "ecc83-pp.kicad_pcb",
@@ -64,12 +69,12 @@ def test_t5_ipc_handler_snapshot(installs, storage_home, config_root, tmp_path):
                 assert snap.outcome(name, "pcb") in ("handled", "bad_request"), (name, snap.results.get(name))
             assert snap.outcome("GetSchematicNetlist", "schematic") == "handled"
             assert snap.outcome("GetSchematicHierarchy", "schematic") == "handled"
-            path = SNAPSHOT_DIR / f"{install.version}.json"
+            path = SNAPSHOT_DIR / f"{install.snapshot_name}.json"
             if path.is_file():
                 previous = json.loads(path.read_text(encoding="utf-8"))
                 lines = handlers.compare(previous, snap)
                 if lines:
-                    drift.append(f"KiCad {install.version}: " + "; ".join(lines))
+                    drift.append(f"KiCad {install.snapshot_name}: " + "; ".join(lines))
                     snap.write(path.with_suffix(".drift.json"))
             else:
                 snap.write(path)

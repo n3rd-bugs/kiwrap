@@ -4,6 +4,12 @@ First run for a version writes `conformance/snapshots/cli-help/<version>.json`; 
 re-probe live (never from the cache) and fail on any change in the command tree, its long flags,
 positionals or `--help` exit codes. Descriptions are stored for humans but not compared (they are
 translatable strings). Run with `uv run pytest conformance/tests/t4_cli_help_snapshot.py -q`.
+
+A kiwrap bench build (`KiCadInstallation.is_bench_build`, docs/UPSTREAM.md §3.3) shares its
+semver with the nightly it is based on but may carry patched subcommands (`pcb export ratsnest`),
+so its snapshot is `<version>+<built commit>[.debug].json` (`KiCadInstallation.snapshot_name`; the
+built commit, so a pristine and a patched build of one base never share a file) and is never
+compared with the stock one.
 """
 
 from __future__ import annotations
@@ -62,11 +68,15 @@ def test_t4_cli_help_snapshot(installs, storage_home):
     drift: dict[str, list[str]] = {}
     for install in installs:
         tree = help_tree(install, storage_home=storage_home, refresh=True)
-        path = SNAPSHOT_DIR / f"{install.version}.json"
+        name = install.snapshot_name
+        path = SNAPSHOT_DIR / f"{name}.json"
         payload = {"schema": SNAPSHOT_SCHEMA, "version": install.version, "tree": tree}
+        if install.is_bench_build:
+            payload["commit"] = install.extra["commit"]
+            payload["kiwrap_patches"] = install.kiwrap_patches
         if not path.exists():
             path.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-            written.append(install.version)
+            written.append(name)
             continue
         old = json.loads(path.read_text(encoding="utf-8"))
         assert old.get("schema") == SNAPSHOT_SCHEMA, (
@@ -74,7 +84,7 @@ def test_t4_cli_help_snapshot(installs, storage_home):
         )
         lines = diff_trees(old["tree"], tree)
         if lines:
-            drift[install.version] = lines
+            drift[name] = lines
     if drift:
         report = "\n".join(f"KiCad {v}:\n  " + "\n  ".join(lines) for v, lines in drift.items())
         pytest.fail(f"kicad-cli help tree drifted from the snapshot (delete the file to accept):\n{report}")
