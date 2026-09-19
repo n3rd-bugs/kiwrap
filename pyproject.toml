@@ -1,0 +1,83 @@
+[project]
+name = "kiwrap"
+version = "0.0.1"
+description = "AI-agent-facing wrapper over installed KiCad binaries (MCP server + VS Code extension)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Usama Masood" }]
+dependencies = [
+    "mcp>=2.2,<3",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+render = ["pypdfium2>=4.30"]
+
+[project.scripts]
+kiwrap = "kiwrap.core.cli_main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-timeout>=2.3",
+    "ruff>=0.8",
+    "import-linter>=2.1",
+    "mypy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kiwrap"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests", "conformance"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "PTH"]
+ignore = ["E501", "SIM108"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "conformance/tests"]
+timeout = 600
+markers = [
+    "kicad: needs at least one installed KiCad (skipped when none is discovered)",
+    "kicad_version(spec): needs a specific installed KiCad major.minor, e.g. '10.0'",
+    "gui: launches a KiCad GUI process (sandboxed); never run in parallel with another gui test",
+    "network: needs internet access",
+    "slow: takes more than ~30 s",
+]
+filterwarnings = ["error::DeprecationWarning:kiwrap.*"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["kiwrap"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+# Architectural contracts (run with `uv run lint-imports`).
+[tool.importlinter]
+root_package = "kiwrap"
+
+[[tool.importlinter.contracts]]
+name = "formats has zero dependencies on the rest of kiwrap"
+type = "forbidden"
+source_modules = ["kiwrap.formats"]
+forbidden_modules = ["kiwrap.core", "kiwrap.backends", "kiwrap.installation", "kiwrap.capability", "kiwrap.sandbox", "kiwrap.platform"]
+
+[[tool.importlinter.contracts]]
+name = "backends never import core"
+type = "forbidden"
+source_modules = ["kiwrap.backends"]
+forbidden_modules = ["kiwrap.core"]
+
+[[tool.importlinter.contracts]]
+name = "layers: core -> backends -> (installation, capability, sandbox, platform) -> formats"
+type = "layers"
+layers = ["kiwrap.core", "kiwrap.backends", "kiwrap.sandbox", "kiwrap.capability", "kiwrap.installation", "kiwrap.platform", "kiwrap.formats"]
