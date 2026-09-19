@@ -1,0 +1,537 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:45:29",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR01 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.2667,
+                                "y": 0.2667
+                            },
+                            "uuid": "6bd03990-0c6f-47aa-a191-9be4dd5032ee"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR02 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.2921,
+                                "y": 0.2667
+                            },
+                            "uuid": "fdd33dcf-399e-4ac6-99f5-9ccff615cf55"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR04 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.3175,
+                                "y": 0.5207
+                            },
+                            "uuid": "87fd47b6-2ebb-4b03-a4f0-be8b5717bf68"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Both VCC and Vin are attached to the same items; VCC will be used in the netlist",
+                    "items": [
+                        {
+                            "description": "Symbol #PWR01 Pin 1 [Power input, Line]",
+                            "pos": {
+                                "x": 0.2667,
+                                "y": 0.2667
+                            },
+                            "uuid": "6bd03990-0c6f-47aa-a191-9be4dd5032ee"
+                        },
+                        {
+                            "description": "Label 'Vin'",
+                            "pos": {
+                                "x": 0.2667,
+                                "y": 0.2667
+                            },
+                            "uuid": "c348793d-eec0-4f33-9b91-2cae8b4224a4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "multiple_net_names"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'IOREF'",
+                            "pos": {
+                                "x": 0.1905,
+                                "y": 0.3429
+                            },
+                            "uuid": "de819ae4-b245-474b-a426-865ba877b8a2"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '~{RESET}'",
+                            "pos": {
+                                "x": 0.1905,
+                                "y": 0.3683
+                            },
+                            "uuid": "49585dba-cfa7-4813-841e-9d900d43ecf4"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_PinSocket_2.54mm'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x08]",
+                            "pos": {
+                                "x": 0.3937,
+                                "y": 0.3937
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d71773"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector_Generic'",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [Conn_01x08]",
+                            "pos": {
+                                "x": 0.3937,
+                                "y": 0.3937
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d71773"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'A0'",
+                            "pos": {
+                                "x": 0.2159,
+                                "y": 0.5969
+                            },
+                            "uuid": "ba02dc27-26a3-4648-b0aa-06b6dcaf001f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'A1'",
+                            "pos": {
+                                "x": 0.2159,
+                                "y": 0.6223
+                            },
+                            "uuid": "acc9991b-1bdd-4544-9a08-4037937485cb"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_PinSocket_2.54mm'",
+                    "items": [
+                        {
+                            "description": "Symbol J2 [Conn_01x10]",
+                            "pos": {
+                                "x": 0.5715,
+                                "y": 0.3683
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d72368"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector_Generic'",
+                    "items": [
+                        {
+                            "description": "Symbol J2 [Conn_01x10]",
+                            "pos": {
+                                "x": 0.5715,
+                                "y": 0.3683
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d72368"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'A2'",
+                            "pos": {
+                                "x": 0.2159,
+                                "y": 0.6477
+                            },
+                            "uuid": "09251fd4-af37-4d86-8951-1faaac710ffa"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'A3'",
+                            "pos": {
+                                "x": 0.2159,
+                                "y": 0.6731
+                            },
+                            "uuid": "2c60ab74-0590-423b-8921-6f3212a358d2"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_PinSocket_2.54mm'",
+                    "items": [
+                        {
+                            "description": "Symbol J3 [Conn_01x06]",
+                            "pos": {
+                                "x": 0.3937,
+                                "y": 0.6477
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d72f1c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector_Generic'",
+                    "items": [
+                        {
+                            "description": "Symbol J3 [Conn_01x06]",
+                            "pos": {
+                                "x": 0.3937,
+                                "y": 0.6477
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d72f1c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'AREF'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.3175
+                            },
+                            "uuid": "bbf52cf8-6d97-4499-a9ee-3657cebcdabf"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '13'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.3683
+                            },
+                            "uuid": "35bc5b35-b7b2-44d5-bbed-557f428649b2"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '12'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.3937
+                            },
+                            "uuid": "3ffaa3b1-1d78-4c7b-bdf9-f1a8019c92fd"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '*11'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.4191
+                            },
+                            "uuid": "9ad5a781-2469-4c8f-8abf-a1c3586f7cb7"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '*10'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.4445
+                            },
+                            "uuid": "54be04e4-fffa-4f7f-8a5f-d0de81314e8f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "The current configuration does not include the footprint library 'Connector_PinSocket_2.54mm'",
+                    "items": [
+                        {
+                            "description": "Symbol J4 [Conn_01x08]",
+                            "pos": {
+                                "x": 0.5715,
+                                "y": 0.6731
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d734d0"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Connector_Generic'",
+                    "items": [
+                        {
+                            "description": "Symbol J4 [Conn_01x08]",
+                            "pos": {
+                                "x": 0.5715,
+                                "y": 0.6731
+                            },
+                            "uuid": "00000000-0000-0000-0000-000056d734d0"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '*9'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.4699
+                            },
+                            "uuid": "ccb58899-a82d-403c-b30b-ee351d622e9c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '8'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.4953
+                            },
+                            "uuid": "89b0e564-e7aa-4224-80c9-3f0614fede8f"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '7'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.5969
+                            },
+                            "uuid": "873d2c88-519e-482f-a3ed-2484e5f9417e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '*6'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.6223
+                            },
+                            "uuid": "c775d4e8-c37b-4e73-90c1-1c8d36333aac"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '*5'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.6477
+                            },
+                            "uuid": "d9a65242-9c26-45cd-9a55-3e69f0d77784"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '4'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.6731
+                            },
+                            "uuid": "0d8cfe6d-11bf-42b9-9752-f9a5a76bce7e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '*3'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.6985
+                            },
+                            "uuid": "9cccf5f9-68a4-4e61-b418-6185dd6a5f9a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label '2'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.7239
+                            },
+                            "uuid": "23f0c933-49f0-4410-a8db-8b017f48dadc"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'TX/1'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.7493
+                            },
+                            "uuid": "ae2c9582-b445-44bd-b371-7fc74f6cf852"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                },
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Label 'RX/0'",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.7747
+                            },
+                            "uuid": "01ea9310-cf66-436b-9b89-1a2f4237b59e"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                }
+            ]
+        }
+    ],
+    "source": "Arduino_Uno.kicad_sch"
+}

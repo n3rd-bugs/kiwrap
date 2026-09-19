@@ -1,0 +1,154 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:32:50",
+    "ignored_checks": [
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "key": "silk_edge_clearance"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [
+        {
+            "description": "Pad net (Net-(D2-A)) doesn't match net given by schematic (unconnected-(D3-K-Pad1))",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 107.95,
+                        "y": 121.92
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (Net-(D9-A)) doesn't match net given by schematic (unconnected-(D9-A-Pad2))",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (/PC-DATA-IN) doesn't match net given by schematic (unconnected-(J1-P8-Pad8))",
+            "items": [
+                {
+                    "description": "PTH pad 8 [/PC-DATA-IN] of J1",
+                    "pos": {
+                        "x": 79.76,
+                        "y": 113.275
+                    },
+                    "uuid": "93547e8f-d77b-4d97-9048-37f696ed9e44"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (Net-(D9-A)) doesn't match net given by schematic (unconnected-(R14-Pad2))",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (Net-(R15-Pad1)) doesn't match net given by schematic (unconnected-(R15-Pad1))",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(R15-Pad1)] of R15",
+                    "pos": {
+                        "x": 118.11,
+                        "y": 78.74
+                    },
+                    "uuid": "4dc6c85a-9f61-4aae-bae8-300398eddee9"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (Net-(R15-Pad1)) doesn't match net given by schematic (unconnected-(RV1-Pad1))",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(R15-Pad1)] of RV1",
+                    "pos": {
+                        "x": 127.635,
+                        "y": 90.805
+                    },
+                    "uuid": "77493f88-bfde-41cf-9556-bcabc5dfd4ce"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (Net-(D6-A)) doesn't match net given by schematic (unconnected-(U2-Pad9))",
+            "items": [
+                {
+                    "description": "PTH pad 9 [Net-(D6-A)] of U2",
+                    "pos": {
+                        "x": 128.27,
+                        "y": 111.76
+                    },
+                    "uuid": "5c1e6808-68a4-4863-8554-a3770db8e724"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (/PC-DATA-IN) doesn't match net given by schematic (unconnected-(U2-Pad11))",
+            "items": [
+                {
+                    "description": "PTH pad 11 [/PC-DATA-IN] of U2",
+                    "pos": {
+                        "x": 123.19,
+                        "y": 111.76
+                    },
+                    "uuid": "c10fb590-c5c5-4b28-b69e-cb5935c19986"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        }
+    ],
+    "source": "pic_programmer.kicad_pcb",
+    "unconnected_items": [],
+    "violations": []
+}

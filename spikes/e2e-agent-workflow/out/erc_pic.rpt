@@ -1,0 +1,49 @@
+ERC report (2026-09-18T20:49:44, Encoding UTF8)
+Report includes: Errors, Warnings, Exclusions
+
+***** Sheet /
+[pin_not_connected]: Pin not connected
+    ; error
+    @(87.63 mm, 46.99 mm): Symbol D3 Pin 1 [K, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(43.18 mm, 93.98 mm): Symbol J1 Pin 8 [P8, Passive, Line]
+[label_dangling]: Label not connected
+    ; error
+    @(68.58 mm, 106.68 mm): Label 'PC-DATA-IN'
+[pin_not_connected]: Pin not connected
+    ; error
+    @(102.87 mm, 106.68 mm): Symbol U2 Pin 11 [Tri-state, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(102.87 mm, 129.54 mm): Symbol U2 Pin 9 [Input, Line]
+[pin_not_driven]: Input pin not driven by any Output pins
+    ; error
+    @(102.87 mm, 129.54 mm): Symbol U2 Pin 9 [Input, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(101.60 mm, 168.91 mm): Symbol R14 Pin 2 [Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(105.41 mm, 171.45 mm): Symbol D9 Pin 2 [A, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(243.84 mm, 156.21 mm): Symbol RV1 Pin 1 [1, Passive, Line]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(250.19 mm, 156.21 mm): Symbol R15 Pin 1 [Passive, Line]
+[unconnected_wire_endpoint]: Unconnected wire endpoint
+    ; warning
+    @(43.18 mm, 93.98 mm): Horizontal Wire, length 13.97 mm
+[unconnected_wire_endpoint]: Unconnected wire endpoint
+    ; warning
+    @(105.41 mm, 171.45 mm): Vertical Wire, length 2.54 mm
+
+***** Sheet /pic_sockets/
+
+ ** ERC messages: 12  Errors 10  Warnings 2
+
+ ** Ignored checks:
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters

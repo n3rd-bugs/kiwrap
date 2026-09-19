@@ -1,0 +1,4 @@
+10:03:45 PM: Error: KiCad was unable to open this file because it was created with a more recent version than the one you are running.
+
+To open it you will need to upgrade KiCad to version 9.0 or later (file format dated 20241229 or later).
+Loading board

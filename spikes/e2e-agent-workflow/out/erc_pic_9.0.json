@@ -1,0 +1,215 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:32:29+0500",
+    "kicad_version": "9.0.5",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/2e45d1d2-c73f-46e5-98d6-3a9dc360bff5",
+            "violations": [
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol D3 Pin 1 [K, Passive, Line]",
+                            "pos": {
+                                "x": 0.8763,
+                                "y": 0.4699
+                            },
+                            "uuid": "bd792c3b-c341-47fb-8b1c-2eb669f99775"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol J1 Pin 8 [P8, Passive, Line]",
+                            "pos": {
+                                "x": 0.4318,
+                                "y": 0.9398
+                            },
+                            "uuid": "e7ef4409-3fac-4c70-8f6b-74931f5eafad"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Label not connected to anything",
+                    "items": [
+                        {
+                            "description": "Label 'PC-DATA-IN'",
+                            "pos": {
+                                "x": 0.6858,
+                                "y": 1.0668
+                            },
+                            "uuid": "44829eff-e304-4f27-8e6b-996eac419f13"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "label_dangling"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol U2 Pin 11 [Tri-state, Line]",
+                            "pos": {
+                                "x": 1.0287,
+                                "y": 1.0668
+                            },
+                            "uuid": "878cd0a7-0544-4b81-bb57-a17ceb70fda8"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol U2 Pin 9 [Input, Line]",
+                            "pos": {
+                                "x": 1.0287,
+                                "y": 1.2954
+                            },
+                            "uuid": "ee359660-91ea-4916-a50c-02399277f34c"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Input pin not driven by any Output pins",
+                    "items": [
+                        {
+                            "description": "Symbol U2 Pin 9 [Input, Line]",
+                            "pos": {
+                                "x": 1.0287,
+                                "y": 1.2954
+                            },
+                            "uuid": "ee359660-91ea-4916-a50c-02399277f34c"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_driven"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol R14 Pin 2 [Passive, Line]",
+                            "pos": {
+                                "x": 1.016,
+                                "y": 1.6891
+                            },
+                            "uuid": "b5e7643f-d437-4b3c-9703-c26299dc97fd"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol D9 Pin 2 [A, Passive, Line]",
+                            "pos": {
+                                "x": 1.0541,
+                                "y": 1.7145
+                            },
+                            "uuid": "071fde49-1ae2-4eb1-ad01-ba19e0bb598b"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol RV1 Pin 1 [1, Passive, Line]",
+                            "pos": {
+                                "x": 2.4384,
+                                "y": 1.5621
+                            },
+                            "uuid": "3630c910-0a14-4b7b-89d9-86241fe30ae0"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Pin not connected",
+                    "items": [
+                        {
+                            "description": "Symbol R15 Pin 1 [Passive, Line]",
+                            "pos": {
+                                "x": 2.5019,
+                                "y": 1.5621
+                            },
+                            "uuid": "15cb22d1-1839-4dd4-97c0-19c7eac83620"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "pin_not_connected"
+                },
+                {
+                    "description": "Footprint 'DSUB-9_Female_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm' not found in library 'Connector_Dsub'.",
+                    "items": [
+                        {
+                            "description": "Symbol J1 [DB9]",
+                            "pos": {
+                                "x": 0.3175,
+                                "y": 0.9144
+                            },
+                            "uuid": "00000000-0000-0000-0000-0000442a4c93"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "footprint_link_issues"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Horizontal Wire, length 0.1397 mm",
+                            "pos": {
+                                "x": 0.4318,
+                                "y": 0.9398
+                            },
+                            "uuid": "3b26ab58-99ad-47ee-8b8b-3a709dba4092"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                },
+                {
+                    "description": "Unconnected wire endpoint",
+                    "items": [
+                        {
+                            "description": "Vertical Wire, length 0.0254 mm",
+                            "pos": {
+                                "x": 1.0541,
+                                "y": 1.7145
+                            },
+                            "uuid": "c6687a16-b381-40bc-9ddf-99117ece00cd"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "unconnected_wire_endpoint"
+                }
+            ]
+        },
+        {
+            "path": "/pic_sockets/",
+            "uuid_path": "/2e45d1d2-c73f-46e5-98d6-3a9dc360bff5/00000000-0000-0000-0000-00004804a5e2",
+            "violations": []
+        }
+    ],
+    "source": "pic_programmer.kicad_sch"
+}

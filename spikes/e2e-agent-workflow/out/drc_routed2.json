@@ -1,0 +1,202 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:39:28",
+    "ignored_checks": [
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "key": "silk_edge_clearance"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [],
+    "source": "pic_routed.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 4 [GND] of U1",
+                    "pos": {
+                        "x": 179.07,
+                        "y": 116.84
+                    },
+                    "uuid": "64e7deff-e627-4964-9855-70f97f6e85df"
+                },
+                {
+                    "description": "Zone [GND] on bottom_layer, priority 0",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 19 [GND] of P2",
+                    "pos": {
+                        "x": 215.265,
+                        "y": 73.66
+                    },
+                    "uuid": "79e18e18-ca55-4c0f-8fb2-d1c6940ae01a"
+                },
+                {
+                    "description": "Zone [GND] on bottom_layer, priority 0",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Items shorting two nets (nets <no net> and /DATA-RB7)",
+            "items": [
+                {
+                    "description": "PCB text '1=>>' on top_layer",
+                    "pos": {
+                        "x": 202.0,
+                        "y": 48.7
+                    },
+                    "uuid": "e9165638-6b2b-4f04-9462-e4a5ff8ea34e"
+                },
+                {
+                    "description": "Track [/DATA-RB7] on top_layer, length 5.9188 mm",
+                    "pos": {
+                        "x": 211.474,
+                        "y": 48.7107
+                    },
+                    "uuid": "f43abf4f-b01b-40a4-9cf6-291ca4f23067"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation ( clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Track [/DATA-RB7] on top_layer, length 2.9547 mm",
+                    "pos": {
+                        "x": 205.5552,
+                        "y": 48.7107
+                    },
+                    "uuid": "7eb078f0-d74c-4bfd-92ec-68b4a20042b5"
+                },
+                {
+                    "description": "PCB text '1=>>' on top_layer",
+                    "pos": {
+                        "x": 202.0,
+                        "y": 48.7
+                    },
+                    "uuid": "e9165638-6b2b-4f04-9462-e4a5ff8ea34e"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint P3",
+                    "pos": {
+                        "x": 175.26,
+                        "y": 50.8
+                    },
+                    "uuid": "00000000-0000-0000-0000-0000541e1940"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint Q3",
+                    "pos": {
+                        "x": 142.24,
+                        "y": 97.79
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a27"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint Q2",
+                    "pos": {
+                        "x": 148.082,
+                        "y": 60.706
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a38"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint Q1",
+                    "pos": {
+                        "x": 146.05,
+                        "y": 69.85
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a49"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint RV1",
+                    "pos": {
+                        "x": 127.635,
+                        "y": 90.805
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a29abca"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}

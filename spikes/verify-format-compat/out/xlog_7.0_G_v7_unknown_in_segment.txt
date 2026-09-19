@@ -1,0 +1,2 @@
+10:04:50 PM: Error: Expecting 'start, end, width, layer, net, tstamp, or locked' in 'G_v7_unknown_in_segment.kicad_pcb', line 83, offset 13.
+Loading board

@@ -142,7 +142,10 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             kicad kicad-libraries kicad-symbols kicad-footprints kicad-templates kicad-demos xvfb
           kicad-cli version --format plain
-          python3 -c "import pcbnew; print('SWIG pcbnew', pcbnew.GetBuildVersion())"
+          # Debian puts the SWIG bindings in the SYSTEM interpreter's dist-packages; setup-python's
+          # python3 comes first on PATH, so name /usr/bin/python3 explicitly (this is also what
+          # kiwrap.installation records as `python` for apt installs).
+          /usr/bin/python3 -c "import pcbnew; print('SWIG pcbnew', pcbnew.GetBuildVersion())"
         env:
           # Even `kicad-cli version` rewrites kicad_common.json on exit (ARCHITECTURE.md section 6).
           KICAD_CONFIG_HOME: ${{ runner.temp }}/kicad-config

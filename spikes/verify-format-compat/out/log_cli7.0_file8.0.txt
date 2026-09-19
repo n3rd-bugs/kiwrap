@@ -1,0 +1,7 @@
+10:03:43 PM: Error: KiCad was unable to open this file because it was created with a more recent version than the one you are running.
+
+To open it you will need to upgrade KiCad to a version dated 01/08/24 or later.
+
+Full error text:
+Unknown token 'generator_version' in 'board_8.0.kicad_pcb', line 4, offset 3.
+Loading board

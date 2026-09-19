@@ -8,8 +8,9 @@ venv/
 .ruff_cache/
 # Node / VS Code extension
 node_modules/
-out/
-dist/
+extension/out/
+extension/dist/
+/dist/
 *.vsix
 # KiCad
 *.kicad_prl

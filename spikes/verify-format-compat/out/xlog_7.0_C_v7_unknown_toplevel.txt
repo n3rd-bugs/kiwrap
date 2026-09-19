@@ -1,0 +1,2 @@
+10:04:49 PM: Error: Unknown token 'bogus_token' in 'C_v7_unknown_toplevel.kicad_pcb', line 3, offset 4.
+Loading board

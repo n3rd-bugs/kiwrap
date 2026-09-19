@@ -1,0 +1,21 @@
+ERC report (2026-09-18T21:03:13, Encoding UTF8)
+Report includes: Errors, Warnings
+
+***** Sheet /
+[lib_symbol_mismatch]: Symbol 'ECC83' doesn't match copy in library 'ecc83_schlib'
+    ; warning
+    @(63.50 mm, 74.93 mm): Symbol U1 [ECC83]
+[lib_symbol_mismatch]: Symbol 'ECC83' doesn't match copy in library 'ecc83_schlib'
+    ; warning
+    @(160.02 mm, 64.77 mm): Symbol U1 [ECC83]
+[lib_symbol_mismatch]: Symbol 'ECC83' doesn't match copy in library 'ecc83_schlib'
+    ; warning
+    @(157.48 mm, 107.95 mm): Symbol U1 [ECC83]
+
+ ** ERC messages: 3  Errors 0  Warnings 3
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters

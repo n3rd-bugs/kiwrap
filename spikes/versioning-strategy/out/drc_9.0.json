@@ -1,0 +1,374 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T21:01:25+0500",
+    "kicad_version": "9.0.5",
+    "schematic_parity": [],
+    "source": "out_7.0.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 173.355,
+                        "y": 90.17
+                    },
+                    "uuid": "258201f7-c476-442a-b854-de67eac27cf4"
+                },
+                {
+                    "description": "Reference field of P5",
+                    "pos": {
+                        "x": 125.095,
+                        "y": 90.18
+                    },
+                    "uuid": "258a0f6c-51a1-49fa-8e62-f92667f4ad68"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 173.355,
+                        "y": 90.17
+                    },
+                    "uuid": "258201f7-c476-442a-b854-de67eac27cf4"
+                },
+                {
+                    "description": "Reference field of P6",
+                    "pos": {
+                        "x": 169.545,
+                        "y": 90.18
+                    },
+                    "uuid": "0cd3e423-45e5-4d4b-9231-bf0559877b8c"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment of P4 on F.Silkscreen",
+                    "pos": {
+                        "x": 142.922,
+                        "y": 125.071
+                    },
+                    "uuid": "3c457206-3d8a-4b08-84c8-64b7a66193cf"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment of P4 on F.Silkscreen",
+                    "pos": {
+                        "x": 142.922,
+                        "y": 125.071
+                    },
+                    "uuid": "637d5c15-bfae-4857-a8c0-eba9b6838585"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment of P4 on F.Silkscreen",
+                    "pos": {
+                        "x": 153.162,
+                        "y": 125.071
+                    },
+                    "uuid": "74ecb27f-1894-4f7c-ac79-b850955667d6"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment of P4 on F.Silkscreen",
+                    "pos": {
+                        "x": 153.162,
+                        "y": 125.071
+                    },
+                    "uuid": "7e5880a4-c473-40d6-9727-aa3fbf0d5c9d"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Footprint 'CP_Radial_D10.0mm_P5.00mm' does not match copy in library 'Capacitor_THT'.",
+            "items": [
+                {
+                    "description": "Footprint C1",
+                    "pos": {
+                        "x": 141.605,
+                        "y": 99.695
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a581e5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'C_Disc_D4.7mm_W2.5mm_P5.00mm' does not match copy in library 'Capacitor_THT'.",
+            "items": [
+                {
+                    "description": "Footprint C2",
+                    "pos": {
+                        "x": 137.16,
+                        "y": 125.095
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a581ea"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P5",
+                    "pos": {
+                        "x": 125.095,
+                        "y": 93.98
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58203"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P6",
+                    "pos": {
+                        "x": 169.545,
+                        "y": 93.98
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58207"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P7",
+                    "pos": {
+                        "x": 169.545,
+                        "y": 132.715
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a5820b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'.",
+            "items": [
+                {
+                    "description": "Footprint R1",
+                    "pos": {
+                        "x": 136.271,
+                        "y": 107.95
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58213"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'.",
+            "items": [
+                {
+                    "description": "Footprint R2",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 95.885
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58218"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'.",
+            "items": [
+                {
+                    "description": "Footprint R4",
+                    "pos": {
+                        "x": 164.465,
+                        "y": 117.475
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58222"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'.",
+            "items": [
+                {
+                    "description": "Footprint P2",
+                    "pos": {
+                        "x": 128.27,
+                        "y": 112.776
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a332ee4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'.",
+            "items": [
+                {
+                    "description": "Footprint P3",
+                    "pos": {
+                        "x": 128.27,
+                        "y": 100.711
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a332f0f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'.",
+            "items": [
+                {
+                    "description": "Footprint P4",
+                    "pos": {
+                        "x": 145.542,
+                        "y": 131.191
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a332f3a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal' does not match copy in library 'Resistor_THT'.",
+            "items": [
+                {
+                    "description": "Footprint R3",
+                    "pos": {
+                        "x": 133.985,
+                        "y": 125.095
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a33370f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 113.665
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a334ccc"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "Footprint 'Altech_AK300_1x02_P5.00mm_45-Degree' does not match copy in library 'TerminalBlock_Altech'.",
+            "items": [
+                {
+                    "description": "Footprint P1",
+                    "pos": {
+                        "x": 166.37,
+                        "y": 105.41
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005d888bc3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P8",
+                    "pos": {
+                        "x": 125.095,
+                        "y": 132.715
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005d88946b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}

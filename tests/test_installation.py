@@ -177,6 +177,7 @@ def add_windows_install(
         m.registry.append(RegistryEntry(hive, key, "KiCad " + version[:-2], version, str(r)))
 
 
+@pytest.mark.skipif(os.name != "nt", reason="fakes rely on Windows path semantics (drive letters, backslashes)")
 class TestWindowsDiscovery:
     def test_registry_program_files_path_and_explicit(self, tmp_path):
         m = FakeMachine(env={"ProgramFiles": "C:\\Program Files", "PATH": ""})

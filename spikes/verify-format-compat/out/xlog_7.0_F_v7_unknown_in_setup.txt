@@ -1,0 +1,2 @@
+10:04:50 PM: Error: Unexpected 'bogus_token' in 'F_v7_unknown_in_setup.kicad_pcb', line 40, offset 11.
+Loading board

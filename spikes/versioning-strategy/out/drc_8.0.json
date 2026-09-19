@@ -1,0 +1,224 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T21:01:21+0500",
+    "kicad_version": "8.0.1",
+    "schematic_parity": [],
+    "source": "out_7.0.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 173.355,
+                        "y": 90.17
+                    },
+                    "uuid": "258201f7-c476-442a-b854-de67eac27cf4"
+                },
+                {
+                    "description": "Reference 'P5'",
+                    "pos": {
+                        "x": 125.095,
+                        "y": 90.18
+                    },
+                    "uuid": "258a0f6c-51a1-49fa-8e62-f92667f4ad68"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 173.355,
+                        "y": 90.17
+                    },
+                    "uuid": "258201f7-c476-442a-b854-de67eac27cf4"
+                },
+                {
+                    "description": "Reference 'P6'",
+                    "pos": {
+                        "x": 169.545,
+                        "y": 90.18
+                    },
+                    "uuid": "0cd3e423-45e5-4d4b-9231-bf0559877b8c"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 142.922,
+                        "y": 125.071
+                    },
+                    "uuid": "3c457206-3d8a-4b08-84c8-64b7a66193cf"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 142.922,
+                        "y": 125.071
+                    },
+                    "uuid": "637d5c15-bfae-4857-a8c0-eba9b6838585"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 153.162,
+                        "y": 125.071
+                    },
+                    "uuid": "74ecb27f-1894-4f7c-ac79-b850955667d6"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 121.285,
+                        "y": 136.525
+                    },
+                    "uuid": "9b19456e-3ad1-4dde-92c4-23451559e1ba"
+                },
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 153.162,
+                        "y": 125.071
+                    },
+                    "uuid": "7e5880a4-c473-40d6-9727-aa3fbf0d5c9d"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "The current configuration does not include the library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P5",
+                    "pos": {
+                        "x": 125.095,
+                        "y": 93.98
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58203"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P6",
+                    "pos": {
+                        "x": 169.545,
+                        "y": 93.98
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a58207"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P7",
+                    "pos": {
+                        "x": 169.545,
+                        "y": 132.715
+                    },
+                    "uuid": "00000000-0000-0000-0000-000054a5820b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 113.665
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a334ccc"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the library 'Footprints'.",
+            "items": [
+                {
+                    "description": "Footprint P8",
+                    "pos": {
+                        "x": 125.095,
+                        "y": 132.715
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005d88946b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}

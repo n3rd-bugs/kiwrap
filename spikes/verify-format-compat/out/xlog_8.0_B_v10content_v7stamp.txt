@@ -1,0 +1,2 @@
+10:04:51 PM: Error: Unexpected 'tenting' in 'B_v10content_v7stamp.kicad_pcb', line 39, offset 4.
+Loading board

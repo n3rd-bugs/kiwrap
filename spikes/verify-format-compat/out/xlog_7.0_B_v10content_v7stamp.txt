@@ -1,0 +1,2 @@
+10:04:49 PM: Error: Unknown token 'generator_version' in 'B_v10content_v7stamp.kicad_pcb', line 4, offset 3.
+Loading board

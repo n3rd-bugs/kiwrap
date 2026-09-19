@@ -1,0 +1,148 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:50:26+0500",
+    "kicad_version": "8.0.1",
+    "schematic_parity": [],
+    "source": "pic_programmer.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Footprint 'TO-92' does not match copy in library 'Package_TO_SOT_THT'.",
+            "items": [
+                {
+                    "description": "Footprint Q3",
+                    "pos": {
+                        "x": 142.24,
+                        "y": 97.79
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a27"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'TO-92' does not match copy in library 'Package_TO_SOT_THT'.",
+            "items": [
+                {
+                    "description": "Footprint Q2",
+                    "pos": {
+                        "x": 148.082,
+                        "y": 60.706
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a38"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'TO-92' does not match copy in library 'Package_TO_SOT_THT'.",
+            "items": [
+                {
+                    "description": "Footprint Q1",
+                    "pos": {
+                        "x": 146.05,
+                        "y": 69.85
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a49"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Thermal relief connection to zone incomplete (layer bottom_layer; 1 spokes connected to isolated island)",
+            "items": [
+                {
+                    "description": "Zone [GND] on bottom_layer",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                },
+                {
+                    "description": "PTH pad 8 [GND] of P3",
+                    "pos": {
+                        "x": 175.26,
+                        "y": 68.58
+                    },
+                    "uuid": "767ba196-18d6-4400-9540-d6d5216a1db6"
+                }
+            ],
+            "severity": "error",
+            "type": "starved_thermal"
+        },
+        {
+            "description": "Thermal relief connection to zone incomplete (layer bottom_layer; zone min spoke count 2; actual 1)",
+            "items": [
+                {
+                    "description": "Zone [GND] on bottom_layer",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                },
+                {
+                    "description": "PTH pad 5 [GND] of U5",
+                    "pos": {
+                        "x": 207.899,
+                        "y": 118.11
+                    },
+                    "uuid": "a273b0cf-623c-4d6f-b31c-ff9897866902"
+                }
+            ],
+            "severity": "error",
+            "type": "starved_thermal"
+        },
+        {
+            "description": "Thermal relief connection to zone incomplete (layer bottom_layer; 1 spokes connected to isolated island)",
+            "items": [
+                {
+                    "description": "Zone [GND] on bottom_layer",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                },
+                {
+                    "description": "PTH pad 10 [GND] of U2",
+                    "pos": {
+                        "x": 125.73,
+                        "y": 111.76
+                    },
+                    "uuid": "e87d765b-5b8c-4589-8d15-96246dc8529b"
+                }
+            ],
+            "severity": "error",
+            "type": "starved_thermal"
+        },
+        {
+            "description": "Thermal relief connection to zone incomplete (layer bottom_layer; zone min spoke count 2; actual 1)",
+            "items": [
+                {
+                    "description": "Zone [GND] on bottom_layer",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                },
+                {
+                    "description": "PTH pad 13 [GND] of U2",
+                    "pos": {
+                        "x": 118.11,
+                        "y": 111.76
+                    },
+                    "uuid": "50160666-9b65-4129-8e24-8a0e2c6ff9b7"
+                }
+            ],
+            "severity": "error",
+            "type": "starved_thermal"
+        }
+    ]
+}

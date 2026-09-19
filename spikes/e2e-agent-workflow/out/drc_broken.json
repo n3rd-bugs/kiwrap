@@ -1,0 +1,884 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-18T20:33:55",
+    "ignored_checks": [
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "key": "silk_edge_clearance"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.0",
+    "schematic_parity": [],
+    "source": "pic_broken.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [VCC] on top_layer, length 20.0000 mm",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "e8040b9d-d81b-422a-8633-1752b2a0157a"
+                },
+                {
+                    "description": "Track [VCC] on bottom_layer, length 1.7961 mm",
+                    "pos": {
+                        "x": 114.3,
+                        "y": 97.155
+                    },
+                    "uuid": "8aa219e7-c5b8-4748-883f-cc91fa84918b"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D2-A)] of U2",
+                    "pos": {
+                        "x": 118.11,
+                        "y": 119.38
+                    },
+                    "uuid": "4f5f6ae9-0d2f-422e-9995-0ace54c97c0f"
+                },
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Items shorting two nets (nets Net-(D9-A) and GND)",
+            "items": [
+                {
+                    "description": "Track [Net-(D9-A)] on bottom_layer, length 4.4450 mm",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "6b063485-1e3e-4d1d-8249-9e1bd70dc43d"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0 mm; actual < 0)",
+            "items": [
+                {
+                    "description": "Track [Net-(D9-A)] on bottom_layer, length 4.4450 mm",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "6b063485-1e3e-4d1d-8249-9e1bd70dc43d"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets GND and Net-(D2-A))",
+            "items": [
+                {
+                    "description": "PTH pad 1 [GND] of D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "8ceb963f-b9bb-4c1a-89a2-8526fdae77ee"
+                },
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Items shorting two nets (nets Net-(D9-A) and GND)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.5080 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                },
+                {
+                    "description": "Zone [GND] on bottom_layer, priority 0",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a217a4c"
+                },
+                {
+                    "description": "Footprint R14",
+                    "pos": {
+                        "x": 139.065,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a22ad41"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a217a4c"
+                },
+                {
+                    "description": "Footprint D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a22f4ad"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Drilled hole too close to other hole (board setup constraints min 0.2495 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_to_hole"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Rear solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Rear solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Track [Net-(D9-A)] on bottom_layer, length 4.4450 mm",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "6b063485-1e3e-4d1d-8249-9e1bd70dc43d"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "PTH pad 1 [GND] of D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "8ceb963f-b9bb-4c1a-89a2-8526fdae77ee"
+                },
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Rear solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                },
+                {
+                    "description": "PTH pad 1 [GND] of D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "8ceb963f-b9bb-4c1a-89a2-8526fdae77ee"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Rear solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                },
+                {
+                    "description": "Zone [GND] on bottom_layer, priority 0",
+                    "pos": {
+                        "x": 223.52,
+                        "y": 138.43
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005b22134f"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Rectangle of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.52,
+                        "y": 88.75
+                    },
+                    "uuid": "11d8a77b-2a02-421f-ba38-e2c681ae4400"
+                },
+                {
+                    "description": "Arc of D9 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.94,
+                        "y": 87.63
+                    },
+                    "uuid": "70afe89f-37d6-4e63-a28d-a2f2e35970e9"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Rectangle of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.52,
+                        "y": 88.75
+                    },
+                    "uuid": "11d8a77b-2a02-421f-ba38-e2c681ae4400"
+                },
+                {
+                    "description": "Circle of D9 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.94,
+                        "y": 87.63
+                    },
+                    "uuid": "ba40748a-f5e7-4246-aa58-9de89d977576"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Rectangle of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.52,
+                        "y": 88.75
+                    },
+                    "uuid": "11d8a77b-2a02-421f-ba38-e2c681ae4400"
+                },
+                {
+                    "description": "Arc of D9 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.94,
+                        "y": 87.63
+                    },
+                    "uuid": "ab6b732c-390e-430c-bc32-05c856b79c5f"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Footprint text of D3 (K)",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 89.43
+                    },
+                    "uuid": "8aa0db04-89f2-47a6-b456-3c32db0f0481"
+                },
+                {
+                    "description": "Circle of D9 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.94,
+                        "y": 87.63
+                    },
+                    "uuid": "ba40748a-f5e7-4246-aa58-9de89d977576"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Segment of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 149.63,
+                        "y": 87.63
+                    },
+                    "uuid": "f8bf4649-422f-4d1f-bcfa-45b77332b6db"
+                },
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Segment of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 153.68,
+                        "y": 88.75
+                    },
+                    "uuid": "a64445db-0783-4433-8907-6db9e5d4a156"
+                },
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Segment of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 153.8,
+                        "y": 88.75
+                    },
+                    "uuid": "3f5b8948-ee08-4788-a91d-eff892629210"
+                },
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Segment of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 153.92,
+                        "y": 88.75
+                    },
+                    "uuid": "1721f6ec-4173-434a-a392-24144aefb6c9"
+                },
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Segment of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 155.17,
+                        "y": 87.63
+                    },
+                    "uuid": "6efba559-e244-474e-a12c-a7d6f6f56595"
+                },
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Rectangle of D3 on F.Silkscreen",
+                    "pos": {
+                        "x": 154.52,
+                        "y": 88.75
+                    },
+                    "uuid": "11d8a77b-2a02-421f-ba38-e2c681ae4400"
+                },
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Segment of R14 on F.Silkscreen",
+                    "pos": {
+                        "x": 148.185,
+                        "y": 87.63
+                    },
+                    "uuid": "8e336c04-69b3-44ee-8eec-800aa073e827"
+                },
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                }
+            ],
+            "severity": "error",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [VCC] on top_layer, length 20.0000 mm",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "e8040b9d-d81b-422a-8633-1752b2a0157a"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of R14",
+                    "pos": {
+                        "x": 149.225,
+                        "y": 87.63
+                    },
+                    "uuid": "06cf429f-9638-417a-ab48-ba0a69df7dff"
+                },
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a217a4c"
+                }
+            ],
+            "severity": "warning",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 2 [GND] of D3",
+                    "pos": {
+                        "x": 148.59,
+                        "y": 87.63
+                    },
+                    "uuid": "7e3d1eea-1cda-4ffa-a78e-0ee0266d3012"
+                },
+                {
+                    "description": "Footprint R14",
+                    "pos": {
+                        "x": 139.065,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a22ad41"
+                }
+            ],
+            "severity": "warning",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 1 [GND] of D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "8ceb963f-b9bb-4c1a-89a2-8526fdae77ee"
+                },
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a217a4c"
+                }
+            ],
+            "severity": "warning",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 2 [Net-(D9-A)] of D9",
+                    "pos": {
+                        "x": 153.67,
+                        "y": 87.63
+                    },
+                    "uuid": "5a3983a6-c9b6-472c-b322-4f7525c34b28"
+                },
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a217a4c"
+                }
+            ],
+            "severity": "warning",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                },
+                {
+                    "description": "Footprint D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a22f4ad"
+                }
+            ],
+            "severity": "warning",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "Drilled holes co-located",
+            "items": [
+                {
+                    "description": "PTH pad 1 [Net-(D2-A)] of D3",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "08f79c44-5fd0-4da3-a61c-133c90d91bca"
+                },
+                {
+                    "description": "PTH pad 1 [GND] of D9",
+                    "pos": {
+                        "x": 156.21,
+                        "y": 87.63
+                    },
+                    "uuid": "8ceb963f-b9bb-4c1a-89a2-8526fdae77ee"
+                }
+            ],
+            "severity": "warning",
+            "type": "holes_co_located"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint P3",
+                    "pos": {
+                        "x": 175.26,
+                        "y": 50.8
+                    },
+                    "uuid": "00000000-0000-0000-0000-0000541e1940"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint Q3",
+                    "pos": {
+                        "x": 142.24,
+                        "y": 97.79
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a27"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint Q2",
+                    "pos": {
+                        "x": 148.082,
+                        "y": 60.706
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a38"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint Q1",
+                    "pos": {
+                        "x": 146.05,
+                        "y": 69.85
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a228a49"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'footprints'",
+            "items": [
+                {
+                    "description": "Footprint RV1",
+                    "pos": {
+                        "x": 127.635,
+                        "y": 90.805
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005a29abca"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}
