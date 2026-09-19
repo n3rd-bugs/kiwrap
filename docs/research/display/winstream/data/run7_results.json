@@ -1,0 +1,668 @@
+{
+ "probe_wheel": {
+  "probe": 1,
+  "e2e_ms": 46,
+  "ws_to_inject_ms": 0.387451171875,
+  "inject_to_capture_ms": 25.770751953125,
+  "capture_to_paint_ms": 19.841796875,
+  "seq": 9
+ },
+ "diff_wheel_zoom": {
+  "changed": 364414,
+  "total": 485639,
+  "pct": 75.04
+ },
+ "diff_select_props_panel": {
+  "changed": 0,
+  "total": 218625,
+  "pct": 0
+ },
+ "probe_rotate": {
+  "probe": 2,
+  "e2e_ms": 37,
+  "ws_to_inject_ms": 0.689208984375,
+  "inject_to_capture_ms": 15.04931640625,
+  "capture_to_paint_ms": 21.261474609375,
+  "seq": 14
+ },
+ "diff_rotate": {
+  "changed": 0,
+  "total": 18300,
+  "pct": 0
+ },
+ "diff_delete": {
+  "changed": 0,
+  "total": 18300,
+  "pct": 0
+ },
+ "diff_undo_vs_deleted": {
+  "changed": 0,
+  "total": 18300,
+  "pct": 0
+ },
+ "diff_pan": {
+  "changed": 366755,
+  "total": 485639,
+  "pct": 75.52
+ },
+ "wait_ctx_menu": {
+  "windows": 2,
+  "ms": 59
+ },
+ "windows_ctx_menu": [
+  {
+   "hwnd": 31595132,
+   "title": "",
+   "cls": "#32768",
+   "rect": [
+    839,
+    599,
+    1261,
+    878
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": true,
+   "tooltip": false
+  },
+  {
+   "hwnd": 15410392,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_ctx_closed": {
+  "windows": 1,
+  "ms": 57
+ },
+ "wait_chooser": {
+  "windows": 2,
+  "ms": 223
+ },
+ "wait_chooser_closed": {
+  "windows": 2,
+  "ms": 71
+ },
+ "windows_after_chooser_esc": [
+  {
+   "hwnd": 8595554,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    3963,
+    114,
+    5045,
+    955
+   ],
+   "owner": 15410392,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 15410392,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_props": {
+  "windows": 2,
+  "ms": 55
+ },
+ "wait_props_closed": {
+  "windows": 2,
+  "ms": 57
+ },
+ "windows_after_props_esc": [
+  {
+   "hwnd": 8595554,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    3963,
+    114,
+    5045,
+    955
+   ],
+   "owner": 15410392,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 15410392,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "stats_end": {
+  "pid": 66444,
+  "main_hwnd": 15410392,
+  "main_rect": [
+   3900,
+   100,
+   5820,
+   1180
+  ],
+  "uptime_s": 34.7,
+  "windows": [
+   {
+    "hwnd": 8595554,
+    "title": "Footprint Chooser (15464 items loaded)",
+    "cls": "wxWindowNR",
+    "rect": [
+     3963,
+     114,
+     5045,
+     955
+    ],
+    "owner": 15410392,
+    "z": 0,
+    "menu": false,
+    "tooltip": false
+   },
+   {
+    "hwnd": 15410392,
+    "title": "*ecc83-pp — PCB Editor",
+    "cls": "wxWindowNR",
+    "rect": [
+     3900,
+     100,
+     5820,
+     1180
+    ],
+    "owner": 0,
+    "z": 1,
+    "menu": false,
+    "tooltip": false
+   }
+  ],
+  "failed_windows": {},
+  "fragile_seen": 1,
+  "monitor_session": false,
+  "monitor_frames": null,
+  "sessions": {
+   "8595554": {
+    "frames": 19,
+    "bytes": 1709192,
+    "fps_1s": 0,
+    "encode_ms_avg": 2.57,
+    "size": [
+     1082,
+     841
+    ],
+    "error": ""
+   },
+   "15410392": {
+    "frames": 46,
+    "bytes": 12920409,
+    "fps_1s": 0,
+    "encode_ms_avg": 4.61,
+    "size": [
+     1920,
+     1080
+    ],
+    "error": ""
+   }
+  },
+  "sent_frames": 64,
+  "sent_bytes": 14305345,
+  "clients": 1,
+  "input_events": 92,
+  "input_log": [
+   [
+    197.231,
+    "key",
+    "KeyR",
+    true,
+    null,
+    null
+   ],
+   [
+    197.271,
+    "key",
+    "KeyR",
+    false,
+    null,
+    null
+   ],
+   [
+    197.932,
+    "key",
+    "Delete",
+    true,
+    null,
+    null
+   ],
+   [
+    197.932,
+    "key",
+    "Delete",
+    false,
+    null,
+    null
+   ],
+   [
+    198.687,
+    "key",
+    "ControlLeft",
+    true,
+    null,
+    null
+   ],
+   [
+    198.714,
+    "key",
+    "KeyZ",
+    true,
+    null,
+    null
+   ],
+   [
+    198.743,
+    "key",
+    "KeyZ",
+    false,
+    null,
+    null
+   ],
+   [
+    198.764,
+    "key",
+    "ControlLeft",
+    false,
+    null,
+    null
+   ],
+   [
+    199.631,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    199.631,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    199.984,
+    "down",
+    1,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    200.821,
+    "up",
+    1,
+    null,
+    1249.999951171875,
+    720
+   ],
+   [
+    201.464,
+    "key",
+    "Home",
+    true,
+    null,
+    null
+   ],
+   [
+    201.465,
+    "key",
+    "Home",
+    false,
+    null,
+    null
+   ],
+   [
+    202.205,
+    "down",
+    2,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    202.262,
+    "up",
+    2,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    203.162,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    203.164,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    203.763,
+    "down",
+    0,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    203.807,
+    "up",
+    0,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    204.112,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    204.112,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    204.415,
+    "key",
+    "KeyA",
+    true,
+    null,
+    null
+   ],
+   [
+    204.415,
+    "key",
+    "KeyA",
+    false,
+    null,
+    null
+   ],
+   [
+    207.453,
+    "key",
+    "KeyR",
+    true,
+    null,
+    null
+   ],
+   [
+    207.453,
+    "key",
+    "KeyR",
+    false,
+    null,
+    null
+   ],
+   [
+    207.492,
+    "key",
+    "Digit0",
+    true,
+    null,
+    null
+   ],
+   [
+    207.492,
+    "key",
+    "Digit0",
+    false,
+    null,
+    null
+   ],
+   [
+    207.526,
+    "key",
+    "Digit8",
+    true,
+    null,
+    null
+   ],
+   [
+    207.526,
+    "key",
+    "Digit8",
+    false,
+    null,
+    null
+   ],
+   [
+    207.566,
+    "key",
+    "Digit0",
+    true,
+    null,
+    null
+   ],
+   [
+    207.568,
+    "key",
+    "Digit0",
+    false,
+    null,
+    null
+   ],
+   [
+    207.603,
+    "key",
+    "Digit5",
+    true,
+    null,
+    null
+   ],
+   [
+    207.603,
+    "key",
+    "Digit5",
+    false,
+    null,
+    null
+   ],
+   [
+    209.22,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    209.22,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    210.211,
+    "down",
+    0,
+    null,
+    777.9999755859375,
+    819.9999755859375
+   ],
+   [
+    210.257,
+    "up",
+    0,
+    null,
+    777.9999755859375,
+    819.9999755859375
+   ],
+   [
+    210.665,
+    "key",
+    "KeyE",
+    true,
+    null,
+    null
+   ],
+   [
+    210.665,
+    "key",
+    "KeyE",
+    false,
+    null,
+    null
+   ],
+   [
+    211.842,
+    "key",
+    "KeyX",
+    true,
+    null,
+    null
+   ],
+   [
+    211.842,
+    "key",
+    "KeyX",
+    false,
+    null,
+    null
+   ],
+   [
+    211.886,
+    "key",
+    "KeyY",
+    true,
+    null,
+    null
+   ],
+   [
+    211.886,
+    "key",
+    "KeyY",
+    false,
+    null,
+    null
+   ],
+   [
+    211.931,
+    "key",
+    "KeyZ",
+    true,
+    null,
+    null
+   ],
+   [
+    211.932,
+    "key",
+    "KeyZ",
+    false,
+    null,
+    null
+   ],
+   [
+    212.651,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    212.651,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    213.57,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    213.57,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ]
+  ],
+  "foreground_fixes": 0,
+  "obscured_fixes": 0,
+  "cpu": {
+   "server_pct": 5.2,
+   "kicad_pct": 3.8,
+   "cores": 24
+  },
+  "gpu": "25 %, 0 %",
+  "inject": "postmessage",
+  "quality": 70,
+  "fps_cap": 30
+ },
+ "_shots": {
+  "e0_home": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e0_home.png",
+  "e1_zoomed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e1_zoomed.png",
+  "e2_selected": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e2_selected.png",
+  "e3_rotated": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e3_rotated.png",
+  "e4_deleted": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e4_deleted.png",
+  "e5_undone": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e5_undone.png",
+  "e6_panned": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e6_panned.png",
+  "e7_context_menu": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e7_context_menu.png",
+  "e8_chooser_typed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e8_chooser_typed.png",
+  "e9_properties_typed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run7/e9_properties_typed.png"
+ }
+}

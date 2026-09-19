@@ -1,0 +1,1547 @@
+{
+  "name": "kiwrap-vscode-shell",
+  "displayName": "kiwrap display shell (prototype)",
+  "description": "Prototype VS Code shell that hosts a remote KiCad display (iframe URL or canvas+WebSocket) and a keyboard/pointer event probe.",
+  "version": "0.0.1",
+  "publisher": "kiwrap-private",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "kiwrapShell.openView",
+        "title": "kiwrap: Open KiCad view (iframe URL)"
+      },
+      {
+        "command": "kiwrapShell.openCanvas",
+        "title": "kiwrap: Open KiCad view (canvas + WebSocket)"
+      },
+      {
+        "command": "kiwrapShell.openProbe",
+        "title": "kiwrap: Open input probe"
+      },
+      {
+        "command": "kiwrapShell.marker",
+        "title": "kiwrap: Write marker to probe log"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "title": "kiwrap: Forward key to KiCad view (internal)"
+      },
+      {
+        "command": "kiwrapShell.focusView",
+        "title": "kiwrap: Focus KiCad view"
+      },
+      {
+        "command": "kiwrapShell.probeCommand",
+        "title": "kiwrap: Run a probe sub-command (internal)"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "kiwrapShell.boardEditor",
+        "displayName": "KiCad (kiwrap shell)",
+        "selector": [
+          {
+            "filenamePattern": "*.kicad_pcb"
+          },
+          {
+            "filenamePattern": "*.kicad_sch"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "configuration": {
+      "title": "kiwrap display shell",
+      "properties": {
+        "kiwrapShell.url": {
+          "type": "string",
+          "default": "",
+          "description": "URL of the display backend page to iframe (noVNC / Xpra HTML5 / Broadway / own stream). Empty = built-in demo page served by the extension."
+        },
+        "kiwrapShell.wsUrl": {
+          "type": "string",
+          "default": "",
+          "description": "WebSocket URL of a frame stream (canvas mode). Empty = built-in synthetic stream served by the extension."
+        },
+        "kiwrapShell.retainContextWhenHidden": {
+          "type": "boolean",
+          "default": true
+        },
+        "kiwrapShell.logFile": {
+          "type": "string",
+          "default": "",
+          "description": "Append every probe event here (JSONL). Empty = only the Output channel."
+        },
+        "kiwrapShell.autoOpen": {
+          "type": "string",
+          "enum": [
+            "",
+            "probe",
+            "view",
+            "canvas"
+          ],
+          "default": "",
+          "description": "Open a panel automatically at startup (used by the automated test driver)."
+        },
+        "kiwrapShell.rescueKeys": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, the contributed keybindings (Ctrl+W, Ctrl+P, ... while the KiCad view is active) are swallowed and forwarded to the webview instead of running the VS Code command."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+w"
+        },
+        "key": "ctrl+w",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f4"
+        },
+        "key": "ctrl+f4",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+w"
+        },
+        "key": "ctrl+shift+w",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+w"
+        },
+        "key": "ctrl+k ctrl+w",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k w"
+        },
+        "key": "ctrl+k w",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+t"
+        },
+        "key": "ctrl+shift+t",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+n"
+        },
+        "key": "ctrl+n",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+n"
+        },
+        "key": "ctrl+shift+n",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+o"
+        },
+        "key": "ctrl+o",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+o"
+        },
+        "key": "ctrl+k ctrl+o",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+r"
+        },
+        "key": "ctrl+r",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+r"
+        },
+        "key": "ctrl+shift+r",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+tab"
+        },
+        "key": "ctrl+tab",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+tab"
+        },
+        "key": "ctrl+shift+tab",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+pageup"
+        },
+        "key": "ctrl+pageup",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+pagedown"
+        },
+        "key": "ctrl+pagedown",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+1"
+        },
+        "key": "ctrl+1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+2"
+        },
+        "key": "ctrl+2",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+3"
+        },
+        "key": "ctrl+3",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+4"
+        },
+        "key": "ctrl+4",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+5"
+        },
+        "key": "ctrl+5",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+6"
+        },
+        "key": "ctrl+6",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+7"
+        },
+        "key": "ctrl+7",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+8"
+        },
+        "key": "ctrl+8",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+9"
+        },
+        "key": "ctrl+9",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+0"
+        },
+        "key": "ctrl+0",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+\\"
+        },
+        "key": "ctrl+\\",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+\\"
+        },
+        "key": "ctrl+k ctrl+\\",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k left"
+        },
+        "key": "ctrl+k left",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k right"
+        },
+        "key": "ctrl+k right",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k up"
+        },
+        "key": "ctrl+k up",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k down"
+        },
+        "key": "ctrl+k down",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k enter"
+        },
+        "key": "ctrl+k enter",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+right"
+        },
+        "key": "ctrl+alt+right",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+left"
+        },
+        "key": "ctrl+alt+left",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+up"
+        },
+        "key": "ctrl+alt+up",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+down"
+        },
+        "key": "ctrl+alt+down",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+alt+0"
+        },
+        "key": "shift+alt+0",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+alt+1"
+        },
+        "key": "shift+alt+1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k m"
+        },
+        "key": "ctrl+k m",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k z"
+        },
+        "key": "ctrl+k z",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+t"
+        },
+        "key": "ctrl+k ctrl+t",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+s"
+        },
+        "key": "ctrl+k ctrl+s",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+x"
+        },
+        "key": "ctrl+k ctrl+x",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+q"
+        },
+        "key": "ctrl+k ctrl+q",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+f"
+        },
+        "key": "ctrl+k ctrl+f",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+c"
+        },
+        "key": "ctrl+k ctrl+c",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+u"
+        },
+        "key": "ctrl+k ctrl+u",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+i"
+        },
+        "key": "ctrl+k ctrl+i",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+r"
+        },
+        "key": "ctrl+k ctrl+r",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+p"
+        },
+        "key": "ctrl+k ctrl+p",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+d"
+        },
+        "key": "ctrl+k ctrl+d",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+h"
+        },
+        "key": "ctrl+k ctrl+h",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+m"
+        },
+        "key": "ctrl+k ctrl+m",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+b"
+        },
+        "key": "ctrl+k ctrl+b",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+k"
+        },
+        "key": "ctrl+k ctrl+k",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+l"
+        },
+        "key": "ctrl+k ctrl+l",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+n"
+        },
+        "key": "ctrl+k ctrl+n",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+e"
+        },
+        "key": "ctrl+k ctrl+e",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+a"
+        },
+        "key": "ctrl+k ctrl+a",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+y"
+        },
+        "key": "ctrl+k ctrl+y",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+z"
+        },
+        "key": "ctrl+k ctrl+z",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+g"
+        },
+        "key": "ctrl+k ctrl+g",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+j"
+        },
+        "key": "ctrl+k ctrl+j",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+v"
+        },
+        "key": "ctrl+k ctrl+v",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+0"
+        },
+        "key": "ctrl+k ctrl+0",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+1"
+        },
+        "key": "ctrl+k ctrl+1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+2"
+        },
+        "key": "ctrl+k ctrl+2",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+3"
+        },
+        "key": "ctrl+k ctrl+3",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+4"
+        },
+        "key": "ctrl+k ctrl+4",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+5"
+        },
+        "key": "ctrl+k ctrl+5",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+6"
+        },
+        "key": "ctrl+k ctrl+6",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+7"
+        },
+        "key": "ctrl+k ctrl+7",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+8"
+        },
+        "key": "ctrl+k ctrl+8",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+9"
+        },
+        "key": "ctrl+k ctrl+9",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+s"
+        },
+        "key": "ctrl+k ctrl+shift+s",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+w"
+        },
+        "key": "ctrl+k ctrl+shift+w",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+o"
+        },
+        "key": "ctrl+k ctrl+shift+o",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+n"
+        },
+        "key": "ctrl+k ctrl+shift+n",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+i"
+        },
+        "key": "ctrl+k ctrl+shift+i",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+f"
+        },
+        "key": "ctrl+k ctrl+shift+f",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+e"
+        },
+        "key": "ctrl+k ctrl+shift+e",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+c"
+        },
+        "key": "ctrl+k ctrl+shift+c",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+u"
+        },
+        "key": "ctrl+k ctrl+shift+u",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+q"
+        },
+        "key": "ctrl+k ctrl+shift+q",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+m"
+        },
+        "key": "ctrl+k ctrl+shift+m",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+k ctrl+shift+r"
+        },
+        "key": "ctrl+k ctrl+shift+r",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+p"
+        },
+        "key": "ctrl+p",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+p"
+        },
+        "key": "ctrl+shift+p",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f1"
+        },
+        "key": "f1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+e"
+        },
+        "key": "ctrl+e",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+q"
+        },
+        "key": "ctrl+q",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+b"
+        },
+        "key": "ctrl+b",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+j"
+        },
+        "key": "ctrl+j",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+e"
+        },
+        "key": "ctrl+shift+e",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+f"
+        },
+        "key": "ctrl+shift+f",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+g"
+        },
+        "key": "ctrl+shift+g",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+x"
+        },
+        "key": "ctrl+shift+x",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+m"
+        },
+        "key": "ctrl+shift+m",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+d"
+        },
+        "key": "ctrl+shift+d",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+h"
+        },
+        "key": "ctrl+shift+h",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+a"
+        },
+        "key": "ctrl+shift+a",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+u"
+        },
+        "key": "ctrl+shift+u",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+y"
+        },
+        "key": "ctrl+shift+y",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+b"
+        },
+        "key": "ctrl+shift+b",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+o"
+        },
+        "key": "ctrl+shift+o",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+k"
+        },
+        "key": "ctrl+shift+k",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+l"
+        },
+        "key": "ctrl+shift+l",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+s"
+        },
+        "key": "ctrl+shift+s",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+i"
+        },
+        "key": "ctrl+shift+i",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+c"
+        },
+        "key": "ctrl+shift+c",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+v"
+        },
+        "key": "ctrl+shift+v",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+z"
+        },
+        "key": "ctrl+shift+z",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+["
+        },
+        "key": "ctrl+shift+[",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+]"
+        },
+        "key": "ctrl+shift+]",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+`"
+        },
+        "key": "ctrl+`",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+`"
+        },
+        "key": "ctrl+shift+`",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+,"
+        },
+        "key": "ctrl+,",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+g"
+        },
+        "key": "ctrl+g",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+d"
+        },
+        "key": "ctrl+d",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+u"
+        },
+        "key": "ctrl+u",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+l"
+        },
+        "key": "ctrl+l",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+m"
+        },
+        "key": "ctrl+m",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+h"
+        },
+        "key": "ctrl+h",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+t"
+        },
+        "key": "ctrl+t",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+i"
+        },
+        "key": "ctrl+i",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+["
+        },
+        "key": "ctrl+[",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+]"
+        },
+        "key": "ctrl+]",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+space"
+        },
+        "key": "ctrl+space",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+space"
+        },
+        "key": "ctrl+shift+space",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+i"
+        },
+        "key": "ctrl+alt+i",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+b"
+        },
+        "key": "ctrl+alt+b",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+alt+p"
+        },
+        "key": "ctrl+alt+p",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+alt+p"
+        },
+        "key": "ctrl+shift+alt+p",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+="
+        },
+        "key": "ctrl+=",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+-"
+        },
+        "key": "ctrl+-",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+="
+        },
+        "key": "ctrl+shift+=",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+-"
+        },
+        "key": "ctrl+shift+-",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+numpad_add"
+        },
+        "key": "ctrl+numpad_add",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+numpad_subtract"
+        },
+        "key": "ctrl+numpad_subtract",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+numpad0"
+        },
+        "key": "ctrl+numpad0",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f11"
+        },
+        "key": "f11",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f2"
+        },
+        "key": "f2",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f3"
+        },
+        "key": "f3",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f4"
+        },
+        "key": "f4",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f5"
+        },
+        "key": "f5",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f6"
+        },
+        "key": "f6",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f7"
+        },
+        "key": "f7",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f8"
+        },
+        "key": "f8",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f9"
+        },
+        "key": "f9",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f10"
+        },
+        "key": "f10",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "f12"
+        },
+        "key": "f12",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f5"
+        },
+        "key": "ctrl+f5",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f5"
+        },
+        "key": "shift+f5",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+f5"
+        },
+        "key": "ctrl+shift+f5",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f11"
+        },
+        "key": "shift+f11",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f11"
+        },
+        "key": "ctrl+f11",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f12"
+        },
+        "key": "shift+f12",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f12"
+        },
+        "key": "ctrl+f12",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+f12"
+        },
+        "key": "ctrl+shift+f12",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f2"
+        },
+        "key": "ctrl+f2",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f2"
+        },
+        "key": "shift+f2",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f3"
+        },
+        "key": "ctrl+f3",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f3"
+        },
+        "key": "shift+f3",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f8"
+        },
+        "key": "ctrl+f8",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f8"
+        },
+        "key": "shift+f8",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+f8"
+        },
+        "key": "ctrl+shift+f8",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f9"
+        },
+        "key": "ctrl+f9",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f10"
+        },
+        "key": "ctrl+f10",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+f10"
+        },
+        "key": "ctrl+shift+f10",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f10"
+        },
+        "key": "shift+f10",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f7"
+        },
+        "key": "ctrl+f7",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f7"
+        },
+        "key": "shift+f7",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f6"
+        },
+        "key": "ctrl+f6",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f6"
+        },
+        "key": "shift+f6",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+f1"
+        },
+        "key": "ctrl+f1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "shift+f1"
+        },
+        "key": "shift+f1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      },
+      {
+        "command": "kiwrapShell.forwardKey",
+        "args": {
+          "key": "ctrl+shift+f1"
+        },
+        "key": "ctrl+shift+f1",
+        "when": "kiwrapShell.rescueKeys && (activeWebviewPanelId == 'kiwrapShell.view' || activeCustomEditorId == 'kiwrapShell.boardEditor')"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.101.0",
+    "@types/ws": "^8.5.12",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}

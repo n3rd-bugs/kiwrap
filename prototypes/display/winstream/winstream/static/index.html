@@ -1,0 +1,200 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>winstream viewer</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #1e1e1e; color: #ddd; font: 12px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #bar { position: fixed; top: 0; left: 0; right: 0; height: 22px; padding: 2px 8px; background: #111; z-index: 10; white-space: nowrap; overflow: hidden; }
+  #viewport { position: absolute; top: 26px; left: 0; right: 0; bottom: 0; overflow: hidden; }
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; outline: none; background: #000; }
+  #stage canvas { position: absolute; left: 0; top: 0; image-rendering: auto; }
+  #stage canvas.menu { box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+<div id="bar">connecting…</div>
+<div id="viewport"><div id="stage" tabindex="0"></div></div>
+<script>
+(() => {
+  const HEADER = 52; // <4sIIIIiiddII
+  const bar = document.getElementById('bar');
+  const viewport = document.getElementById('viewport');
+  const stage = document.getElementById('stage');
+  const q = new URLSearchParams(location.search);
+  const token = q.get('token') || '';
+  const state = {
+    main: 0, w: 0, h: 0, scale: 1, dpi: 0, inject: '',
+    canvases: new Map(), windows: [],
+    frames: 0, bytes: 0, decodeMs: [], paintTimes: [], netMs: [],
+    probes: new Map(), probeSeq: 0, lastPaint: 0, log: [],
+    fps: 0, kbps: 0, connected: false, hello: null,
+  };
+  window.__state = state;
+
+  // Owned windows (dialogs, the footprint chooser) can extend beyond the main frame: the stage is
+  // the union of all window rects, offset so the main frame sits at (state.ox, state.oy).
+  state.ox = 0; state.oy = 0; state.uw = 0; state.uh = 0;
+  function layout() {
+    if (!state.w) return;
+    let minx = 0, miny = 0, maxx = state.w, maxy = state.h;
+    for (const w of state.windows) { minx = Math.min(minx, w.rel[0]); miny = Math.min(miny, w.rel[1]); maxx = Math.max(maxx, w.rel[0] + w.rel[2]); maxy = Math.max(maxy, w.rel[1] + w.rel[3]); }
+    state.ox = -minx; state.oy = -miny; state.uw = maxx - minx; state.uh = maxy - miny;
+    const fit = q.get('fit') !== '0';
+    const s = fit ? Math.min(viewport.clientWidth / state.uw, viewport.clientHeight / state.uh) : 1;
+    state.scale = s;
+    stage.style.width = state.uw + 'px'; stage.style.height = state.uh + 'px';
+    stage.style.transform = `scale(${s})`;
+    for (const w of state.windows) { const c = state.canvases.get(w.hwnd); if (c) { c.style.left = (w.rel[0] + state.ox) + 'px'; c.style.top = (w.rel[1] + state.oy) + 'px'; } }
+  }
+  window.addEventListener('resize', layout);
+
+  function canvasFor(hwnd) {
+    let c = state.canvases.get(hwnd);
+    if (!c) {
+      c = document.createElement('canvas');
+      c.dataset.hwnd = hwnd;
+      stage.appendChild(c);
+      state.canvases.set(hwnd, c);
+    }
+    return c;
+  }
+
+  function applyWindows(list) {
+    state.windows = list;
+    const keep = new Set(list.map(w => w.hwnd));
+    for (const [h, c] of state.canvases) if (!keep.has(h)) { c.remove(); state.canvases.delete(h); }
+    // z: 0 is topmost in EnumWindows order -> higher CSS z-index
+    for (const w of list) {
+      const c = canvasFor(w.hwnd);
+      c.style.zIndex = String(1000 - w.z);
+      c.className = w.menu ? 'menu' : '';
+      c.title = w.title;
+    }
+    layout();
+  }
+
+  const decoding = new Map(); // hwnd -> {busy, next}
+  async function handleFrame(buf) {
+    const dv = new DataView(buf);
+    const hwnd = dv.getUint32(4, true), seq = dv.getUint32(8, true);
+    const w = dv.getUint32(12, true), h = dv.getUint32(16, true);
+    const x = dv.getInt32(20, true), y = dv.getInt32(24, true);
+    const tCap = dv.getFloat64(28, true), tInj = dv.getFloat64(36, true);
+    const probe = dv.getUint32(44, true);
+    state.frames++; state.bytes += buf.byteLength;
+    const tRecv = Date.now();
+    state.netMs.push(tRecv - tCap); if (state.netMs.length > 120) state.netMs.shift();
+    const job = { blob: new Blob([new Uint8Array(buf, HEADER)], { type: 'image/jpeg' }), hwnd, w, h, x, y, tCap, tInj, probe, seq, tRecv };
+    let d = decoding.get(hwnd);
+    if (!d) { d = { busy: false, next: null }; decoding.set(hwnd, d); }
+    if (d.busy) { d.next = job; return; }  // drop-to-latest
+    d.busy = true;
+    try { await paint(job); } finally { d.busy = false; }
+    if (d.next) { const n = d.next; d.next = null; handleJob(hwnd, n); }
+  }
+  async function handleJob(hwnd, job) {
+    const d = decoding.get(hwnd); d.busy = true;
+    try { await paint(job); } finally { d.busy = false; }
+    if (d.next) { const n = d.next; d.next = null; handleJob(hwnd, n); }
+  }
+  async function paint(job) {
+    const t0 = performance.now();
+    const bmp = await createImageBitmap(job.blob);
+    const c = canvasFor(job.hwnd);
+    if (c.width !== job.w || c.height !== job.h) { c.width = job.w; c.height = job.h; }
+    c.getContext('2d').drawImage(bmp, 0, 0);
+    bmp.close();
+    if (job.hwnd === state.main && (state.w !== job.w || state.h !== job.h)) { state.w = job.w; state.h = job.h; layout(); }
+    const tPaint = Date.now();
+    state.lastPaint = tPaint;
+    state.decodeMs.push(performance.now() - t0); if (state.decodeMs.length > 120) state.decodeMs.shift();
+    state.paintTimes.push(tPaint); if (state.paintTimes.length > 300) state.paintTimes.shift();
+    if (job.probe && state.probes.has(job.probe)) {
+      const p = state.probes.get(job.probe); state.probes.delete(job.probe);
+      p.resolve({ probe: job.probe, e2e_ms: tPaint - p.tSend, ws_to_inject_ms: job.tInj - p.tSend,
+                  inject_to_capture_ms: job.tCap - job.tInj, capture_to_paint_ms: tPaint - job.tCap, seq: job.seq });
+    }
+  }
+
+  let ws;
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}/ws${token ? '?token=' + token : ''}`);
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => { state.connected = true; };
+    ws.onclose = () => { state.connected = false; bar.textContent = 'disconnected'; };
+    ws.onmessage = ev => {
+      if (typeof ev.data === 'string') {
+        const m = JSON.parse(ev.data);
+        if (m.t === 'hello') { state.hello = m; state.main = m.main; state.w = m.w; state.h = m.h; state.dpi = m.dpi; state.inject = m.inject; layout(); stage.focus(); }
+        else if (m.t === 'windows') applyWindows(m.list);
+        else if (m.t === 'pong') { const p = state.probes.get('ping' + m.id); if (p) { state.probes.delete('ping' + m.id); p.resolve({ rtt_ms: Date.now() - p.tSend }); } }
+      } else handleFrame(ev.data);
+    };
+  }
+  connect();
+  window.__ws = () => ws;
+
+  function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+  window.__send = send;
+
+  // ---- input -----------------------------------------------------------------------------
+  function pos(e) {
+    const r = stage.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / state.scale - state.ox, y: (e.clientY - r.top) / state.scale - state.oy };
+  }
+  const opts = { passive: false };
+  let lastMove = 0;
+  stage.addEventListener('pointermove', e => {
+    const now = performance.now();
+    if (now - lastMove < 8) return; // ~120 Hz cap
+    lastMove = now;
+    const p = pos(e); send({ t: 'move', x: p.x, y: p.y });
+  }, opts);
+  stage.addEventListener('pointerdown', e => {
+    e.preventDefault(); stage.focus(); stage.setPointerCapture(e.pointerId);
+    const p = pos(e); send({ t: 'down', x: p.x, y: p.y, button: e.button, focus: true });
+  }, opts);
+  stage.addEventListener('pointerup', e => {
+    e.preventDefault(); const p = pos(e); send({ t: 'up', x: p.x, y: p.y, button: e.button });
+  }, opts);
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+  stage.addEventListener('auxclick', e => e.preventDefault());
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const p = pos(e);
+    const dy = e.deltaMode === 1 ? -e.deltaY * 40 : -e.deltaY;  // browser: +down; Windows: +up
+    const dx = e.deltaMode === 1 ? e.deltaX * 40 : e.deltaX;
+    send({ t: 'wheel', x: p.x, y: p.y, dy: Math.round(dy), dx: Math.round(dx) });
+  }, opts);
+  const keyOpts = e => ({ t: 'key', code: e.code, key: e.key, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey });
+  window.addEventListener('keydown', e => { if (e.repeat) { e.preventDefault(); return; } e.preventDefault(); send({ ...keyOpts(e), down: true }); }, opts);
+  window.addEventListener('keyup', e => { e.preventDefault(); send({ ...keyOpts(e), down: false }); }, opts);
+  window.addEventListener('blur', () => send({ t: 'key', code: 'ControlLeft', down: false }));
+
+  // ---- probes for the benchmark ----------------------------------------------------------
+  window.__probe = (ev) => new Promise((resolve, reject) => {
+    const id = ++state.probeSeq; const tSend = Date.now();
+    state.probes.set(id, { resolve, tSend });
+    send({ ...ev, probe: id });
+    setTimeout(() => { if (state.probes.has(id)) { state.probes.delete(id); reject(new Error('probe timeout ' + id)); } }, 5000);
+  });
+  window.__ping = () => new Promise((resolve) => { const id = ++state.probeSeq; state.probes.set('ping' + id, { resolve, tSend: Date.now() }); send({ t: 'ping', id }); });
+  window.__stats = () => {
+    const now = Date.now();
+    const recent = state.paintTimes.filter(t => t > now - 1000).length;
+    const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+    return { frames: state.frames, bytes: state.bytes, fps_1s: recent, decode_ms_avg: avg(state.decodeMs), net_ms_avg: avg(state.netMs),
+             scale: state.scale, w: state.w, h: state.h, dpi: state.dpi, windows: state.windows.length, connected: state.connected, inject: state.inject };
+  };
+  let lastF = 0, lastB = 0;
+  setInterval(() => {
+    state.fps = state.frames - lastF; state.kbps = Math.round((state.bytes - lastB) * 8 / 1000);
+    lastF = state.frames; lastB = state.bytes;
+    bar.textContent = `${state.w}x${state.h} @ scale ${state.scale.toFixed(3)} dpi ${state.dpi} | ${state.fps} fps | ${state.kbps} kbit/s | decode ${window.__stats().decode_ms_avg.toFixed(1)} ms | net ${window.__stats().net_ms_avg.toFixed(1)} ms | windows ${state.windows.length} | inject ${state.inject}`;
+  }, 1000);
+})();
+</script>
+</body>
+</html>

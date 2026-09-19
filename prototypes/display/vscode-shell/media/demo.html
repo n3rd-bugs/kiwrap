@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>kiwrap demo page (iframe target)</title>
+<style>
+  html,body{margin:0;height:100%;background:#102030;color:#ddd;font:13px Consolas,monospace;overflow:hidden}
+  #target{position:absolute;inset:0;outline:none;background:repeating-linear-gradient(45deg,#14283c 0 20px,#0e1c2a 20px 40px)}
+  #info{position:absolute;left:8px;top:6px;color:#fc9}
+  #log{position:absolute;left:8px;top:28px;white-space:pre;color:#cfc}
+  #cross{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border:2px solid #0f8;border-radius:50%}
+</style></head>
+<body data-probe-label="iframe">
+<div id="target" tabindex="0"><div id="cross"></div><div id="info">iframe target (served over http://localhost by the extension host)</div><pre id="log"></pre></div>
+<script src="/probe.js"></script>
+</body></html>

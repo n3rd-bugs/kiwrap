@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<title>KiCad view</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  #bar{position:absolute;left:0;top:0;right:0;height:18px;background:#222;color:#9cf;font:11px Consolas,monospace;line-height:18px;padding:0 6px}
+  iframe{position:absolute;left:0;top:18px;width:100%;height:calc(100% - 18px);border:0;background:#000}
+</style></head>
+<body data-vscode-context='{"preventDefaultContextMenuItems": true}' data-probe-label="host" data-instance="__INSTANCE__">
+<div id="bar">__TITLE__ - iframe: __IFRAME_URL__ <span id="info"></span></div>
+<iframe id="frame" src="__IFRAME_URL__" allow="clipboard-read; clipboard-write; pointer-lock; fullscreen" allowfullscreen></iframe>
+<script nonce="__NONCE__" src="__PROBE_JS__"></script>
+<script nonce="__NONCE__">
+  // Focus the iframe as soon as it loads so keyboard goes to the remote display, as a real shell would.
+  // Finding (run C): panel.reveal() / focusActiveEditorGroup put DOM focus on this document's <body>, not on the
+  // nested cross-origin frame, so keys went to the host page until the user clicked inside the frame. A host
+  // page that wraps a remote display must therefore push focus into the frame itself whenever it gets it.
+  const fr = document.getElementById('frame');
+  const kick = () => { if (document.hasFocus() && document.activeElement !== fr && fr.contentWindow) { fr.contentWindow.focus(); } };
+  fr.addEventListener('load', () => { fr.contentWindow.focus(); window.kiwrapProbeSend({ ev: 'iframe-loaded' }); });
+  window.addEventListener('focus', () => setTimeout(kick, 0));
+  document.addEventListener('focusin', () => setTimeout(kick, 0));
+  window.addEventListener('keydown', () => setTimeout(kick, 0));
+  setInterval(kick, 250);
+</script>
+</body></html>

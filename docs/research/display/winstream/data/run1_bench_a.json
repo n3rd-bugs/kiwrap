@@ -1,0 +1,274 @@
+{
+ "hello": {
+  "t": "hello",
+  "main": 47386208,
+  "w": 1920,
+  "h": 1080,
+  "dpi": 144,
+  "inject": "sendinput",
+  "quality": 70,
+  "fps_cap": 30,
+  "t_server": 1789832136300.8035
+ },
+ "stage": {
+  "left": 0,
+  "top": 26,
+  "w": 1600,
+  "h": 900,
+  "scale": 0.8333333333333334
+ },
+ "mapping": [
+  {
+   "frame_px": [
+    200,
+    200
+   ],
+   "page_px": [
+    167,
+    193
+   ],
+   "cursor_frame": [
+    200,
+    200
+   ],
+   "err": [
+    0,
+    0
+   ]
+  },
+  {
+   "frame_px": [
+    960,
+    540
+   ],
+   "page_px": [
+    800,
+    476
+   ],
+   "cursor_frame": [
+    960,
+    540
+   ],
+   "err": [
+    0,
+    0
+   ]
+  },
+  {
+   "frame_px": [
+    1900,
+    1060
+   ],
+   "page_px": [
+    1583,
+    909
+   ],
+   "cursor_frame": [
+    1900,
+    1060
+   ],
+   "err": [
+    0,
+    0
+   ]
+  },
+  {
+   "frame_px": [
+    17,
+    900
+   ],
+   "page_px": [
+    14,
+    776
+   ],
+   "cursor_frame": [
+    17,
+    900
+   ],
+   "err": [
+    0,
+    0
+   ]
+  }
+ ],
+ "idle": {
+  "fps": 0,
+  "kbps": 0
+ },
+ "active_move": {
+  "fps": 0,
+  "kbps": 0,
+  "decode_ms": 10.199999988079071,
+  "net_ms": 8.992431640625,
+  "server_cpu_pct": 2.2,
+  "kicad_cpu_pct": 0.5,
+  "encode_ms": 5.61,
+  "gpu": "29 %, 0 %"
+ },
+ "wheel_probes": [
+  {
+   "error": "Error: page.evaluate: Error: probe timeout 1\n    at http://127.0.0.1:8765/:174:84"
+  },
+  {
+   "error": "Error: page.evaluate: Error: probe timeout 2\n    at http://127.0.0.1:8765/:174:84"
+  },
+  {
+   "probe": 3,
+   "e2e_ms": 625,
+   "ws_to_inject_ms": 0.7841796875,
+   "inject_to_capture_ms": 599.269287109375,
+   "capture_to_paint_ms": 24.946533203125,
+   "seq": 5
+  },
+  {
+   "probe": 4,
+   "e2e_ms": 55,
+   "ws_to_inject_ms": 1.641357421875,
+   "inject_to_capture_ms": 29.427001953125,
+   "capture_to_paint_ms": 23.931640625,
+   "seq": 6
+  },
+  {
+   "probe": 5,
+   "e2e_ms": 47,
+   "ws_to_inject_ms": 1.031005859375,
+   "inject_to_capture_ms": 20.742431640625,
+   "capture_to_paint_ms": 25.2265625,
+   "seq": 7
+  },
+  {
+   "probe": 6,
+   "e2e_ms": 49,
+   "ws_to_inject_ms": 2.13427734375,
+   "inject_to_capture_ms": 20.27197265625,
+   "capture_to_paint_ms": 26.59375,
+   "seq": 8
+  },
+  {
+   "probe": 7,
+   "e2e_ms": 40,
+   "ws_to_inject_ms": 1.185546875,
+   "inject_to_capture_ms": 16.763671875,
+   "capture_to_paint_ms": 22.05078125,
+   "seq": 9
+  },
+  {
+   "probe": 8,
+   "e2e_ms": 34,
+   "ws_to_inject_ms": 1.8935546875,
+   "inject_to_capture_ms": 7.2841796875,
+   "capture_to_paint_ms": 24.822265625,
+   "seq": 10
+  },
+  {
+   "probe": 9,
+   "e2e_ms": 62,
+   "ws_to_inject_ms": 1.688720703125,
+   "inject_to_capture_ms": 37.18310546875,
+   "capture_to_paint_ms": 23.128173828125,
+   "seq": 12
+  },
+  {
+   "probe": 10,
+   "e2e_ms": 47,
+   "ws_to_inject_ms": 1.044921875,
+   "inject_to_capture_ms": 24.568359375,
+   "capture_to_paint_ms": 21.38671875,
+   "seq": 13
+  },
+  {
+   "probe": 11,
+   "e2e_ms": 52,
+   "ws_to_inject_ms": 0.952392578125,
+   "inject_to_capture_ms": 30.050537109375,
+   "capture_to_paint_ms": 20.9970703125,
+   "seq": 15
+  },
+  {
+   "probe": 12,
+   "e2e_ms": 56,
+   "ws_to_inject_ms": 1.078369140625,
+   "inject_to_capture_ms": 30.641845703125,
+   "capture_to_paint_ms": 24.27978515625,
+   "seq": 16
+  }
+ ],
+ "wheel_latency": {
+  "n": 10,
+  "e2e_median_ms": 52,
+  "e2e_min_ms": 34,
+  "e2e_max_ms": 625,
+  "inject_to_capture_median_ms": 29.427001953125,
+  "capture_to_paint_median_ms": 24.27978515625,
+  "ws_to_inject_median_ms": 1.185546875
+ },
+ "ping": {
+  "rtt_ms": 1
+ },
+ "active_zoom": {
+  "fps": 15.58139534883721,
+  "kbps": 41317.60744186046,
+  "decode_ms": 7.83999999910593,
+  "server_cpu_pct": 6.1,
+  "kicad_cpu_pct": 1.2,
+  "encode_ms": 5.58,
+  "gpu": "34 %, 0 %"
+ },
+ "server_stats": {
+  "pid": 89472,
+  "main_hwnd": 47386208,
+  "main_rect": [
+   60,
+   60,
+   1980,
+   1140
+  ],
+  "uptime_s": 82.2,
+  "windows": [
+   {
+    "hwnd": 47386208,
+    "title": "*ecc83-pp — PCB Editor",
+    "cls": "wxWindowNR",
+    "rect": [
+     60,
+     60,
+     1980,
+     1140
+    ],
+    "owner": 0,
+    "z": 0,
+    "menu": false,
+    "tooltip": false
+   }
+  ],
+  "failed_windows": {},
+  "sessions": {
+   "47386208": {
+    "frames": 82,
+    "bytes": 27159403,
+    "fps_1s": 12,
+    "encode_ms_avg": 5.58,
+    "size": [
+     1920,
+     1080
+    ],
+    "error": ""
+   }
+  },
+  "sent_frames": 80,
+  "sent_bytes": 26512533,
+  "clients": 1,
+  "input_events": 375,
+  "input_log": [],
+  "foreground_fixes": 0,
+  "cpu": {
+   "server_pct": 6.1,
+   "kicad_pct": 1.2,
+   "cores": 24
+  },
+  "gpu": "34 %, 0 %",
+  "inject": "sendinput",
+  "quality": 70,
+  "fps_cap": 30
+ }
+}

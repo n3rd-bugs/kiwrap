@@ -1,0 +1,15 @@
+[
+ {"a":"click","x":1000,"y":600,"after_ms":300},
+ {"a":"key","code":"Home","after_ms":800},
+ {"a":"key","code":"Escape","after_ms":300},
+ {"a":"shot","name":"g1_nightly_home"},
+ {"a":"probe","name":"probe_wheel","ev":{"t":"wheel","x":1000,"y":600,"dy":120,"dx":0}},
+ {"a":"sleep","ms":300},
+ {"a":"click","x":1000,"y":600,"button":2,"after_ms":200},
+ {"a":"waitwindows","name":"wait_ctx_menu","count":2,"timeout":4000},
+ {"a":"sleep","ms":500},
+ {"a":"shot","name":"g2_nightly_ctx_menu"},
+ {"a":"windows","name":"windows_ctx_menu"},
+ {"a":"key","code":"Escape","after_ms":500},
+ {"a":"stats","name":"stats_end"}
+]

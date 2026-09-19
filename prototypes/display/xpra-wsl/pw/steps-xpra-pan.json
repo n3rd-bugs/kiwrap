@@ -1,0 +1,1 @@
+[{"act":"wait","ms":3000},{"act":"fpsdrag","x1":600,"y1":400,"x2":1000,"y2":700,"button":"middle","ms":8000},{"act":"wait","ms":300},{"act":"shot","name":"40-pan-h264"},{"act":"eval","js":"(typeof client!=='undefined' && client.encoding) ? client.encoding : 'n/a'"}]

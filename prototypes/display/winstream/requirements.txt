@@ -1,0 +1,8 @@
+# winstream prototype (Windows only). Licences: see README.md
+windows-capture==2.0.1
+simplejpeg==1.9.0
+aiohttp>=3.13,<4
+numpy>=2.0
+pywin32==312
+psutil>=7
+pillow>=11

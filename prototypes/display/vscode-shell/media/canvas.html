@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<title>KiCad view (canvas)</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  #target{position:absolute;inset:0;outline:none}
+  canvas{position:absolute;left:0;top:0;width:100%;height:100%;image-rendering:pixelated}
+  #hud{position:absolute;left:6px;top:4px;color:#0f0;font:12px Consolas,monospace;background:rgba(0,0,0,.5);padding:2px 4px;white-space:pre}
+  #info{position:absolute;right:6px;top:4px;color:#9cf;font:11px Consolas,monospace}
+</style></head>
+<body data-probe-label="canvas" data-instance="__INSTANCE__" data-no-prevent="">
+<div id="target" tabindex="0" data-vscode-context='{"preventDefaultContextMenuItems": true}'><canvas id="c"></canvas><div id="hud">connecting __WS_URL__</div><div id="info"></div></div>
+<script nonce="__NONCE__" src="__PROBE_JS__"></script>
+<script nonce="__NONCE__">
+(function () {
+  const c = document.getElementById('c'), hud = document.getElementById('hud');
+  const ctx = c.getContext('2d', { alpha: false });
+  let ws, frames = 0, bytes = 0, lastStat = performance.now(), fps = 0, mbps = 0, rtts = [], seq = 0, lastSeq = 0, dropped = 0, decodeMs = 0;
+  let pendingFrame = null, frameLat = [];
+  function connect() {
+    ws = new WebSocket('__WS_URL__'); ws.binaryType = 'arraybuffer';
+    ws.onopen = () => { window.kiwrapProbeSend({ ev: 'ws-open' }); sendResize(); };
+    ws.onclose = () => { window.kiwrapProbeSend({ ev: 'ws-close' }); setTimeout(connect, 1000); };
+    ws.onmessage = (m) => {
+      if (typeof m.data === 'string') {
+        const j = JSON.parse(m.data);
+        if (j.type === 'echo') { const rtt = performance.now() - j.t_client; rtts.push(rtt); if (rtts.length > 200) rtts.shift(); }
+        return;
+      }
+      bytes += m.data.byteLength;
+      pendingFrame = m.data; // draw latest only (coalesce)
+      if (!raf) raf = requestAnimationFrame(draw);
+    };
+  }
+  let raf = 0;
+  function draw() {
+    raf = 0; const buf = pendingFrame; pendingFrame = null; if (!buf) return;
+    const t0 = performance.now();
+    const dv = new DataView(buf); let o = 0;
+    const type = dv.getUint8(o); o += 1; if (type !== 1) return;
+    seq = dv.getUint32(o, true); o += 4; const tServer = dv.getFloat64(o, true); o += 8;
+    const w = dv.getUint16(o, true); o += 2; const h = dv.getUint16(o, true); o += 2; o += 1;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const img = new ImageData(new Uint8ClampedArray(buf, o, w * h * 4), w, h);
+    ctx.putImageData(img, 0, 0);
+    frames++; if (lastSeq && seq > lastSeq + 1) dropped += seq - lastSeq - 1; lastSeq = seq;
+    decodeMs = performance.now() - t0; frameLat.push(Date.now() - tServer); if (frameLat.length > 100) frameLat.shift();
+    const now = performance.now();
+    if (now - lastStat > 1000) {
+      fps = frames * 1000 / (now - lastStat); mbps = bytes * 8 / (now - lastStat) / 1000; frames = 0; bytes = 0; lastStat = now;
+      const med = (a) => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+      const st = { fps: +fps.toFixed(1), mbps: +mbps.toFixed(1), rttMed: +med(rtts).toFixed(2), frameLatMed: +med(frameLat).toFixed(1), decodeMs: +decodeMs.toFixed(2), dropped, w, h, dpr: devicePixelRatio, cssW: c.clientWidth, cssH: c.clientHeight };
+      hud.textContent = JSON.stringify(st); window.kiwrapProbeSend({ ev: 'stats', ...st });
+    }
+  }
+  let idc = 0;
+  function sendInput(kind, e) { if (!ws || ws.readyState !== 1) return; const id = ++idc; ws.send(JSON.stringify({ type: 'input', id, t_client: performance.now(), ev: { kind, key: e.key, code: e.code, x: e.clientX, y: e.clientY, button: e.button, dy: e.deltaY, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey } })); }
+  function sendResize() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'resize', w: Math.round(c.clientWidth * devicePixelRatio), h: Math.round(c.clientHeight * devicePixelRatio), dpr: devicePixelRatio })); }
+  ['keydown', 'keyup', 'pointerdown', 'pointerup', 'pointermove', 'wheel'].forEach((k) => window.addEventListener(k, (e) => sendInput(k, e), { passive: k !== 'wheel' }));
+  window.addEventListener('resize', sendResize);
+  connect();
+})();
+</script>
+</body></html>

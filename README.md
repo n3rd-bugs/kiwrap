@@ -8,12 +8,12 @@ source-build bench of the fork exists for the CLI/IPC additions listed in
 [docs/UPSTREAM.md](docs/UPSTREAM.md). Schematic/board authoring, netlist sync, placement and
 routing tools are next.
 
-kiwrap lets an AI agent (Claude Code first; Copilot agent mode, Cursor, Windsurf, Codex best-effort)
+kiwrap lets an AI agent (Claude Code inside VS Code; Windows only — decision D18)
 do end-to-end electronics development on KiCad — spec → schematic → ERC → board → placement →
 routing → DRC → fabrication files — as a wrapper over installed KiCad binaries so KiCad can be
 upgraded underneath (7 → 8 → 9 → 10 → 11).
 
-## Quick start (Windows or Linux)
+## Quick start (Windows)
 
 ```powershell
 git clone git@github.com:n3rd-bugs/kiwrap.git; cd kiwrap
@@ -88,5 +88,5 @@ structured surface (ratsnest export, DRC/ERC over the API, headless jobs) the fo
 Windows 11; KiCad 7.0.6, 8.0.9, 9.0.9, 10.0.6 and the 10.99 nightly (10.99.0-4083, KiCad 11
 preview) side by side under `C:\Program Files\KiCad`; Python 3.11 + uv; Node 24 LTS; Java 17 on
 PATH (Freerouting 2.4.1 needs 25 → managed JRE); VS 2022 17.14 (MSVC 14.44) + vcpkg for the
-KiCad source bench; `cdb` from the Windows 10 SDK. Linux is designed and CI-tested (see
-docs/LINUX.md: KiCad 10.0.6 from the PPA on ubuntu-24.04), not yet verified on a developer machine.
+KiCad source bench; `cdb` from the Windows 10 SDK. Linux code paths exist behind the platform seam
+but are out of scope (D18).

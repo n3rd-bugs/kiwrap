@@ -1,0 +1,271 @@
+{
+ "diff_select_props_panel": {
+  "changed": 45620,
+  "total": 218625,
+  "pct": 20.87
+ },
+ "probe_rotate": {
+  "probe": 1,
+  "e2e_ms": 54,
+  "ws_to_inject_ms": 1.94189453125,
+  "inject_to_capture_ms": 26.725830078125,
+  "capture_to_paint_ms": 25.332275390625,
+  "seq": 13
+ },
+ "diff_rotate": {
+  "changed": 303,
+  "total": 18300,
+  "pct": 1.66
+ },
+ "diff_delete": {
+  "changed": 306,
+  "total": 18300,
+  "pct": 1.67
+ },
+ "diff_undo_vs_rotated": {
+  "changed": 256,
+  "total": 18300,
+  "pct": 1.4
+ },
+ "diff_undo_vs_deleted": {
+  "changed": 196,
+  "total": 18300,
+  "pct": 1.07
+ },
+ "diff_pan": {
+  "changed": 361785,
+  "total": 485639,
+  "pct": 74.5
+ },
+ "diff_drag_R4_src": {
+  "changed": 80,
+  "total": 9936,
+  "pct": 0.81
+ },
+ "wait_ctx_menu": {
+  "windows": 1,
+  "ms": 4101
+ },
+ "windows_ctx_menu": [
+  {
+   "hwnd": 46076902,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "windows_tooltip": [
+  {
+   "hwnd": 46076902,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_file_menu": {
+  "windows": 1,
+  "ms": 4086
+ },
+ "windows_file_menu": [
+  {
+   "hwnd": 46076902,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "stats_mid": {
+  "pid": 91380,
+  "main_hwnd": 46076902,
+  "main_rect": [
+   3900,
+   100,
+   5820,
+   1180
+  ],
+  "uptime_s": 46.9,
+  "windows": [
+   {
+    "hwnd": 46076902,
+    "title": "*ecc83-pp — PCB Editor",
+    "cls": "wxWindowNR",
+    "rect": [
+     3900,
+     100,
+     5820,
+     1180
+    ],
+    "owner": 0,
+    "z": 0,
+    "menu": false,
+    "tooltip": false
+   }
+  ],
+  "failed_windows": {},
+  "sessions": {
+   "46076902": {
+    "frames": 47,
+    "bytes": 15533542,
+    "fps_1s": 0,
+    "encode_ms_avg": 5.36,
+    "size": [
+     1920,
+     1080
+    ],
+    "error": ""
+   }
+  },
+  "sent_frames": 43,
+  "sent_bytes": 14225822,
+  "clients": 0,
+  "input_events": 52,
+  "input_log": [
+   [
+    "key",
+    "Home",
+    true,
+    true
+   ],
+   [
+    "key",
+    "Home",
+    false,
+    true
+   ],
+   [
+    "key",
+    "Escape",
+    true,
+    true
+   ],
+   [
+    "key",
+    "Escape",
+    false,
+    true
+   ],
+   [
+    "key",
+    "KeyR",
+    true,
+    true
+   ],
+   [
+    "key",
+    "KeyR",
+    false,
+    true
+   ],
+   [
+    "key",
+    "Delete",
+    true,
+    true
+   ],
+   [
+    "key",
+    "Delete",
+    false,
+    true
+   ],
+   [
+    "key",
+    "ControlLeft",
+    true,
+    true
+   ],
+   [
+    "key",
+    "KeyZ",
+    true,
+    true
+   ],
+   [
+    "key",
+    "KeyZ",
+    false,
+    true
+   ],
+   [
+    "key",
+    "ControlLeft",
+    false,
+    true
+   ],
+   [
+    "key",
+    "Escape",
+    true,
+    true
+   ],
+   [
+    "key",
+    "Escape",
+    false,
+    true
+   ],
+   [
+    "key",
+    "Home",
+    true,
+    true
+   ],
+   [
+    "key",
+    "Home",
+    false,
+    true
+   ]
+  ],
+  "foreground_fixes": 2,
+  "obscured_fixes": 0,
+  "cpu": {
+   "server_pct": 4.8,
+   "kicad_pct": 3.4,
+   "cores": 24
+  },
+  "gpu": "27 %, 0 %",
+  "inject": "sendinput",
+  "quality": 70,
+  "fps_cap": 30
+ },
+ "_shots": {
+  "b0_home": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b0_home.png",
+  "b1_selected": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b1_selected.png",
+  "b2_rotated": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b2_rotated.png",
+  "b3_deleted": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b3_deleted.png",
+  "b4_undone": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b4_undone.png",
+  "b5_panned": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b5_panned.png",
+  "b6_dragged_R4": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b6_dragged_R4.png",
+  "b7_context_menu": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b7_context_menu.png",
+  "b8_tooltip": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b8_tooltip.png",
+  "b9_file_menu": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run2/b9_file_menu.png"
+ }
+}

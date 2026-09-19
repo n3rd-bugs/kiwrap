@@ -1,0 +1,446 @@
+{
+ "wait_chooser": {
+  "windows": 2,
+  "ms": 226
+ },
+ "wait_chooser_closed": {
+  "windows": 2,
+  "ms": 56
+ },
+ "windows_after_chooser_esc": [
+  {
+   "hwnd": 13504842,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    4001,
+    152,
+    5083,
+    993
+   ],
+   "owner": 13766534,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 13766534,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_find": {
+  "windows": 2,
+  "ms": 55
+ },
+ "windows_find": [
+  {
+   "hwnd": 13504842,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    4001,
+    152,
+    5083,
+    993
+   ],
+   "owner": 13766534,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 13766534,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_find_closed": {
+  "windows": 2,
+  "ms": 58
+ },
+ "windows_after_find_esc": [
+  {
+   "hwnd": 13504842,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    4001,
+    152,
+    5083,
+    993
+   ],
+   "owner": 13766534,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 13766534,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "stats_end": {
+  "pid": 56908,
+  "main_hwnd": 13766534,
+  "main_rect": [
+   3900,
+   100,
+   5820,
+   1180
+  ],
+  "uptime_s": 24.3,
+  "windows": [
+   {
+    "hwnd": 13504842,
+    "title": "Footprint Chooser (15464 items loaded)",
+    "cls": "wxWindowNR",
+    "rect": [
+     4001,
+     152,
+     5083,
+     993
+    ],
+    "owner": 13766534,
+    "z": 0,
+    "menu": false,
+    "tooltip": false
+   },
+   {
+    "hwnd": 13766534,
+    "title": "*ecc83-pp — PCB Editor",
+    "cls": "wxWindowNR",
+    "rect": [
+     3900,
+     100,
+     5820,
+     1180
+    ],
+    "owner": 0,
+    "z": 1,
+    "menu": false,
+    "tooltip": false
+   }
+  ],
+  "failed_windows": {},
+  "fragile_seen": 0,
+  "monitor_session": false,
+  "monitor_frames": null,
+  "sessions": {
+   "13504842": {
+    "frames": 22,
+    "bytes": 1953751,
+    "fps_1s": 0,
+    "encode_ms_avg": 2.69,
+    "size": [
+     1082,
+     841
+    ],
+    "error": ""
+   },
+   "13766534": {
+    "frames": 9,
+    "bytes": 2957942,
+    "fps_1s": 0,
+    "encode_ms_avg": 4.7,
+    "size": [
+     1920,
+     1080
+    ],
+    "error": ""
+   }
+  },
+  "sent_frames": 31,
+  "sent_bytes": 4913305,
+  "clients": 1,
+  "input_events": 30,
+  "input_log": [
+   [
+    284.194,
+    "key",
+    "Home",
+    true,
+    null,
+    null
+   ],
+   [
+    284.195,
+    "key",
+    "Home",
+    false,
+    null,
+    null
+   ],
+   [
+    284.998,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    284.999,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    285.316,
+    "key",
+    "KeyA",
+    true,
+    null,
+    null
+   ],
+   [
+    285.317,
+    "key",
+    "KeyA",
+    false,
+    null,
+    null
+   ],
+   [
+    288.353,
+    "key",
+    "KeyR",
+    true,
+    null,
+    null
+   ],
+   [
+    288.354,
+    "key",
+    "KeyR",
+    false,
+    null,
+    null
+   ],
+   [
+    288.398,
+    "key",
+    "Digit0",
+    true,
+    null,
+    null
+   ],
+   [
+    288.399,
+    "key",
+    "Digit0",
+    false,
+    null,
+    null
+   ],
+   [
+    288.443,
+    "key",
+    "Digit8",
+    true,
+    null,
+    null
+   ],
+   [
+    288.443,
+    "key",
+    "Digit8",
+    false,
+    null,
+    null
+   ],
+   [
+    288.488,
+    "key",
+    "Digit0",
+    true,
+    null,
+    null
+   ],
+   [
+    288.489,
+    "key",
+    "Digit0",
+    false,
+    null,
+    null
+   ],
+   [
+    288.533,
+    "key",
+    "Digit5",
+    true,
+    null,
+    null
+   ],
+   [
+    288.534,
+    "key",
+    "Digit5",
+    false,
+    null,
+    null
+   ],
+   [
+    290.151,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    290.152,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    291.078,
+    "key",
+    "ControlLeft",
+    true,
+    null,
+    null
+   ],
+   [
+    291.11,
+    "key",
+    "KeyF",
+    true,
+    null,
+    null
+   ],
+   [
+    291.141,
+    "key",
+    "KeyF",
+    false,
+    null,
+    null
+   ],
+   [
+    291.169,
+    "key",
+    "ControlLeft",
+    false,
+    null,
+    null
+   ],
+   [
+    292.364,
+    "key",
+    "KeyX",
+    true,
+    null,
+    null
+   ],
+   [
+    292.367,
+    "key",
+    "KeyX",
+    false,
+    null,
+    null
+   ],
+   [
+    292.41,
+    "key",
+    "KeyY",
+    true,
+    null,
+    null
+   ],
+   [
+    292.413,
+    "key",
+    "KeyY",
+    false,
+    null,
+    null
+   ],
+   [
+    292.454,
+    "key",
+    "KeyZ",
+    true,
+    null,
+    null
+   ],
+   [
+    292.458,
+    "key",
+    "KeyZ",
+    false,
+    null,
+    null
+   ],
+   [
+    293.22,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    293.222,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ]
+  ],
+  "foreground_fixes": 0,
+  "obscured_fixes": 0,
+  "cpu": {
+   "server_pct": 4.2,
+   "kicad_pct": 5.7,
+   "cores": 24
+  },
+  "gpu": "22 %, 0 %",
+  "inject": "postmessage",
+  "quality": 70,
+  "fps_cap": 30
+ },
+ "_shots": {
+  "e8_chooser_typed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run8/e8_chooser_typed.png",
+  "e9_find_typed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run8/e9_find_typed.png"
+ }
+}

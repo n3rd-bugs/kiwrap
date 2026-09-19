@@ -1,0 +1,6 @@
+[{"act":"wait","ms":6000},{"act":"shot","name":"11-xvfb-initial"},
+ {"act":"eval","js":"({canvases: [...document.querySelectorAll('canvas')].map(c=>c.width+'x'+c.height+' css '+c.clientWidth+'x'+c.clientHeight)})"},
+ {"act":"click","x":103,"y":47},{"act":"wait","ms":1500},{"act":"shot","name":"12-xvfb-menu"},{"act":"key","key":"Escape"},
+ {"act":"latency","x":800,"y":500,"n":5,"dy":240},
+ {"act":"fpsdrag","x1":600,"y1":400,"x2":900,"y2":600,"button":"middle","ms":3000},{"act":"wait","ms":500},{"act":"shot","name":"13-xvfb-after-pan"},
+ {"act":"keylatency","key":"Home","n":3}]

@@ -1,0 +1,39 @@
+{
+  "name": "kiwrap-vscode-novnc",
+  "displayName": "kiwrap: KiCad over noVNC (prototype)",
+  "description": "Spike: shows a sandboxed KiCad window (shared by a VNC server) inside a VS Code webview through noVNC.",
+  "version": "0.0.1",
+  "publisher": "kiwrap",
+  "private": true,
+  "license": "MIT",
+  "engines": { "vscode": "^1.101.0" },
+  "categories": ["Other"],
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "kiwrapVnc.open", "title": "kiwrap: Open KiCad (noVNC) panel" }
+    ],
+    "customEditors": [
+      {
+        "viewType": "kiwrapVnc.pcbEditor",
+        "displayName": "KiCad PCB Editor (noVNC)",
+        "selector": [{ "filenamePattern": "*.kicad_pcb" }],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "kiwrap noVNC",
+      "properties": {
+        "kiwrapVnc.url": {
+          "type": "string",
+          "default": "http://127.0.0.1:6080/kicad.html?nostatus=1&fit=dpr",
+          "description": "noVNC page served by websockify (--web <noVNC dir>). fit=dpr shows the KiCad window at 1:1 physical pixels on HiDPI."
+        },
+        "kiwrapVnc.port": { "type": "number", "default": 6080, "description": "websockify port (mapped through webview portMapping so it also works in remote/WSL sessions)." }
+      }
+    }
+  },
+  "scripts": { "compile": "tsc -p ./", "watch": "tsc -watch -p ./" },
+  "devDependencies": { "@types/vscode": "^1.101.0", "@types/node": "^24.0.0", "typescript": "^5.6.0" }
+}

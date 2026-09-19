@@ -156,3 +156,15 @@ on master), per-net length/trace statistics, and a full structured dump (`pcb/sc
 patched KiCad is relaxed to: stock KiCad always works; a patched or nightly build unlocks more,
 and every patch is carried in the fork (`n3rd-bugs/kicad-source-mirror`) until merged upstream.
 The T5 handler snapshot of the nightly is the authoritative gap list for tier 3.
+
+## D18 — Windows only, VS Code only (supersedes D12; narrows D13)
+
+**Choice (owner, 2026-09-20):** the product targets Windows hosts and VS Code as the only user
+surface. Claude Code running inside VS Code is the agent client; Linux/macOS, other IDEs (Cursor,
+Windsurf) and terminal-only clients are out of scope until further notice.
+**Consequence:** the Linux discovery/sandbox code stays behind the `kiwrap.platform` seam but is
+unmaintained and untested (the `kicad-linux` CI job is removed; the cheap Ubuntu lint/unit jobs
+remain as a Python-portability canary only); WSL/Xpra/Broadway display routes are informational,
+the display-forwarding recommendation is Windows-native; generated MCP configs for other clients
+are dropped from the deliverables; the VS Code extension is the one front end (its own webview
+hosts the forwarded KiCad display and the previews).

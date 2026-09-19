@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>KiCad over noVNC (spike)</title>
+<style>html,body{margin:0;background:#222;height:100%;overflow:hidden}#status{position:fixed;left:0;top:0;color:#0f0;font:12px monospace;background:rgba(0,0,0,.6);padding:2px 6px;z-index:9}#screen{width:100%;height:100%}</style>
+</head><body><div id="status">connecting</div><div id="screen"></div>
+<script type="module">
+import RFB from './core/rfb.js';
+const q = new URLSearchParams(location.search);
+const url = q.get('url') || ((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/websockify');
+const rfb = new RFB(document.getElementById('screen'), url, { shared: true });
+rfb.scaleViewport = q.get('scale') === '1';
+rfb.clipViewport = false; rfb.resizeSession = false; rfb.focusOnClick = true;
+window.rfb = rfb;
+window.__stats = { fbu: 0, rects: 0, lastFbuAt: 0, frames: [] };
+const flip = rfb._display.flip.bind(rfb._display);
+rfb._display.flip = (fromQueue) => { if (!fromQueue) { const t = performance.now(); window.__stats.fbu++; window.__stats.lastFbuAt = t; window.__stats.frames.push(t); if (window.__stats.frames.length > 5000) window.__stats.frames.shift(); } return flip(fromQueue); };
+const st = document.getElementById('status');
+const fit = q.get('fit');  // 'dpr' = show the framebuffer at 1:1 PHYSICAL pixels on HiDPI (CSS size = fb / devicePixelRatio, noVNC scales)
+function applyFit() { const w = rfb._fbWidth, h = rfb._fbHeight, dpr = window.devicePixelRatio || 1; const scr = document.getElementById('screen');
+  if (fit === 'dpr' && w) { scr.style.width = (w / dpr) + 'px'; scr.style.height = (h / dpr) + 'px'; rfb.scaleViewport = true; }
+  if (fit === 'window') { scr.style.width = '100%'; scr.style.height = '100%'; rfb.scaleViewport = true; } }
+rfb.addEventListener('connect', () => { st.textContent = 'connected ' + rfb._fbWidth + 'x' + rfb._fbHeight + ' dpr=' + window.devicePixelRatio; window.__connected = true; applyFit(); });
+rfb.addEventListener('desktopname', applyFit); window.addEventListener('resize', applyFit);
+setInterval(() => { const w = rfb._fbWidth; if (w && w !== window.__lastW) { window.__lastW = w; applyFit(); } }, 500);
+rfb.addEventListener('disconnect', e => { st.textContent = 'disconnected clean=' + e.detail.clean; window.__connected = false; });
+rfb.addEventListener('desktopname', e => { st.textContent += ' ' + e.detail.name; });
+rfb.addEventListener('clipboard', e => { window.__clip = e.detail.text; });
+if (q.get('nostatus')) st.style.display = 'none';
+</script></body></html>

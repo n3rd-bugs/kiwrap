@@ -1,0 +1,185 @@
+{
+ "probe_wheel": {
+  "probe": 1,
+  "e2e_ms": 65,
+  "ws_to_inject_ms": 0.861328125,
+  "inject_to_capture_ms": 37.537353515625,
+  "capture_to_paint_ms": 26.601318359375,
+  "seq": 19
+ },
+ "wait_ctx_menu": {
+  "windows": 2,
+  "ms": 60
+ },
+ "windows_ctx_menu": [
+  {
+   "hwnd": 9709690,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "stats_end": {
+  "pid": 89624,
+  "main_hwnd": 9709690,
+  "main_rect": [
+   3900,
+   100,
+   5820,
+   1180
+  ],
+  "uptime_s": 29,
+  "windows": [
+   {
+    "hwnd": 9709690,
+    "title": "*ecc83-pp — PCB Editor",
+    "cls": "wxWindowNR",
+    "rect": [
+     3900,
+     100,
+     5820,
+     1180
+    ],
+    "owner": 0,
+    "z": 0,
+    "menu": false,
+    "tooltip": false
+   }
+  ],
+  "failed_windows": {},
+  "fragile_seen": 1,
+  "monitor_session": false,
+  "monitor_frames": null,
+  "sessions": {
+   "9709690": {
+    "frames": 25,
+    "bytes": 9950471,
+    "fps_1s": 3,
+    "encode_ms_avg": 5.42,
+    "size": [
+     1920,
+     1080
+    ],
+    "error": ""
+   }
+  },
+  "sent_frames": 27,
+  "sent_bytes": 9818839,
+  "clients": 1,
+  "input_events": 13,
+  "input_log": [
+   [
+    491.626,
+    "down",
+    0,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    491.67,
+    "up",
+    0,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    491.975,
+    "key",
+    "Home",
+    true,
+    null,
+    null
+   ],
+   [
+    492.021,
+    "key",
+    "Home",
+    false,
+    null,
+    null
+   ],
+   [
+    492.787,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    492.832,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    493.186,
+    "wheel",
+    null,
+    null,
+    1000,
+    600
+   ],
+   [
+    493.606,
+    "down",
+    2,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    493.651,
+    "up",
+    2,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    494.612,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    494.66,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ]
+  ],
+  "foreground_fixes": 4,
+  "obscured_fixes": 0,
+  "cpu": {
+   "server_pct": 4.8,
+   "kicad_pct": 3.6,
+   "cores": 24
+  },
+  "gpu": "34 %, 0 %",
+  "inject": "sendinput",
+  "quality": 70,
+  "fps_cap": 30
+ },
+ "_shots": {
+  "g1_nightly_home": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run10/g1_nightly_home.png",
+  "g2_nightly_ctx_menu": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run10/g2_nightly_ctx_menu.png"
+ }
+}

@@ -381,8 +381,8 @@ Asked interactively and answered by the user; the log with consequences is in [D
 | 9 | Fabrication | JLCPCB default profile (rules, naming, `LCSC Part #`, rotation corrections) |
 | 10 | Schematic scope | Hierarchy + multi-unit in v1; buses Phase 2 |
 | 11 | Toolchain | Install Node LTS now; bootstrap downloads pinned JRE 25, Freerouting, jlcparts DB, EasyEDA data; telemetry off |
-| 12 | Platforms | **Windows + Linux certified from Phase 0 (user override)**; macOS later |
-| 13 | Agent clients | **Claude Code (CLI + VS Code) only first-class (user override)**; others generated configs, best-effort |
+| 12 | Platforms | ~~Windows + Linux certified from Phase 0~~ **superseded by D18: Windows only** |
+| 13 | Agent clients | **Claude Code inside VS Code only** (D18: VS Code is the only surface; other IDEs/CLIs out of scope) |
 | 14 | CI | GitHub Actions for headless tests (Windows + Linux runners); this machine as a self-hosted runner for GUI/IPC certification |
 | 15 | Eval budget | **Manual only (user override)** — no scheduled agent evals |
 

@@ -1,0 +1,17 @@
+[
+ {"a":"click","x":1000,"y":600,"after_ms":300},
+ {"a":"key","code":"Home","after_ms":800},
+ {"a":"key","code":"Escape","after_ms":300},
+ {"a":"pagestats","name":"p0"},{"a":"stats","name":"s0"},
+ {"a":"drag","x1":700,"y1":400,"x2":1300,"y2":900,"button":1,"steps":120,"step_ms":16},
+ {"a":"drag","x1":1300,"y1":900,"x2":700,"y2":400,"button":1,"steps":120,"step_ms":16},
+ {"a":"pagestats","name":"p1"},{"a":"stats","name":"s1"},
+ {"a":"shot","name":"f1_after_pan"},
+ {"a":"probe","name":"probe_wheel1","ev":{"t":"wheel","x":1000,"y":600,"dy":120,"dx":0}},{"a":"sleep","ms":250},
+ {"a":"probe","name":"probe_wheel2","ev":{"t":"wheel","x":1000,"y":600,"dy":-120,"dx":0}},{"a":"sleep","ms":250},
+ {"a":"probe","name":"probe_wheel3","ev":{"t":"wheel","x":1000,"y":600,"dy":120,"dx":0}},{"a":"sleep","ms":250},
+ {"a":"probe","name":"probe_wheel4","ev":{"t":"wheel","x":1000,"y":600,"dy":-120,"dx":0}},{"a":"sleep","ms":250},
+ {"a":"probe","name":"probe_wheel5","ev":{"t":"wheel","x":1000,"y":600,"dy":120,"dx":0}},{"a":"sleep","ms":250},
+ {"a":"probe","name":"probe_wheel6","ev":{"t":"wheel","x":1000,"y":600,"dy":-120,"dx":0}},{"a":"sleep","ms":250},
+ {"a":"stats","name":"stats_end"}
+]

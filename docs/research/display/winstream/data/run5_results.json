@@ -1,0 +1,679 @@
+{
+ "wait_ctx_menu": {
+  "windows": 2,
+  "ms": 70
+ },
+ "windows_ctx_menu": [
+  {
+   "hwnd": 46141212,
+   "title": "",
+   "cls": "#32768",
+   "rect": [
+    4900,
+    700,
+    5414,
+    1878
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": true,
+   "tooltip": false
+  },
+  {
+   "hwnd": 12193990,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_ctx_closed": {
+  "windows": 1,
+  "ms": 59
+ },
+ "windows_tooltip": [
+  {
+   "hwnd": 12193990,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_file_menu": {
+  "windows": 2,
+  "ms": 73
+ },
+ "windows_file_menu": [
+  {
+   "hwnd": 96343102,
+   "title": "Save Changes?",
+   "cls": "#32770",
+   "rect": [
+    4361,
+    531,
+    5359,
+    748
+   ],
+   "owner": 12193990,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 12193990,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_chooser": {
+  "windows": 2,
+  "ms": 436
+ },
+ "windows_chooser": [
+  {
+   "hwnd": 20194248,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    3887,
+    38,
+    4969,
+    879
+   ],
+   "owner": 12193990,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 12193990,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_chooser_closed": {
+  "windows": 2,
+  "ms": 57
+ },
+ "clipboard_after_ctrl_c": {
+  "text": "paste-me-A",
+  "len": 10
+ },
+ "wait_props": {
+  "windows": 2,
+  "ms": 72
+ },
+ "windows_props": [
+  {
+   "hwnd": 20194248,
+   "title": "Footprint Chooser (15464 items loaded)",
+   "cls": "wxWindowNR",
+   "rect": [
+    3887,
+    38,
+    4969,
+    879
+   ],
+   "owner": 12193990,
+   "z": 0,
+   "menu": false,
+   "tooltip": false
+  },
+  {
+   "hwnd": 12193990,
+   "title": "*ecc83-pp — PCB Editor",
+   "cls": "wxWindowNR",
+   "rect": [
+    3900,
+    100,
+    5820,
+    1180
+   ],
+   "owner": 0,
+   "z": 1,
+   "menu": false,
+   "tooltip": false
+  }
+ ],
+ "wait_props_closed": {
+  "windows": 2,
+  "ms": 72
+ },
+ "stats_end": {
+  "pid": 37340,
+  "main_hwnd": 12193990,
+  "main_rect": [
+   3900,
+   100,
+   5820,
+   1180
+  ],
+  "uptime_s": 33.9,
+  "windows": [
+   {
+    "hwnd": 20194248,
+    "title": "Footprint Chooser (15464 items loaded)",
+    "cls": "wxWindowNR",
+    "rect": [
+     3887,
+     38,
+     4969,
+     879
+    ],
+    "owner": 12193990,
+    "z": 0,
+    "menu": false,
+    "tooltip": false
+   },
+   {
+    "hwnd": 12193990,
+    "title": "*ecc83-pp — PCB Editor",
+    "cls": "wxWindowNR",
+    "rect": [
+     3900,
+     100,
+     5820,
+     1180
+    ],
+    "owner": 0,
+    "z": 1,
+    "menu": false,
+    "tooltip": false
+   }
+  ],
+  "failed_windows": {},
+  "fragile_seen": 1,
+  "monitor_session": false,
+  "monitor_frames": null,
+  "sessions": {
+   "12193990": {
+    "frames": 58,
+    "bytes": 20526797,
+    "fps_1s": 3,
+    "encode_ms_avg": 5.56,
+    "size": [
+     1920,
+     1080
+    ],
+    "error": ""
+   },
+   "20194248": {
+    "frames": 5,
+    "bytes": 583578,
+    "fps_1s": 0,
+    "encode_ms_avg": 3.06,
+    "size": [
+     1082,
+     841
+    ],
+    "error": ""
+   }
+  },
+  "sent_frames": 69,
+  "sent_bytes": 21371697,
+  "clients": 1,
+  "input_events": 67,
+  "input_log": [
+   [
+    935.879,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    935.885,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    938.716,
+    "down",
+    0,
+    null,
+    25.999999237060546,
+    91.00000305175782
+   ],
+   [
+    938.761,
+    "up",
+    0,
+    null,
+    25.999999237060546,
+    91.00000305175782
+   ],
+   [
+    939.807,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    939.808,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    940.114,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    940.115,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    940.669,
+    "down",
+    0,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    940.719,
+    "up",
+    0,
+    null,
+    999.9999755859375,
+    600
+   ],
+   [
+    941.02,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    941.021,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    941.324,
+    "key",
+    "KeyA",
+    true,
+    null,
+    null
+   ],
+   [
+    941.325,
+    "key",
+    "KeyA",
+    false,
+    null,
+    null
+   ],
+   [
+    944.75,
+    "key",
+    "KeyR",
+    true,
+    null,
+    null
+   ],
+   [
+    944.797,
+    "key",
+    "KeyR",
+    false,
+    null,
+    null
+   ],
+   [
+    944.799,
+    "key",
+    "Minus",
+    true,
+    null,
+    null
+   ],
+   [
+    944.8,
+    "key",
+    "Minus",
+    false,
+    null,
+    null
+   ],
+   [
+    944.843,
+    "key",
+    "Digit0",
+    true,
+    null,
+    null
+   ],
+   [
+    944.844,
+    "key",
+    "Digit0",
+    false,
+    null,
+    null
+   ],
+   [
+    944.888,
+    "key",
+    "Digit8",
+    true,
+    null,
+    null
+   ],
+   [
+    944.89,
+    "key",
+    "Digit8",
+    false,
+    null,
+    null
+   ],
+   [
+    944.934,
+    "key",
+    "Digit0",
+    true,
+    null,
+    null
+   ],
+   [
+    944.935,
+    "key",
+    "Digit0",
+    false,
+    null,
+    null
+   ],
+   [
+    944.979,
+    "key",
+    "Digit5",
+    true,
+    null,
+    null
+   ],
+   [
+    944.979,
+    "key",
+    "Digit5",
+    false,
+    null,
+    null
+   ],
+   [
+    946.623,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    946.672,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    947.593,
+    "down",
+    0,
+    null,
+    777.9999755859375,
+    819.9999755859375
+   ],
+   [
+    947.64,
+    "up",
+    0,
+    null,
+    777.9999755859375,
+    819.9999755859375
+   ],
+   [
+    948.051,
+    "key",
+    "ControlLeft",
+    true,
+    null,
+    null
+   ],
+   [
+    948.095,
+    "key",
+    "KeyC",
+    true,
+    null,
+    null
+   ],
+   [
+    948.107,
+    "key",
+    "KeyC",
+    false,
+    null,
+    null
+   ],
+   [
+    948.133,
+    "key",
+    "ControlLeft",
+    false,
+    null,
+    null
+   ],
+   [
+    948.69,
+    "key",
+    "KeyE",
+    true,
+    null,
+    null
+   ],
+   [
+    948.739,
+    "key",
+    "KeyE",
+    false,
+    null,
+    null
+   ],
+   [
+    950.034,
+    "key",
+    "ControlLeft",
+    true,
+    null,
+    null
+   ],
+   [
+    950.083,
+    "key",
+    "KeyA",
+    true,
+    null,
+    null
+   ],
+   [
+    950.116,
+    "key",
+    "KeyA",
+    false,
+    null,
+    null
+   ],
+   [
+    950.128,
+    "key",
+    "ControlLeft",
+    false,
+    null,
+    null
+   ],
+   [
+    950.37,
+    "key",
+    "KeyR",
+    true,
+    null,
+    null
+   ],
+   [
+    950.371,
+    "key",
+    "KeyR",
+    false,
+    null,
+    null
+   ],
+   [
+    950.416,
+    "key",
+    "Digit3",
+    true,
+    null,
+    null
+   ],
+   [
+    950.417,
+    "key",
+    "Digit3",
+    false,
+    null,
+    null
+   ],
+   [
+    950.461,
+    "key",
+    "KeyX",
+    true,
+    null,
+    null
+   ],
+   [
+    950.462,
+    "key",
+    "KeyX",
+    false,
+    null,
+    null
+   ],
+   [
+    951.197,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    951.238,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ],
+   [
+    952.153,
+    "key",
+    "Escape",
+    true,
+    null,
+    null
+   ],
+   [
+    952.193,
+    "key",
+    "Escape",
+    false,
+    null,
+    null
+   ]
+  ],
+  "foreground_fixes": 8,
+  "obscured_fixes": 0,
+  "cpu": {
+   "server_pct": 6.7,
+   "kicad_pct": 4.6,
+   "cores": 24
+  },
+  "gpu": "25 %, 0 %",
+  "inject": "sendinput",
+  "quality": 70,
+  "fps_cap": 30
+ },
+ "_shots": {
+  "c1_context_menu": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c1_context_menu.png",
+  "c1b_context_menu_hover": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c1b_context_menu_hover.png",
+  "c2_tooltip": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c2_tooltip.png",
+  "c3_file_menu": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c3_file_menu.png",
+  "c4_footprint_chooser": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c4_footprint_chooser.png",
+  "c5_chooser_typed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c5_chooser_typed.png",
+  "c6_chooser_closed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c6_chooser_closed.png",
+  "c7_properties_dialog": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c7_properties_dialog.png",
+  "c8_properties_typed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c8_properties_typed.png",
+  "c9_props_closed": "C:/Users/usama/AppData/Local/Temp/claude/c--Upwork-KiCad/48a8df66-7213-479f-ab2e-a63b89135016/scratchpad/display/winstream/run5/c9_props_closed.png"
+ }
+}
