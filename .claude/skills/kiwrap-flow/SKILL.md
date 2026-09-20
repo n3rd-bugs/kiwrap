@@ -1,6 +1,6 @@
 ---
 name: kiwrap-flow
-description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones / kw_pcb_route -> kw_pcb_drc -> kw_fab_export), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors. Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
+description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones (B.Cu plane) -> kw_pcb_route_auto (+ kw_job, kw_pcb_fix) -> kw_pcb_zones (F.Cu pour) -> kw_pcb_route touch-ups -> kw_pcb_drc -> kw_fab_bom / kw_fab_export(profile="jlcpcb")), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors. Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
 ---
 
 # kiwrap flow (data first)
@@ -26,6 +26,17 @@ Installed KiCads (newest first) with capability summaries. **KiCad 11 first**: p
 `<name>.kicad_sch` and `<name>.kicad_pcb` in the target's format and starts the snapshot history;
 pass `board_size_mm=[w, h]` for a rectangular outline (or set it later with `kw_pcb_setup`).
 `action="status"` returns stage, hashes, epochs, external edits and `next_suggested`.
+
+## 1b. `kw_intent(action="set", intent={blocks, rails, interfaces, nets, constraints})`
+
+Declare the design before drawing it: `nets` = `{"GND": [["U1", "1"], "C1.2", ...], "VIN": [...]}`
+(the pins you mean to connect; local-label nets are matched to `/NAME`, unnamed ones by their
+pins), `constraints` = `{size_mm, layers, fab: "jlcpcb", strict_nets: false}`. Stored in
+`<project>/.kiwrap/intent.json`; every `kw_sch_check` from then on adds `validators.intent_diff`
+and `data.intent_diff` = `missing[]` (declared pin not on its net, `found_in` = where it is),
+`wrong_pin[]` (same ref, other pin - a label on the wrong pin, which ERC cannot see), `extra[]`
+(counted only with `strict_nets`), `unmatched[]`. Done = 0 ERC errors AND an empty diff.
+`kw_intent(action="diff")` runs it alone; `merge=true` (default) updates per key.
 
 ## 2. Parts: search before you place
 
@@ -80,7 +91,9 @@ counts and footprint filters. A guessed id costs an `E_BAD_ARGS` / `lib_symbol_i
 
 ## 4. Board authoring
 
-1. `kw_pcb_setup(project, layers?, rules?, netclasses?, outline?, custom_rules?, drc?)` - copper
+1. `kw_pcb_setup(project, preset?, layers?, rules?, netclasses?, outline?, custom_rules?, drc?)` -
+   `preset="jlcpcb-2layer"` / `"jlcpcb-4layer"` writes the vendor's safe rules and layer count in
+   one go (explicit keys override; `data.preset` echoes it); or copper
    layer count / names, `rules={clearance_mm, track_width_mm, via_size_mm, via_drill_mm,
    min_track_mm, min_via_mm, min_hole_mm, hole_clearance_mm, copper_edge_clearance_mm, ...}`
    (`kw_help(topic="kw_pcb_setup")` lists them all; an unknown key is `E_BAD_ARGS` with the
@@ -108,6 +121,37 @@ counts and footprint filters. A guessed id costs an `E_BAD_ARGS` / `lib_symbol_i
 4. `kw_pcb_zones(project, zones=[{net, layers, rect_mm | polygon_mm, priority, ...}], fill?,
    drc?)` - filled copper (GND pour on B.Cu, power islands) or keepouts (`keepout=true`); the
    fill runs through kicad-cli (KiCad 10+) or RefillZones (KiCad 11); `data.drc` follows.
+   **Pour order for the autorouter:** the B.Cu GND plane BEFORE `kw_pcb_route_auto`, the F.Cu
+   pour AFTER it (a both-sides pour first makes the router think every top GND pad is
+   connected; no pour first turns GND into track connections the router stalls on).
+4b. `kw_pcb_route_auto(project, passes?, timeout_s?, nets?, lock_refs?, clean_dangling?,
+   from_scratch?, provider?)` - gated on `placed`, DESTRUCTIVE: every unlocked track / via of
+   the routed nets goes to the router (`nets=[...]` routes ONLY those nets - the others leave
+   the DSN network and their copper is locked as obstacles; `lock_refs` keeps the nets of those
+   footprints as they are). A re-run on a partially routed board keeps the existing unlocked
+   copper as wiring the router only optimises (same plateau): use `kw_pcb_fix` or
+   `from_scratch=true` to make progress. Default `run_async=true`: the receipt is `{job_id}`
+   (the gate, unknown nets and missing engines are refused before queueing) - poll
+   `kw_job(job_id, action="wait", wait_s=30)` until `data.done`, then read `data.job.result` as
+   the receipt (`result.ok == result.data.ok`; kw_help(topic="kw_job") has the shape):
+   `data.routed` (`tracks_added`, `vias_added`, `unrouted` = KiCad's unconnected count after the
+   mandatory refill, `unrouted_connections` = KiCad's open connections `{net, from: {ref, pad,
+   x_mm, y_mm}, to}`),
+   `data.router` (`passes`, per-pass `history`, `score`, `stop_reason`), `data.drc`
+   (`must_fix` / `review` / `unconnected`), `data.dsn` (nets, classes, planes exported),
+   `data.rules` (what the router was told: minimum widths / clearances, fanout off unless BGA,
+   copper-to-edge from the board rule), `provider_used` (`codec` = kiwrap's DSN/SES codec on
+   stock KiCad; `cli:<v>+specctra-jobs` on the patched build), `next_suggested`. When
+   `must_fix > 0` or `unrouted > 0`: `kw_pcb_fix(project, max_iterations?, passes?,
+   timeout_s?)` (a job too, gated on `placed`) rips up the nets named in the must_fix
+   violations (all of them, not only the 50 listed), cleans stubs, re-routes only those nets and
+   repeats until `must_fix == 0`; read `data.must_fix{before, after}`, `data.iterations[]`,
+   `data.unfixable[]` (violations naming no net: a pad-to-pad hole clearance, a courtyard - not a
+   routing problem); its receipt carries one `drc` delta, initial -> final. `E_UNSUPPORTED` with
+   a bootstrap hint means the managed JRE / Freerouting are not installed (`kw_env` lists
+   `engines`); `E_TIMEOUT` = raise `timeout_s` or route a subset - its `why` says whether the
+   board is unchanged or which stubs / ripped-up copper are gone (`data.restore_ref` is the
+   snapshot to restore); a cancelled job ends `cancelled`, never `failed`.
 5. `kw_pcb_route(project, ops=[{op: "track", points_mm, net, layer?, width_mm?} | {op: "via",
    at_mm, net, layers?, size_mm?, drill_mm?} | {op: "delete", uuid}], drc?)` - touch-ups, not
    whole-board routing. Get pad positions from `kw_pcb_get(kinds=["pads"], refs=[...])` and route
@@ -123,11 +167,23 @@ counts and footprint filters. A guessed id costs an `E_BAD_ARGS` / `lib_symbol_i
    `data.violations[]` (`type`, `class`, `pos`, `items[].uuid`) with `kw_pcb_place` /
    `kw_pcb_route` (`delete` the offending uuid, route again) and re-run.
 
-## 5. `kw_fab_export(project, targets=["gerbers","drill","pos","bom"])`
+## 5. Fabrication: `kw_fab_bom` and `kw_fab_export(profile="jlcpcb")`
 
-Gated on `drc_clean`. Files land in `<project>/fab/<target>/`; the receipt lists them. Unsupported
-targets on the chosen KiCad come back in `data.unsupported` (the rest still export).
-`run_async=true` returns a `job_id` for `kw_job`.
+1. `kw_fab_bom(project, profile="jlcpcb")` at any time (not gated): `data.rows[]` = {refs, qty,
+   value, footprint, package, lcsc, dnp, mpn, manufacturer, fields, cost: null, stock: null}
+   grouped by value + footprint + LCSC (+ DNP apart). `data.missing_lcsc` are fitted parts without
+   an `LCSC Part #` symbol field - set it (`kw_sch_add_symbol(fields={"LCSC Part #": "C25804"})`
+   / `kw_sch_edit`) before ordering assembly. Source is kicad-cli's `sch export bom` (`data.source`
+   = cli), the netlist on a KiCad without it (`degraded: bom_from_netlist`).
+2. `kw_fab_export(project, profile="jlcpcb", targets=["gerbers","drill","pos","bom"])` - gated on
+   `drc_clean`. Files land in `<project>/fab/<target>/`; `data.files` lists them per target plus
+   `bundle` = `<project>/fab/<name>-jlcpcb-gerbers.zip` (gerbers + drill: what the order form
+   takes). Read `data.positions.corrected[]` (every CPL row whose rotation / offset the JLCPCB
+   table changed: {ref, package, pattern, rotation_kicad, rotation_out}) and tell the user to
+   confirm those in JLCPCB's order preview; `data.bom.missing_lcsc` repeats the BOM gap;
+   `data.dropped_options` names vendor flags this KiCad lacks (nothing is guessed). Unsupported
+   targets come back in `data.unsupported` (the rest still export). `profile="generic"` keeps
+   kicad-cli's defaults. `run_async=true` returns a `job_id` for `kw_job`.
 
 ## Reading a receipt
 

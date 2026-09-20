@@ -1,0 +1,3334 @@
+{
+ "name": "esp32s3_ref",
+ "title": "kiwrap reference board: ESP32-S3 dev board (D5)",
+ "spec": "spec.md",
+ "parts": [
+  {
+   "ref": "J1",
+   "lib_id": "Connector:USB_C_Receptacle_USB2.0_16P",
+   "value": "USB-C",
+   "fpid": "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
+   "sheet": "power",
+   "at_mm": [
+    38.1,
+    88.9
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     25.0,
+     31.5
+    ],
+    "rotation": 0
+   },
+   "role": "USB-C 2.0 receptacle (power + data), bottom edge"
+  },
+  {
+   "ref": "R1",
+   "lib_id": "Device:R",
+   "value": "5.1k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    60.96,
+    78.74
+   ],
+   "rotation": 90,
+   "place": {
+    "at_mm": [
+     33.5,
+     23.5
+    ],
+    "rotation": 0
+   },
+   "role": "CC1 pulldown (USB sink)"
+  },
+  {
+   "ref": "R2",
+   "lib_id": "Device:R",
+   "value": "5.1k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    60.96,
+    81.28
+   ],
+   "rotation": 90,
+   "place": {
+    "at_mm": [
+     33.5,
+     26.0
+    ],
+    "rotation": 0
+   },
+   "role": "CC2 pulldown (USB sink)"
+  },
+  {
+   "ref": "U2",
+   "lib_id": "Power_Protection:USBLC6-2SC6",
+   "value": "USBLC6-2SC6",
+   "fpid": "Package_TO_SOT_SMD:SOT-23-6",
+   "sheet": "power",
+   "at_mm": [
+    76.2,
+    88.9
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     25.0,
+     23.5
+    ],
+    "rotation": 0
+   },
+   "role": "USB ESD protection"
+  },
+  {
+   "ref": "C1",
+   "lib_id": "Device:C",
+   "value": "10u",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    91.44,
+    78.74
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     17.0,
+     23.5
+    ],
+    "rotation": 0
+   },
+   "role": "VBUS bulk"
+  },
+  {
+   "ref": "U3",
+   "lib_id": "Battery_Management:MCP73831-2-OT",
+   "value": "MCP73831-2-OT",
+   "fpid": "Package_TO_SOT_SMD:SOT-23-5",
+   "sheet": "power",
+   "at_mm": [
+    114.3,
+    88.9
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     5.0,
+     12.0
+    ],
+    "rotation": 0
+   },
+   "role": "1-cell LiPo charger"
+  },
+  {
+   "ref": "R3",
+   "lib_id": "Device:R",
+   "value": "2k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    99.06,
+    96.52
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     9.5,
+     10.5
+    ],
+    "rotation": 0
+   },
+   "role": "PROG: 500 mA charge current"
+  },
+  {
+   "ref": "D1",
+   "lib_id": "Device:LED",
+   "value": "CHG",
+   "fpid": "LED_SMD:LED_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    132.08,
+    91.44
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     5.0,
+     8.5
+    ],
+    "rotation": 0
+   },
+   "role": "charge status LED (STAT low = charging)"
+  },
+  {
+   "ref": "R4",
+   "lib_id": "Device:R",
+   "value": "1k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    140.97,
+    91.44
+   ],
+   "rotation": 270,
+   "place": {
+    "at_mm": [
+     9.5,
+     8.5
+    ],
+    "rotation": 0
+   },
+   "role": "CHG LED series resistor"
+  },
+  {
+   "ref": "C2",
+   "lib_id": "Device:C",
+   "value": "10u",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    129.54,
+    78.74
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     9.5,
+     13.0
+    ],
+    "rotation": 0
+   },
+   "role": "VBAT bulk (charger output)"
+  },
+  {
+   "ref": "J2",
+   "lib_id": "Connector_Generic:Conn_01x02",
+   "value": "BAT",
+   "fpid": "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",
+   "sheet": "power",
+   "at_mm": [
+    157.48,
+    81.28
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     3.5,
+     3.5
+    ],
+    "rotation": 0
+   },
+   "role": "LiPo battery connector (JST-PH), left edge"
+  },
+  {
+   "ref": "U4",
+   "lib_id": "Regulator_Linear:AMS1117-3.3",
+   "value": "AMS1117-3.3",
+   "fpid": "Package_TO_SOT_SMD:SOT-223-3_TabPin2",
+   "sheet": "power",
+   "at_mm": [
+    177.8,
+    88.9
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     7.0,
+     23.0
+    ],
+    "rotation": 0
+   },
+   "role": "3.3 V LDO"
+  },
+  {
+   "ref": "C3",
+   "lib_id": "Device:C",
+   "value": "10u",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    165.1,
+    93.98
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     5.5,
+     29.5
+    ],
+    "rotation": 0
+   },
+   "role": "LDO input"
+  },
+  {
+   "ref": "C4",
+   "lib_id": "Device:C",
+   "value": "10u",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    190.5,
+    93.98
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     10.0,
+     29.5
+    ],
+    "rotation": 0
+   },
+   "role": "LDO output"
+  },
+  {
+   "ref": "R5",
+   "lib_id": "Device:R",
+   "value": "1k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    203.2,
+    93.98
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     10.0,
+     32.5
+    ],
+    "rotation": 0
+   },
+   "role": "power LED series resistor"
+  },
+  {
+   "ref": "D2",
+   "lib_id": "Device:LED",
+   "value": "PWR",
+   "fpid": "LED_SMD:LED_0603_1608Metric",
+   "sheet": "power",
+   "at_mm": [
+    203.2,
+    101.6
+   ],
+   "rotation": 90,
+   "place": {
+    "at_mm": [
+     5.5,
+     32.5
+    ],
+    "rotation": 0
+   },
+   "role": "3V3 power LED"
+  },
+  {
+   "ref": "U1",
+   "lib_id": "RF_Module:ESP32-S3-WROOM-1",
+   "value": "ESP32-S3-WROOM-1",
+   "fpid": "RF_Module:ESP32-S3-WROOM-1",
+   "sheet": "mcu",
+   "at_mm": [
+    101.6,
+    76.2
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     25.0,
+     6.75
+    ],
+    "rotation": 0
+   },
+   "role": "ESP32-S3 module, antenna over the top edge (keep-out off-board)"
+  },
+  {
+   "ref": "C5",
+   "lib_id": "Device:C",
+   "value": "10u",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "mcu",
+   "at_mm": [
+    127.0,
+    46.99
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     13.0,
+     2.76
+    ],
+    "rotation": 0
+   },
+   "role": "3V3 bulk at the module"
+  },
+  {
+   "ref": "C6",
+   "lib_id": "Device:C",
+   "value": "100n",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "mcu",
+   "at_mm": [
+    134.62,
+    46.99
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     13.0,
+     5.0
+    ],
+    "rotation": 0
+   },
+   "role": "3V3 decoupling"
+  },
+  {
+   "ref": "R6",
+   "lib_id": "Device:R",
+   "value": "10k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "mcu",
+   "at_mm": [
+    66.04,
+    46.99
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     13.0,
+     7.5
+    ],
+    "rotation": 0
+   },
+   "role": "EN pull-up"
+  },
+  {
+   "ref": "C7",
+   "lib_id": "Device:C",
+   "value": "100n",
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "sheet": "mcu",
+   "at_mm": [
+    66.04,
+    59.69
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     13.0,
+     10.0
+    ],
+    "rotation": 0
+   },
+   "role": "EN RC delay"
+  },
+  {
+   "ref": "R7",
+   "lib_id": "Device:R",
+   "value": "4.7k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "mcu",
+   "at_mm": [
+    78.74,
+    71.12
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     13.0,
+     14.0
+    ],
+    "rotation": 0
+   },
+   "role": "SDA pull-up"
+  },
+  {
+   "ref": "R8",
+   "lib_id": "Device:R",
+   "value": "4.7k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "mcu",
+   "at_mm": [
+    71.12,
+    71.12
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     13.0,
+     16.5
+    ],
+    "rotation": 0
+   },
+   "role": "SCL pull-up"
+  },
+  {
+   "ref": "SW1",
+   "lib_id": "Switch:SW_Push",
+   "value": "RESET",
+   "fpid": "Button_Switch_SMD:SW_SPST_TL3342",
+   "sheet": "io",
+   "at_mm": [
+    76.2,
+    50.8
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     44.0,
+     4.0
+    ],
+    "rotation": 0
+   },
+   "role": "reset button (EN to GND)"
+  },
+  {
+   "ref": "SW2",
+   "lib_id": "Switch:SW_Push",
+   "value": "BOOT",
+   "fpid": "Button_Switch_SMD:SW_SPST_TL3342",
+   "sheet": "io",
+   "at_mm": [
+    76.2,
+    63.5
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     44.0,
+     11.0
+    ],
+    "rotation": 0
+   },
+   "role": "boot button (IO0 to GND)"
+  },
+  {
+   "ref": "R9",
+   "lib_id": "Device:R",
+   "value": "1k",
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "sheet": "io",
+   "at_mm": [
+    71.12,
+    76.2
+   ],
+   "rotation": 90,
+   "place": {
+    "at_mm": [
+     45.0,
+     30.5
+    ],
+    "rotation": 0
+   },
+   "role": "user LED series resistor"
+  },
+  {
+   "ref": "D3",
+   "lib_id": "Device:LED",
+   "value": "USER",
+   "fpid": "LED_SMD:LED_0603_1608Metric",
+   "sheet": "io",
+   "at_mm": [
+    78.74,
+    76.2
+   ],
+   "rotation": 180,
+   "place": {
+    "at_mm": [
+     39.5,
+     30.5
+    ],
+    "rotation": 0
+   },
+   "role": "user LED on IO48"
+  },
+  {
+   "ref": "J3",
+   "lib_id": "Connector_Generic:Conn_01x04",
+   "value": "I2C",
+   "fpid": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+   "sheet": "io",
+   "at_mm": [
+    111.76,
+    50.8
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     39.5,
+     17.5
+    ],
+    "rotation": 0
+   },
+   "role": "I2C header A: 3V3 SDA SCL GND"
+  },
+  {
+   "ref": "J4",
+   "lib_id": "Connector_Generic:Conn_01x04",
+   "value": "I2C",
+   "fpid": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+   "sheet": "io",
+   "at_mm": [
+    111.76,
+    68.58
+   ],
+   "rotation": 0,
+   "place": {
+    "at_mm": [
+     46.0,
+     17.5
+    ],
+    "rotation": 0
+   },
+   "role": "I2C header B: 3V3 SDA SCL GND"
+  }
+ ],
+ "sheets": [
+  {
+   "name": "power",
+   "file": "power",
+   "at_mm": [
+    25.4,
+    25.4
+   ],
+   "size_mm": [
+    38.1,
+    25.4
+   ],
+   "pins": [
+    {
+     "name": "USB_DP",
+     "side": "right",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "USB_DN",
+     "side": "right",
+     "kind": "bidirectional"
+    }
+   ]
+  },
+  {
+   "name": "mcu",
+   "file": "mcu",
+   "at_mm": [
+    101.6,
+    25.4
+   ],
+   "size_mm": [
+    38.1,
+    38.1
+   ],
+   "pins": [
+    {
+     "name": "USB_DP",
+     "side": "left",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "USB_DN",
+     "side": "left",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "EN",
+     "side": "right",
+     "kind": "input"
+    },
+    {
+     "name": "IO0",
+     "side": "right",
+     "kind": "input"
+    },
+    {
+     "name": "SDA",
+     "side": "right",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "SCL",
+     "side": "right",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "LED",
+     "side": "right",
+     "kind": "output"
+    }
+   ]
+  },
+  {
+   "name": "io",
+   "file": "io",
+   "at_mm": [
+    177.8,
+    25.4
+   ],
+   "size_mm": [
+    38.1,
+    38.1
+   ],
+   "pins": [
+    {
+     "name": "EN",
+     "side": "left",
+     "kind": "output"
+    },
+    {
+     "name": "IO0",
+     "side": "left",
+     "kind": "output"
+    },
+    {
+     "name": "SDA",
+     "side": "left",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "SCL",
+     "side": "left",
+     "kind": "bidirectional"
+    },
+    {
+     "name": "LED",
+     "side": "left",
+     "kind": "input"
+    }
+   ]
+  }
+ ],
+ "root_wires": [
+  {
+   "from": [
+    "power",
+    "USB_DP"
+   ],
+   "to": [
+    "mcu",
+    "USB_DP"
+   ],
+   "label": "USB_DP"
+  },
+  {
+   "from": [
+    "power",
+    "USB_DN"
+   ],
+   "to": [
+    "mcu",
+    "USB_DN"
+   ],
+   "label": "USB_DN"
+  },
+  {
+   "from": [
+    "mcu",
+    "EN"
+   ],
+   "to": [
+    "io",
+    "EN"
+   ],
+   "label": "EN"
+  },
+  {
+   "from": [
+    "mcu",
+    "IO0"
+   ],
+   "to": [
+    "io",
+    "IO0"
+   ],
+   "label": "IO0"
+  },
+  {
+   "from": [
+    "mcu",
+    "SDA"
+   ],
+   "to": [
+    "io",
+    "SDA"
+   ],
+   "label": "SDA"
+  },
+  {
+   "from": [
+    "mcu",
+    "SCL"
+   ],
+   "to": [
+    "io",
+    "SCL"
+   ],
+   "label": "SCL"
+  },
+  {
+   "from": [
+    "mcu",
+    "LED"
+   ],
+   "to": [
+    "io",
+    "LED"
+   ],
+   "label": "LED"
+  }
+ ],
+ "wires": [
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "J1",
+     "pin": "A5"
+    },
+    {
+     "ref": "R1",
+     "pin": "1"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "J1",
+     "pin": "B5"
+    },
+    {
+     "ref": "R2",
+     "pin": "1"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "R1",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      68.58,
+      78.74
+     ]
+    },
+    {
+     "at_mm": [
+      68.58,
+      83.82
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "R2",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      68.58,
+      81.28
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "J1",
+     "pin": "A7"
+    },
+    {
+     "at_mm": [
+      58.42,
+      86.36
+     ]
+    },
+    {
+     "at_mm": [
+      58.42,
+      88.9
+     ]
+    },
+    {
+     "ref": "J1",
+     "pin": "B7"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "at_mm": [
+      58.42,
+      88.9
+     ]
+    },
+    {
+     "ref": "U2",
+     "pin": "1"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "J1",
+     "pin": "A6"
+    },
+    {
+     "at_mm": [
+      60.96,
+      91.44
+     ]
+    },
+    {
+     "at_mm": [
+      60.96,
+      93.98
+     ]
+    },
+    {
+     "ref": "J1",
+     "pin": "B6"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "at_mm": [
+      60.96,
+      91.44
+     ]
+    },
+    {
+     "ref": "U2",
+     "pin": "3"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "J1",
+     "pin": "A4"
+    },
+    {
+     "at_mm": [
+      60.96,
+      73.66
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "U3",
+     "pin": "5"
+    },
+    {
+     "at_mm": [
+      99.06,
+      91.44
+     ]
+    },
+    {
+     "ref": "R3",
+     "pin": "1"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "U3",
+     "pin": "1"
+    },
+    {
+     "ref": "D1",
+     "pin": "1"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "D1",
+     "pin": "2"
+    },
+    {
+     "ref": "R4",
+     "pin": "2"
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "U4",
+     "pin": "3"
+    },
+    {
+     "at_mm": [
+      162.56,
+      88.9
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "C3",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      165.1,
+      88.9
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "U4",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      193.04,
+      88.9
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "C4",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      190.5,
+      88.9
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "power",
+   "points": [
+    {
+     "ref": "J1",
+     "pin": "SH"
+    },
+    {
+     "at_mm": [
+      30.48,
+      116.84
+     ]
+    },
+    {
+     "at_mm": [
+      38.1,
+      116.84
+     ]
+    },
+    {
+     "ref": "J1",
+     "pin": "A1"
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      101.6,
+      40.64
+     ]
+    },
+    {
+     "at_mm": [
+      139.7,
+      40.64
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "C5",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      127.0,
+      40.64
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "C6",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      134.62,
+      40.64
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "3"
+    },
+    {
+     "at_mm": [
+      60.96,
+      53.34
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "R6",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      66.04,
+      53.34
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "C7",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      66.04,
+      53.34
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "27"
+    },
+    {
+     "at_mm": [
+      73.66,
+      58.42
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "12"
+    },
+    {
+     "at_mm": [
+      73.66,
+      78.74
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "17"
+    },
+    {
+     "at_mm": [
+      63.5,
+      81.28
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "R7",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      78.74,
+      78.74
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "R8",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      71.12,
+      81.28
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "13"
+    },
+    {
+     "at_mm": [
+      129.54,
+      63.5
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "14"
+    },
+    {
+     "at_mm": [
+      129.54,
+      66.04
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "points": [
+    {
+     "ref": "U1",
+     "pin": "25"
+    },
+    {
+     "at_mm": [
+      129.54,
+      99.06
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "ref": "SW1",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      63.5,
+      50.8
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "ref": "SW2",
+     "pin": "1"
+    },
+    {
+     "at_mm": [
+      63.5,
+      63.5
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "at_mm": [
+      63.5,
+      76.2
+     ]
+    },
+    {
+     "ref": "R9",
+     "pin": "1"
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "ref": "J3",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      93.98,
+      50.8
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "ref": "J3",
+     "pin": "3"
+    },
+    {
+     "at_mm": [
+      93.98,
+      53.34
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "ref": "J4",
+     "pin": "2"
+    },
+    {
+     "at_mm": [
+      93.98,
+      68.58
+     ]
+    }
+   ]
+  },
+  {
+   "sheet": "io",
+   "points": [
+    {
+     "ref": "J4",
+     "pin": "3"
+    },
+    {
+     "at_mm": [
+      93.98,
+      71.12
+     ]
+    }
+   ]
+  }
+ ],
+ "power": [
+  {
+   "sheet": "power",
+   "net": "VBUS",
+   "rotation": 0,
+   "at_mm": [
+    60.96,
+    73.66
+   ]
+  },
+  {
+   "sheet": "power",
+   "net": "VBUS",
+   "rotation": 0,
+   "ref": "C1",
+   "pin": "1"
+  },
+  {
+   "sheet": "power",
+   "net": "VBUS",
+   "rotation": 0,
+   "ref": "U2",
+   "pin": "5"
+  },
+  {
+   "sheet": "power",
+   "net": "VBUS",
+   "rotation": 0,
+   "ref": "U3",
+   "pin": "4"
+  },
+  {
+   "sheet": "power",
+   "net": "VBUS",
+   "rotation": 0,
+   "ref": "R4",
+   "pin": "1"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "at_mm": [
+    68.58,
+    83.82
+   ]
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "U2",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C1",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "U3",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "R3",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C2",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "J2",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "U4",
+   "pin": "1"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C3",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C4",
+   "pin": "2"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "D2",
+   "pin": "1"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 0,
+   "at_mm": [
+    38.1,
+    116.84
+   ]
+  },
+  {
+   "sheet": "power",
+   "net": "+BATT",
+   "rotation": 0,
+   "ref": "U3",
+   "pin": "3"
+  },
+  {
+   "sheet": "power",
+   "net": "+BATT",
+   "rotation": 0,
+   "ref": "C2",
+   "pin": "1"
+  },
+  {
+   "sheet": "power",
+   "net": "+BATT",
+   "rotation": 0,
+   "ref": "J2",
+   "pin": "1"
+  },
+  {
+   "sheet": "power",
+   "net": "+BATT",
+   "rotation": 0,
+   "at_mm": [
+    162.56,
+    88.9
+   ]
+  },
+  {
+   "sheet": "power",
+   "net": "+3V3",
+   "rotation": 0,
+   "at_mm": [
+    193.04,
+    88.9
+   ]
+  },
+  {
+   "sheet": "power",
+   "net": "+3V3",
+   "rotation": 0,
+   "ref": "R5",
+   "pin": "1"
+  },
+  {
+   "sheet": "mcu",
+   "net": "+3V3",
+   "rotation": 0,
+   "at_mm": [
+    139.7,
+    40.64
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "net": "+3V3",
+   "rotation": 0,
+   "ref": "R6",
+   "pin": "1"
+  },
+  {
+   "sheet": "mcu",
+   "net": "+3V3",
+   "rotation": 0,
+   "ref": "R7",
+   "pin": "1"
+  },
+  {
+   "sheet": "mcu",
+   "net": "+3V3",
+   "rotation": 0,
+   "ref": "R8",
+   "pin": "1"
+  },
+  {
+   "sheet": "mcu",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "U1",
+   "pin": "1"
+  },
+  {
+   "sheet": "mcu",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C5",
+   "pin": "2"
+  },
+  {
+   "sheet": "mcu",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C6",
+   "pin": "2"
+  },
+  {
+   "sheet": "mcu",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "C7",
+   "pin": "2"
+  },
+  {
+   "sheet": "io",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "SW1",
+   "pin": "2"
+  },
+  {
+   "sheet": "io",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "SW2",
+   "pin": "2"
+  },
+  {
+   "sheet": "io",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "D3",
+   "pin": "1"
+  },
+  {
+   "sheet": "io",
+   "net": "+3V3",
+   "rotation": 0,
+   "ref": "J3",
+   "pin": "1"
+  },
+  {
+   "sheet": "io",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "J3",
+   "pin": "4"
+  },
+  {
+   "sheet": "io",
+   "net": "+3V3",
+   "rotation": 0,
+   "ref": "J4",
+   "pin": "1"
+  },
+  {
+   "sheet": "io",
+   "net": "GND",
+   "rotation": 0,
+   "ref": "J4",
+   "pin": "4"
+  }
+ ],
+ "pwr_flags": [
+  {
+   "sheet": "power",
+   "net": "VBUS",
+   "rotation": 0,
+   "ref": "J1",
+   "pin": "A4"
+  },
+  {
+   "sheet": "power",
+   "net": "GND",
+   "rotation": 180,
+   "at_mm": [
+    30.48,
+    116.84
+   ]
+  }
+ ],
+ "no_connects": [
+  {
+   "sheet": "power",
+   "ref": "J1",
+   "pins": [
+    "A8",
+    "B8"
+   ]
+  },
+  {
+   "sheet": "power",
+   "ref": "U2",
+   "pins": [
+    "4",
+    "6"
+   ]
+  },
+  {
+   "sheet": "mcu",
+   "ref": "U1",
+   "pins": [
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "15",
+    "16",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "26",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39"
+   ]
+  }
+ ],
+ "hier_labels": [
+  {
+   "sheet": "power",
+   "text": "USB_DN",
+   "kind": "bidirectional",
+   "at_mm": [
+    63.5,
+    88.9
+   ],
+   "rotation": 0
+  },
+  {
+   "sheet": "power",
+   "text": "USB_DP",
+   "kind": "bidirectional",
+   "at_mm": [
+    66.04,
+    91.44
+   ],
+   "rotation": 0
+  },
+  {
+   "sheet": "mcu",
+   "text": "EN",
+   "kind": "input",
+   "at_mm": [
+    60.96,
+    53.34
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "mcu",
+   "text": "IO0",
+   "kind": "input",
+   "at_mm": [
+    73.66,
+    58.42
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "mcu",
+   "text": "SDA",
+   "kind": "bidirectional",
+   "at_mm": [
+    73.66,
+    78.74
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "mcu",
+   "text": "SCL",
+   "kind": "bidirectional",
+   "at_mm": [
+    63.5,
+    81.28
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "mcu",
+   "text": "USB_DN",
+   "kind": "bidirectional",
+   "at_mm": [
+    129.54,
+    63.5
+   ],
+   "rotation": 0
+  },
+  {
+   "sheet": "mcu",
+   "text": "USB_DP",
+   "kind": "bidirectional",
+   "at_mm": [
+    129.54,
+    66.04
+   ],
+   "rotation": 0
+  },
+  {
+   "sheet": "mcu",
+   "text": "LED",
+   "kind": "output",
+   "at_mm": [
+    129.54,
+    99.06
+   ],
+   "rotation": 0
+  },
+  {
+   "sheet": "io",
+   "text": "EN",
+   "kind": "output",
+   "at_mm": [
+    63.5,
+    50.8
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "io",
+   "text": "IO0",
+   "kind": "output",
+   "at_mm": [
+    63.5,
+    63.5
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "io",
+   "text": "LED",
+   "kind": "input",
+   "at_mm": [
+    63.5,
+    76.2
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "io",
+   "text": "SDA",
+   "kind": "bidirectional",
+   "at_mm": [
+    93.98,
+    50.8
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "io",
+   "text": "SCL",
+   "kind": "bidirectional",
+   "at_mm": [
+    93.98,
+    53.34
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "io",
+   "text": "SDA",
+   "kind": "bidirectional",
+   "at_mm": [
+    93.98,
+    68.58
+   ],
+   "rotation": 180
+  },
+  {
+   "sheet": "io",
+   "text": "SCL",
+   "kind": "bidirectional",
+   "at_mm": [
+    93.98,
+    71.12
+   ],
+   "rotation": 180
+  }
+ ],
+ "intent": {
+  "blocks": [
+   {
+    "name": "usb",
+    "function": "USB-C 2.0 sink, ESD",
+    "parts": [
+     "J1",
+     "R1",
+     "R2",
+     "U2",
+     "C1"
+    ]
+   },
+   {
+    "name": "charger",
+    "function": "MCP73831 LiPo charger",
+    "parts": [
+     "U3",
+     "R3",
+     "D1",
+     "R4",
+     "C2",
+     "J2"
+    ]
+   },
+   {
+    "name": "ldo",
+    "function": "AMS1117-3.3",
+    "parts": [
+     "U4",
+     "C3",
+     "C4",
+     "R5",
+     "D2"
+    ]
+   },
+   {
+    "name": "mcu",
+    "function": "ESP32-S3-WROOM-1",
+    "parts": [
+     "U1",
+     "C5",
+     "C6",
+     "R6",
+     "C7",
+     "R7",
+     "R8"
+    ]
+   },
+   {
+    "name": "io",
+    "function": "buttons, user LED, I2C headers",
+    "parts": [
+     "SW1",
+     "SW2",
+     "R9",
+     "D3",
+     "J3",
+     "J4"
+    ]
+   }
+  ],
+  "rails": [
+   {
+    "name": "VBUS",
+    "voltage_v": 5.0,
+    "net": "VBUS"
+   },
+   {
+    "name": "+BATT",
+    "voltage_v": 3.7,
+    "net": "+BATT"
+   },
+   {
+    "name": "+3V3",
+    "voltage_v": 3.3,
+    "current_a": 0.6,
+    "net": "+3V3"
+   }
+  ],
+  "interfaces": [
+   {
+    "type": "usb2",
+    "connector": "J1",
+    "signals": [
+     "/USB_DP",
+     "/USB_DN"
+    ]
+   },
+   {
+    "type": "i2c",
+    "connector": "J3",
+    "signals": [
+     "/SDA",
+     "/SCL"
+    ]
+   },
+   {
+    "type": "i2c",
+    "connector": "J4",
+    "signals": [
+     "/SDA",
+     "/SCL"
+    ]
+   }
+  ],
+  "nets": {
+   "VBUS": [
+    [
+     "J1",
+     "A4"
+    ],
+    [
+     "J1",
+     "A9"
+    ],
+    [
+     "J1",
+     "B4"
+    ],
+    [
+     "J1",
+     "B9"
+    ],
+    [
+     "C1",
+     "1"
+    ],
+    [
+     "U2",
+     "5"
+    ],
+    [
+     "U3",
+     "4"
+    ],
+    [
+     "R4",
+     "1"
+    ]
+   ],
+   "GND": [
+    [
+     "J1",
+     "A1"
+    ],
+    [
+     "J1",
+     "A12"
+    ],
+    [
+     "J1",
+     "B1"
+    ],
+    [
+     "J1",
+     "B12"
+    ],
+    [
+     "J1",
+     "SH"
+    ],
+    [
+     "R1",
+     "2"
+    ],
+    [
+     "R2",
+     "2"
+    ],
+    [
+     "U2",
+     "2"
+    ],
+    [
+     "C1",
+     "2"
+    ],
+    [
+     "U3",
+     "2"
+    ],
+    [
+     "R3",
+     "2"
+    ],
+    [
+     "C2",
+     "2"
+    ],
+    [
+     "J2",
+     "2"
+    ],
+    [
+     "U4",
+     "1"
+    ],
+    [
+     "C3",
+     "2"
+    ],
+    [
+     "C4",
+     "2"
+    ],
+    [
+     "D2",
+     "1"
+    ],
+    [
+     "U1",
+     "1"
+    ],
+    [
+     "U1",
+     "40"
+    ],
+    [
+     "U1",
+     "41"
+    ],
+    [
+     "C5",
+     "2"
+    ],
+    [
+     "C6",
+     "2"
+    ],
+    [
+     "C7",
+     "2"
+    ],
+    [
+     "SW1",
+     "2"
+    ],
+    [
+     "SW2",
+     "2"
+    ],
+    [
+     "D3",
+     "1"
+    ],
+    [
+     "J3",
+     "4"
+    ],
+    [
+     "J4",
+     "4"
+    ]
+   ],
+   "+BATT": [
+    [
+     "U3",
+     "3"
+    ],
+    [
+     "C2",
+     "1"
+    ],
+    [
+     "J2",
+     "1"
+    ],
+    [
+     "U4",
+     "3"
+    ],
+    [
+     "C3",
+     "1"
+    ]
+   ],
+   "+3V3": [
+    [
+     "U4",
+     "2"
+    ],
+    [
+     "C4",
+     "1"
+    ],
+    [
+     "R5",
+     "1"
+    ],
+    [
+     "U1",
+     "2"
+    ],
+    [
+     "C5",
+     "1"
+    ],
+    [
+     "C6",
+     "1"
+    ],
+    [
+     "R6",
+     "1"
+    ],
+    [
+     "R7",
+     "1"
+    ],
+    [
+     "R8",
+     "1"
+    ],
+    [
+     "J3",
+     "1"
+    ],
+    [
+     "J4",
+     "1"
+    ]
+   ],
+   "/USB_DP": [
+    [
+     "J1",
+     "A6"
+    ],
+    [
+     "J1",
+     "B6"
+    ],
+    [
+     "U2",
+     "3"
+    ],
+    [
+     "U1",
+     "14"
+    ]
+   ],
+   "/USB_DN": [
+    [
+     "J1",
+     "A7"
+    ],
+    [
+     "J1",
+     "B7"
+    ],
+    [
+     "U2",
+     "1"
+    ],
+    [
+     "U1",
+     "13"
+    ]
+   ],
+   "/EN": [
+    [
+     "U1",
+     "3"
+    ],
+    [
+     "R6",
+     "2"
+    ],
+    [
+     "C7",
+     "1"
+    ],
+    [
+     "SW1",
+     "1"
+    ]
+   ],
+   "/IO0": [
+    [
+     "U1",
+     "27"
+    ],
+    [
+     "SW2",
+     "1"
+    ]
+   ],
+   "/SDA": [
+    [
+     "U1",
+     "12"
+    ],
+    [
+     "R7",
+     "2"
+    ],
+    [
+     "J3",
+     "2"
+    ],
+    [
+     "J4",
+     "2"
+    ]
+   ],
+   "/SCL": [
+    [
+     "U1",
+     "17"
+    ],
+    [
+     "R8",
+     "2"
+    ],
+    [
+     "J3",
+     "3"
+    ],
+    [
+     "J4",
+     "3"
+    ]
+   ],
+   "/LED": [
+    [
+     "U1",
+     "25"
+    ],
+    [
+     "R9",
+     "1"
+    ]
+   ]
+  },
+  "constraints": {
+   "size_mm": [
+    50,
+    35
+   ],
+   "layers": 2,
+   "fab": "jlcpcb",
+   "strict_nets": true
+  },
+  "unnamed": [
+   [
+    [
+     "J1",
+     "A5"
+    ],
+    [
+     "R1",
+     "1"
+    ]
+   ],
+   [
+    [
+     "J1",
+     "B5"
+    ],
+    [
+     "R2",
+     "1"
+    ]
+   ],
+   [
+    [
+     "U3",
+     "5"
+    ],
+    [
+     "R3",
+     "1"
+    ]
+   ],
+   [
+    [
+     "U3",
+     "1"
+    ],
+    [
+     "D1",
+     "1"
+    ]
+   ],
+   [
+    [
+     "D1",
+     "2"
+    ],
+    [
+     "R4",
+     "2"
+    ]
+   ],
+   [
+    [
+     "R5",
+     "2"
+    ],
+    [
+     "D2",
+     "2"
+    ]
+   ],
+   [
+    [
+     "R9",
+     "2"
+    ],
+    [
+     "D3",
+     "2"
+    ]
+   ]
+  ],
+  "no_connect": [
+   [
+    "J1",
+    "A8"
+   ],
+   [
+    "J1",
+    "B8"
+   ],
+   [
+    "U2",
+    "4"
+   ],
+   [
+    "U2",
+    "6"
+   ],
+   [
+    "U1",
+    "4"
+   ],
+   [
+    "U1",
+    "5"
+   ],
+   [
+    "U1",
+    "6"
+   ],
+   [
+    "U1",
+    "7"
+   ],
+   [
+    "U1",
+    "8"
+   ],
+   [
+    "U1",
+    "9"
+   ],
+   [
+    "U1",
+    "10"
+   ],
+   [
+    "U1",
+    "11"
+   ],
+   [
+    "U1",
+    "15"
+   ],
+   [
+    "U1",
+    "16"
+   ],
+   [
+    "U1",
+    "18"
+   ],
+   [
+    "U1",
+    "19"
+   ],
+   [
+    "U1",
+    "20"
+   ],
+   [
+    "U1",
+    "21"
+   ],
+   [
+    "U1",
+    "22"
+   ],
+   [
+    "U1",
+    "23"
+   ],
+   [
+    "U1",
+    "24"
+   ],
+   [
+    "U1",
+    "26"
+   ],
+   [
+    "U1",
+    "28"
+   ],
+   [
+    "U1",
+    "29"
+   ],
+   [
+    "U1",
+    "30"
+   ],
+   [
+    "U1",
+    "31"
+   ],
+   [
+    "U1",
+    "32"
+   ],
+   [
+    "U1",
+    "33"
+   ],
+   [
+    "U1",
+    "34"
+   ],
+   [
+    "U1",
+    "35"
+   ],
+   [
+    "U1",
+    "36"
+   ],
+   [
+    "U1",
+    "37"
+   ],
+   [
+    "U1",
+    "38"
+   ],
+   [
+    "U1",
+    "39"
+   ]
+  ]
+ },
+ "board": {
+  "w_mm": 50.0,
+  "h_mm": 35.0,
+  "layers": 2,
+  "preset": "jlcpcb-2layer",
+  "rules": {
+   "clearance_mm": 0.15,
+   "track_width_mm": 0.25,
+   "via_size_mm": 0.6,
+   "via_drill_mm": 0.3,
+   "min_track_mm": 0.127,
+   "min_via_mm": 0.5,
+   "min_via_annular_mm": 0.13,
+   "min_hole_mm": 0.2,
+   "hole_to_hole_mm": 0.45,
+   "hole_clearance_mm": 0.25,
+   "copper_edge_clearance_mm": 0.3,
+   "silk_clearance_mm": 0.15
+  },
+  "netclasses": {
+   "Power": {
+    "nets": [
+     "GND",
+     "+3V3",
+     "+BATT",
+     "VBUS"
+    ],
+    "track_width_mm": 0.4
+   }
+  },
+  "zones_before_routing": [
+   {
+    "net": "GND",
+    "layers": [
+     "B.Cu"
+    ],
+    "rect_mm": [
+     0,
+     0,
+     50,
+     35
+    ],
+    "clearance_mm": 0.3,
+    "thermal": false
+   }
+  ],
+  "zones_after_routing": [
+   {
+    "net": "GND",
+    "layers": [
+     "F.Cu"
+    ],
+    "rect_mm": [
+     0,
+     0,
+     50,
+     35
+    ],
+    "clearance_mm": 0.3,
+    "thermal": false
+   }
+  ],
+  "expected_off_board_review": [
+   "U1",
+   "J1"
+  ]
+ },
+ "routing": {
+  "power_nets": [
+   "GND",
+   "+3V3",
+   "+BATT",
+   "VBUS"
+  ],
+  "auto": {
+   "passes": 100,
+   "timeout_s": 900
+  },
+  "fallback_ops": [
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "C5",
+       "1"
+      ],
+      "near": [
+       12.225,
+       2.76
+      ]
+     },
+     {
+      "at_mm": [
+       11.4,
+       2.76
+      ]
+     },
+     {
+      "at_mm": [
+       11.4,
+       23.0
+      ]
+     },
+     {
+      "pad": [
+       "U4",
+       "2"
+      ],
+      "near": [
+       10.15,
+       23.0
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "C6",
+       "1"
+      ],
+      "near": [
+       12.225,
+       5.0
+      ]
+     },
+     {
+      "at_mm": [
+       11.4,
+       5.0
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "R6",
+       "1"
+      ],
+      "near": [
+       12.175,
+       7.5
+      ]
+     },
+     {
+      "at_mm": [
+       11.4,
+       7.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "R7",
+       "1"
+      ],
+      "near": [
+       12.175,
+       14.0
+      ]
+     },
+     {
+      "at_mm": [
+       11.4,
+       14.0
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "R8",
+       "1"
+      ],
+      "near": [
+       12.175,
+       16.5
+      ]
+     },
+     {
+      "at_mm": [
+       11.4,
+       16.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "at_mm": [
+       11.4,
+       3.9
+      ]
+     },
+     {
+      "at_mm": [
+       14.8,
+       3.9
+      ]
+     },
+     {
+      "at_mm": [
+       14.8,
+       2.76
+      ]
+     },
+     {
+      "pad": [
+       "U1",
+       "2"
+      ],
+      "near": [
+       16.25,
+       2.76
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "U4",
+       "2"
+      ],
+      "near": [
+       3.85,
+       23.0
+      ]
+     },
+     {
+      "pad": [
+       "U4",
+       "2"
+      ],
+      "near": [
+       10.15,
+       23.0
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "U4",
+       "2"
+      ],
+      "near": [
+       10.15,
+       23.0
+      ]
+     },
+     {
+      "at_mm": [
+       9.225,
+       26.0
+      ]
+     },
+     {
+      "pad": [
+       "C4",
+       "1"
+      ],
+      "near": [
+       9.225,
+       29.5
+      ]
+     },
+     {
+      "pad": [
+       "R5",
+       "1"
+      ],
+      "near": [
+       9.175,
+       32.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+3V3",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "at_mm": [
+       11.4,
+       21.0
+      ]
+     },
+     {
+      "at_mm": [
+       37.0,
+       21.0
+      ]
+     },
+     {
+      "at_mm": [
+       37.0,
+       17.5
+      ]
+     },
+     {
+      "pad": [
+       "J3",
+       "1"
+      ],
+      "near": [
+       39.5,
+       17.5
+      ]
+     },
+     {
+      "pad": [
+       "J4",
+       "1"
+      ],
+      "near": [
+       46.0,
+       17.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "J1",
+       "A4"
+      ],
+      "near": [
+       22.55,
+       27.455
+      ]
+     },
+     {
+      "at_mm": [
+       22.55,
+       26.0
+      ]
+     },
+     {
+      "at_mm": [
+       16.225,
+       26.0
+      ]
+     },
+     {
+      "pad": [
+       "C1",
+       "1"
+      ],
+      "near": [
+       16.225,
+       23.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "U2",
+       "5"
+      ],
+      "near": [
+       26.1375,
+       23.5
+      ]
+     },
+     {
+      "at_mm": [
+       27.45,
+       23.5
+      ]
+     },
+     {
+      "pad": [
+       "J1",
+       "A9"
+      ],
+      "near": [
+       27.45,
+       27.455
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "at_mm": [
+       22.55,
+       26.0
+      ]
+     },
+     {
+      "at_mm": [
+       27.45,
+       26.0
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "C1",
+       "1"
+      ],
+      "near": [
+       16.225,
+       23.5
+      ]
+     },
+     {
+      "at_mm": [
+       14.5,
+       23.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "via",
+    "net": "VBUS",
+    "at_mm": [
+     14.5,
+     23.5
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "B.Cu",
+    "points": [
+     {
+      "at_mm": [
+       14.5,
+       23.5
+      ]
+     },
+     {
+      "at_mm": [
+       14.5,
+       11.8
+      ]
+     },
+     {
+      "at_mm": [
+       7.5,
+       11.8
+      ]
+     }
+    ]
+   },
+   {
+    "op": "via",
+    "net": "VBUS",
+    "at_mm": [
+     7.5,
+     11.8
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "at_mm": [
+       7.5,
+       11.8
+      ]
+     },
+     {
+      "at_mm": [
+       7.5,
+       12.95
+      ]
+     },
+     {
+      "pad": [
+       "U3",
+       "4"
+      ],
+      "near": [
+       6.1375,
+       12.95
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "VBUS",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "at_mm": [
+       7.5,
+       11.8
+      ]
+     },
+     {
+      "at_mm": [
+       7.5,
+       8.5
+      ]
+     },
+     {
+      "pad": [
+       "R4",
+       "1"
+      ],
+      "near": [
+       8.675,
+       8.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+BATT",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "J2",
+       "1"
+      ],
+      "near": [
+       3.5,
+       3.5
+      ]
+     },
+     {
+      "at_mm": [
+       2.2,
+       4.8
+      ]
+     },
+     {
+      "at_mm": [
+       2.2,
+       25.3
+      ]
+     },
+     {
+      "pad": [
+       "U4",
+       "3"
+      ],
+      "near": [
+       3.85,
+       25.3
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+BATT",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "U3",
+       "3"
+      ],
+      "near": [
+       3.8625,
+       12.95
+      ]
+     },
+     {
+      "at_mm": [
+       2.2,
+       12.95
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+BATT",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "U3",
+       "3"
+      ],
+      "near": [
+       3.8625,
+       12.95
+      ]
+     },
+     {
+      "at_mm": [
+       3.8625,
+       14.2
+      ]
+     },
+     {
+      "at_mm": [
+       8.725,
+       14.2
+      ]
+     },
+     {
+      "pad": [
+       "C2",
+       "1"
+      ],
+      "near": [
+       8.725,
+       13.0
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "+BATT",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "U4",
+       "3"
+      ],
+      "near": [
+       3.85,
+       25.3
+      ]
+     },
+     {
+      "at_mm": [
+       4.725,
+       27.0
+      ]
+     },
+     {
+      "pad": [
+       "C3",
+       "1"
+      ],
+      "near": [
+       4.725,
+       29.5
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "GND",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "J1",
+       "A1"
+      ],
+      "near": [
+       21.75,
+       27.455
+      ]
+     },
+     {
+      "pad": [
+       "J1",
+       "SH"
+      ],
+      "near": [
+       20.68,
+       28.37
+      ]
+     }
+    ]
+   },
+   {
+    "op": "track",
+    "net": "GND",
+    "layer": "F.Cu",
+    "points": [
+     {
+      "pad": [
+       "J1",
+       "B1"
+      ],
+      "near": [
+       28.25,
+       27.455
+      ]
+     },
+     {
+      "pad": [
+       "J1",
+       "SH"
+      ],
+      "near": [
+       29.32,
+       28.37
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "fab": {
+  "profile": "jlcpcb",
+  "targets": [
+   "gerbers",
+   "drill",
+   "pos",
+   "bom"
+  ]
+ },
+ "budget": {
+  "max_tool_calls": 400,
+  "max_minutes": 45
+ }
+}

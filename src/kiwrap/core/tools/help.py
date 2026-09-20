@@ -59,8 +59,7 @@ ERROR_PAGES: dict[str, str] = {
     "E_GATE": (
         "A stage gate is not satisfied: "
         + "; ".join(f"`{t}` needs `{s}`" for t, s in GATES.items())
-        + " (kw_pcb_route_auto is a planned tool, not in tools/list yet)"
-        ". `ok` means zero *errors* (warnings never gate). Reach the stage with the validator "
+        + ". `ok` means zero *errors* (warnings never gate). Reach the stage with the validator "
         "(`kw_sch_check` for erc_clean - every schematic authoring tool also runs ERC and reaches it when clean; "
         "`kw_pcb_drc`) or override with `force={'reason': '...'}` - the reason is written into the snapshot "
         "commit message."
@@ -74,7 +73,17 @@ ERROR_PAGES: dict[str, str] = {
     ),
     "E_TIMEOUT": (
         "A KiCad process exceeded its time budget. Retry with `run_async=true` where offered and poll "
-        "`kw_job`, or reduce the input (fewer targets, smaller render)."
+        "`kw_job`, or reduce the input (fewer targets, smaller render). From kw_pcb_route_auto / kw_pcb_fix it "
+        "means the router hit `timeout_s` (the JVM tree was killed, no session was imported; `why` says whether "
+        "the board is unchanged or which stubs / ripped-up copper are gone and `data.restore_ref` the snapshot "
+        "that holds them): raise timeout_s, lower passes or route a subset with nets=[...]. A run whose session "
+        "was already saved when the budget ran out is kept, not discarded."
+    ),
+    "E_CANCELLED": (
+        "kw_job(action='cancel') reached the running tool: the job ends in state `cancelled` (not `failed`), "
+        "the snapshot message says `FAILED E_CANCELLED`, and the board holds what the tool had written before "
+        "the cancel (kw_pcb_route_auto: at most the stub clean-up; the SES is never imported after a cancel). "
+        "Run the tool again, or kw_snapshot(action='restore', ref=...) for the pre-call state."
     ),
     "E_LIB_NOT_FOUND": (
         "A library nickname or item is not in the resolved tables / files: `candidates` lists near names. "
@@ -187,6 +196,10 @@ TOOL_PAGES: dict[str, str] = {
         "{name: {nets: [...], clearance_mm, track_width_mm, ...}} (written to the .kicad_pro), `outline` "
         "({w, h} rectangle, optional x/y origin, or {points_mm: [[x, y], ...]}) on "
         "Edge.Cuts, `custom_rules` (.kicad_dru text), `drc` (default true: DRC summary after the write). "
+        "`preset` = jlcpcb-2layer | jlcpcb-4layer (kiwrap.core.fab.jlcpcb, JLCPCB's published capabilities as "
+        "SAFE values: 2-layer clearance 0.15 / track 0.25 / via 0.6 x 0.3 / min track 0.127 / min hole 0.2 / "
+        "copper-to-edge 0.3 mm; 4-layer clearance 0.127 / track 0.2 / via 0.45 x 0.2 / min track 0.09 / min hole "
+        "0.15 mm) sets `layers` and `rules`; explicit keys override it and `data.preset` echoes what was used. "
         "Returns `data.rules_now` (what the board reads back), `data.checks` (off-board / overlaps) and "
         "`data.drc`. Do it before kw_pcb_sync so the outline exists when parts are placed."
     ),
@@ -236,13 +249,76 @@ TOOL_PAGES: dict[str, str] = {
         "sorted with the touched nets first. must_fix == 0 (unconnected_items included) -> stage routed + "
         "drc_clean; otherwise fix from the violations (uuid + mm) and re-run."
     ),
+    "kw_pcb_route_auto": (
+        "Autorouting with Freerouting 2.4.1 under the private JRE 25 that scripts/bootstrap.ps1 installs "
+        "(kw_env `engines`; E_UNSUPPORTED with the bootstrap hint when absent). Gate: stage `placed`. The loop, "
+        "one snapshot: lock the tracks / vias to keep -> export the Specctra DSN (planner `routing.autoroute`: "
+        "`cli` = the patched kicad-cli, `codec` = kiwrap's own writer / reader, `swig` = the bundled-python "
+        "driver where KiCad still has SWIG; `provider_used` names it) -> Freerouting headless with the flags "
+        "derived from the board (`data.rules`: --router.fanout.enabled=false unless a BGA is on the board - the "
+        "fanout pre-pass makes 0.15 mm segments that fail min_track_width; --router.copper_to_edge_clearance_um "
+        "from the board's min_copper_edge_clearance because KiCad's DSN omits it; -mt 1 for determinism; -mp "
+        "`passes`) -> import the SES (KiCad's importer DELETES every unlocked track / via: `nets=[...]` "
+        "therefore locks every other net's copper for the run and restores the flags afterwards, AND removes "
+        "those nets from the DSN's network so Freerouting has nothing to route for them - 2.4.1 headless "
+        "ignores its `-inc` flag; their pads and copper stay obstacles; `lock_refs` keeps the nets of those "
+        "footprints) -> mandatory zone refill -> kicad-cli DRC classified. `data.routed` = tracks/vias "
+        "added/removed, `unrouted` (KiCad's unconnected count; validator `unrouted`), `unrouted_connections` "
+        "(KiCad's open connections as {net, from: {ref, pad, x_mm, y_mm}, to: {...}}; the router's own list "
+        "when no DRC ran); `data.router` = passes, score, stop_reason, router_violations (Freerouting's own "
+        "DRC - informational), duration_s; `data.drc` as kw_pcb_drc. A RE-RUN on a partially routed board "
+        "keeps the existing unlocked copper as wiring the router only optimises, so it converges to the same "
+        "plateau: make progress with kw_pcb_fix (rip-up of the open / violating nets) or `from_scratch=true` "
+        "(delete the unlocked copper of the nets to route first). Default `run_async=true` returns a job_id "
+        "after the cheap checks (gate, unknown nets, engines: those are immediate errors): kw_job progress "
+        "carries the pass, unrouted and violation counts; `cancel` kills the router, the job ends `cancelled` "
+        "and the board holds at most the stub clean-up. must_fix > 0 or an open connection -> `next_suggested` "
+        "kw_pcb_fix. Freerouting 2.4.1 can emit router-introduced overlaps (#858): 0 must_fix is observed per "
+        "board by the DRC, never assumed. A failed run after a board write (stubs removed) re-hashes the board "
+        "so the retry is not refused as an external edit."
+    ),
+    "kw_pcb_fix": (
+        "Repair loop for must_fix DRC violations that routing can fix (gate: stage `placed`, `force={reason}` "
+        "overrides): DRC -> the nets named in the must_fix violations (`[NET]` tags in KiCad's item "
+        "descriptions; unconnected_items count; every violation is read, not only the 50 listed) -> `rip_up_violations` "
+        "deletes their unlocked tracks / vias -> `clean` drops zero-length and net-less unlocked copper -> "
+        "`reroute` routes ONLY those nets (Freerouting; every other net is locked for the run) -> `refill` + DRC "
+        "(the refill always happens where the KiCad can) -> repeat until must_fix == 0 or `max_iterations`. "
+        "`data.iterations[]` = {nets, scope, ripped_up, margin_mm, must_fix_before/after, rip_up, router}; "
+        "`data.unfixable` = must_fix violations that name no net (a pad-to-pad hole clearance, a footprint "
+        "problem: fix with kw_pcb_place / kw_pcb_setup); `data.must_fix` before -> after. A round that does not "
+        "reduce must_fix widens the next one (`scope`): `nets` (the violating nets alone, everything else "
+        "locked) -> `neighbourhood` (the unlocked copper of other nets within 2 mm of the violation's items is "
+        "ripped up and re-routed with them: a pad boxed in by its neighbours cannot be reached otherwise) -> "
+        "`board` (every unlocked track / via goes back to the router as re-routable wiring). The receipt "
+        "carries ONE `drc` validator delta (before = the initial DRC, after = the final one) matching "
+        "`data.must_fix`. A failed round (E_TIMEOUT / E_KICAD_FAILED) names the ripped-up nets in `why` and "
+        "`data.restore_ref`: kw_snapshot(action='restore', ref=...) brings their copper back. Default "
+        "`run_async=true` (kw_job)."
+    ),
     "kw_project": (
         "`create(dir, name, target_kicad?, board_size_mm?)` writes a minimal valid project in the target's "
         "format and starts snapshots; `status(project)` returns stage/hashes/epochs/external edits; "
         "`upgrade` is Phase 1."
     ),
     "kw_snapshot": "`list` / `diff(ref, to?)` / `create(message?)` / `restore(ref)` over the project's git history.",
-    "kw_job": "`status` / `wait(wait_s)` / `cancel` / `list` for background jobs.",
+    "kw_job": (
+        "`status` / `wait(wait_s)` / `cancel` / `list` for the background jobs that kw_pcb_route_auto, "
+        "kw_pcb_fix and kw_fab_export start with `run_async=true` (their receipt: `data.job_id`, `state`). "
+        "`wait` blocks up to `wait_s` seconds and returns early as soon as the job ends. Receipt: `data.done` "
+        "(true for done / failed / cancelled), `data.job` = {job_id, name, state (queued | running | done | "
+        "failed | cancelled), progress (0..1), message (the current step: `routing: pass 12: 3 unrouted, 0 "
+        "violations (3 unrouted)`), result, error, created_at / started_at / finished_at}. `data.job.result` is "
+        "the started tool's FULL receipt once state == done: read `result.ok` (== `result.data.ok`), "
+        "`result.data` (routed / drc / must_fix / files ...), `result.validators`, `result.warnings`, "
+        "`result.next_suggested`; it is null while running or on failure. On `failed`, `data.job.error` = "
+        "{code, message, why, fix, candidates, data} (the teaching error the tool raised) and the receipt "
+        "carries `warnings: ['job failed: <code>: <message>']` with `ok: false`. `cancel` sets the job's cancel "
+        "flag: a running router is killed within a poll interval, the job ends `cancelled` (no error) and the "
+        "board holds what the tool had written before (kw_pcb_route_auto: at most the stub clean-up, never a "
+        "session). The gate, unknown nets and missing engines are refused BEFORE a job is queued, as immediate "
+        "errors. `list` returns every job of this server process."
+    ),
     "kw_help": "This page. Topics: `overview`, `stages`, `errors`, a tool name or an error code.",
     "kw_sch_get": (
         "Structured schematic state in mm - the primary feedback after every schematic change. "
@@ -343,7 +419,48 @@ TOOL_PAGES: dict[str, str] = {
     ),
     "kw_fab_export": (
         "Fabrication outputs: `targets` from gerbers, drill, pos, pdf, step, bom (plus svg/dxf/stats/ipc2581/odb "
-        "where the KiCad supports them). Gated on `drc_clean` unless `force`. Returns the file list."
+        "where the KiCad supports them). Gated on `drc_clean` unless `force`. Returns the file list per target in "
+        "`data.files`. `profile='generic'` = kicad-cli defaults. `profile='jlcpcb'` (docs/DECISIONS.md D9): gerbers "
+        "of every copper layer + F/B.Paste, F/B.SilkS, F/B.Mask, Edge.Cuts with Protel extensions, X2, soldermask "
+        "subtracted from silk, zones checked; drill = Excellon mm decimal, absolute origin, oval holes 'alternate', "
+        "PTH/NPTH separate + a Gerber X2 drill map; pos = CSV mm both sides without DNP, post-processed into "
+        "`<name>-cpl-jlcpcb.csv` (Designator, Val, Package, Mid X, Mid Y, Rotation, Layer) with the JLCPCB rotation "
+        "corrections table applied - `data.positions.corrected[]` lists EVERY changed row ({ref, package, pattern, "
+        "rotation_kicad, rotation_out}) and `bottom_mirrored` the bottom-side refs; bom = `<name>-bom-jlcpcb.csv` "
+        "(Comment, Designator, Footprint, LCSC Part #, Qty) through kw_fab_bom's builder, `data.bom.missing_lcsc` "
+        "names fitted parts without a part number; gerbers + drill are zipped into `<name>-jlcpcb-gerbers.zip` "
+        "(`data.files.bundle`). Options a KiCad lacks are dropped and listed in `data.dropped_options`. "
+        "`include_dnp` keeps DNP parts in BOM / CPL, `bom_fields` adds columns. Check every rotation in the vendor's "
+        "order preview: the table is a community table (`data.profile_notes`)."
+    ),
+    "kw_fab_bom": (
+        "Bill of materials as data: `data.rows[]` = {refs, qty, value, footprint, package, lcsc, dnp, mpn, "
+        "manufacturer, fields, cost: null, stock: null} grouped by value + footprint + vendor part (+ DNP: a DNP "
+        "part never merges with its fitted twins). `lcsc` is read from the symbol field `LCSC Part #` (aliases: "
+        "LCSC, LCSC Part, LCSC#, JLCPCB Part #, ...); set it with kw_sch_add_symbol(fields={'LCSC Part #': 'C1234'}) "
+        "or kw_sch_edit. Source: kicad-cli `sch export bom --fields/--group-by` (KiCad 8+; `data.source` = cli), else "
+        "the netlist (`degraded: bom_from_netlist`). `profile` generic (DNP rows kept, flagged) | jlcpcb (DNP "
+        "dropped, `data.missing_lcsc` + a warning for fitted parts without a part number); `include_dnp` overrides; "
+        "`fields` adds symbol fields as columns; `write=true` writes the profile's CSV to <project>/fab/bom/. Not "
+        "gated; cost / stock stay null until the parts component fills them."
+    ),
+    "kw_intent": (
+        "The design intent, declared BEFORE drawing (docs/ARCHITECTURE.md §3.3): `action='set'` stores `intent` = "
+        "{blocks: [{name, function?, parts?}], rails: [{name, voltage_v?, current_a?, net?}], interfaces: [{type, "
+        "connector?, signals?}], nets: {net: [[ref, pin], ...] or ['U1.3', ...]}, constraints: {size_mm?, layers?, "
+        "fab?, ...}} in <project>/.kiwrap/intent.json (`merge=true` merges per key / name, false replaces); "
+        "`action='get'` reads it; `action='clear'` removes it; `action='diff'` exports KiCad's netlist and compares "
+        "the declared nets with it. Net names match as written or with a leading `/` (a local label `VIN` is `/VIN` "
+        "in the netlist; hierarchical nets are `/sheet/NAME`); a net whose name matches nothing is matched by the "
+        "pins it shares. The diff: `missing[]` = declared (ref, pin) not on the net ({found_in} = the net it IS on, "
+        "null = unconnected or no such pin, `reason`), `wrong_pin[]` = the ref is on the net but with another pin "
+        "({expected_pin, actual_pin} - a label on the wrong pin, which ERC cannot see), `extra[]` = pins on the "
+        "KiCad net the declaration does not list (power symbols never; listed always, counted as a defect only "
+        "with `constraints.strict_nets: true` - declarations are usually partial), `unmatched[]` = declared nets "
+        "found nowhere. Once an intent with nets exists, every kw_sch_check reports the same diff as "
+        "`validators[name=intent_diff]` (after = missing + wrong_pin [+ extra when strict], detail = the lists) and "
+        "`data.intent_diff`; it never gates, but `next_suggested` becomes kw_sch_connect while it is non-empty. "
+        "The MVP acceptance (docs/DECISIONS.md D5) is 0 ERC errors AND an empty intent diff."
     ),
 }
 
@@ -355,9 +472,12 @@ def overview() -> str:
         "3. Schematic: `kw_sch_add_symbol` (returns absolute pin endpoints) -> `kw_sch_connect` by (ref, pin) / "
         "`kw_sch_add_item` (power, PWR_FLAG, no_connect, labels, sheets) -> `kw_sch_stats` / `kw_sch_get` -> "
         "`kw_sch_check` (ok = 0 errors; every authoring tool already ran ERC) -> `kw_sch_annotate` -> "
-        "`kw_sch_assign_footprints`. 4. Board: `kw_pcb_setup` -> `kw_pcb_sync` (gate erc_clean) -> `kw_pcb_place` "
-        "with `kw_pcb_check` / `kw_pcb_get` feedback -> `kw_pcb_zones` / `kw_pcb_route` -> `kw_pcb_drc` "
-        "(must_fix = 0). 5. `kw_fab_export` (gated on drc_clean).\n\n"
+        "`kw_sch_assign_footprints`. 4. Board: `kw_pcb_setup` (`preset='jlcpcb-2layer'`) -> `kw_pcb_sync` (gate "
+        "erc_clean) -> `kw_pcb_place` with `kw_pcb_check` / `kw_pcb_get` feedback -> `kw_pcb_zones` / "
+        "`kw_pcb_route_auto` (Freerouting; gate placed; `kw_pcb_fix` re-routes the nets with must_fix violations) "
+        "or `kw_pcb_route` touch-ups -> `kw_pcb_drc` (must_fix = 0). 5. `kw_fab_bom` (any time) and `kw_fab_export(profile='jlcpcb')` (gated on "
+        "drc_clean). Declare the nets you mean to make with `kw_intent` before step 3: `kw_sch_check` then also "
+        "reports the intent diff (missing / wrong_pin / extra pins per declared net).\n\n"
         "Data first: after every mutation query structured state - `kw_sch_get` / `kw_sch_stats` for "
         "schematics, `kw_pcb_get` / `kw_pcb_check` for boards - and act on refs + mm coordinates; never reason "
         "from an image when a structured query exists (renders are secondary). Topic `providers` lists which "
@@ -377,7 +497,8 @@ def providers_page() -> str:
         "# Providers (planner)\n",
         "Each operation tries its providers in order; the receipt's `provider_used` names the one that answered "
         "(`ipc11:<version>` = headless KiCad IPC, `file` = kiwrap's lossless file engine, `cli:<version>` = a "
-        "kicad-cli export) and `degraded[]` carries the tags of the provider used plus `<provider>_unavailable` "
+        "kicad-cli export; for the routing operations `codec` = kiwrap's Specctra DSN writer / SES reader, "
+        "`swig:<version>` = the bundled-python driver) and `degraded[]` carries the tags of the provider used plus `<provider>_unavailable` "
         "when an earlier one failed at call time. `*_estimated` means kiwrap computed what KiCad would normally "
         "compute (KiCad 11 lifts most of these; on 10.x boards and schematics are read from the files).\n",
     ]

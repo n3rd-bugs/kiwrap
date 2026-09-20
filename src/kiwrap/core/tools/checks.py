@@ -32,6 +32,7 @@ from kiwrap.core.state.stages import (
     stage_index,
 )
 from kiwrap.core.tools._base import MUTATING, ToolContext, ToolSpec, mutation, to_kiwrap_error
+from kiwrap.core.tools.intent import attach_intent_diff
 
 DRC_MUST_FIX = (
     "clearance",
@@ -306,19 +307,23 @@ def sch_check(ctx: ToolContext, args: SchCheckArgs) -> Receipt:
             "violations": violations[:MAX_VIOLATIONS],
             "violations_truncated": max(0, len(violations) - MAX_VIOLATIONS),
             "netlist": None,
+            "intent_diff": None,
         }
         receipt_warnings: list[str] = []
         if args.netlist:
             try:
-                data["netlist"] = netlist_summary(
-                    ctx.services.export_netlist(install, config, project.root_sch)
-                )
+                nl = ctx.services.export_netlist(install, config, project.root_sch)
+                data["netlist"] = netlist_summary(nl)
             except Exception as exc:  # noqa: BLE001 - ERC is the primary result; a missing netlist only degrades
                 err = to_kiwrap_error(exc)
                 if err.code not in ("E_UNSUPPORTED", "E_KICAD_FAILED"):
                     raise err from exc
                 receipt_warnings.append(f"netlist export skipped: {err.code}: {err.message}")
                 m.receipt.degraded.append("netlist_unavailable")
+            else:
+                # the intent diff (kiwrap.core.tools.intent): validators.intent_diff + data.intent_diff
+                # when the project declared nets with kw_intent; nothing otherwise
+                data["intent_diff"] = attach_intent_diff(project, m, nl)
         m.validator_delta("erc", errors, {"warnings": warnings})
         if ok:
             record_stage(project, m.state, "erc_clean")
@@ -331,6 +336,9 @@ def sch_check(ctx: ToolContext, args: SchCheckArgs) -> Receipt:
         if not ok:
             error_types = [v["type"] for v in violations if v["severity"] == "error"]
             m.receipt.next_suggested = fix_tool_for(error_types, ERC_FIX_TOOLS, "kw_sch_connect")
+        elif (data.get("intent_diff") or {}).get("count"):
+            # ERC clean but the wiring differs from the declared nets: fix the wires before syncing
+            m.receipt.next_suggested = "kw_sch_connect"
         return m.receipt
 
 

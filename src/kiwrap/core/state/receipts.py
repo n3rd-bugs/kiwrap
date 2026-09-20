@@ -80,7 +80,14 @@ def png_size(data: bytes) -> tuple[int, int] | None:
     return None
 
 
-def receipt_to_dict(receipt: Receipt, *, ok: bool = True) -> dict[str, Any]:
+def receipt_to_dict(receipt: Receipt, *, ok: bool | None = None) -> dict[str, Any]:
+    """The receipt as JSON. `ok` defaults to the receipt's own `data.ok` (True when the payload
+    carries none) - the same rule the synchronous MCP path applies - so a job result serialised
+    here says `ok: false` for a failed route exactly like the blocking call would (Phase 1c
+    finding: async kw_pcb_route_auto / kw_pcb_fix / kw_fab_export results carried `ok: true`
+    over a `data.ok: false` payload)."""
+    if ok is None:
+        ok = bool(receipt.data.get("ok", True))
     raw = asdict(receipt)
     image = raw.pop("image", None)
     info = None

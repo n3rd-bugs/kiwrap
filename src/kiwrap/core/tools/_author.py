@@ -43,6 +43,7 @@ from __future__ import annotations
 import contextlib
 import importlib
 import inspect
+import re
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
@@ -692,6 +693,11 @@ def drc_validator(
     listed = [*buckets["must_fix"], *buckets["review"]]
     if nets:
         listed.sort(key=lambda v: 0 if any(f"[{n}]" in v["description"] for n in nets) else 1)
+    # the nets of EVERY must_fix violation, computed before the listing is capped: what
+    # kw_pcb_fix rips up (the first MAX_LISTED violations alone would miss nets on a big board)
+    nets_with_must_fix: set[str] = set()
+    for v in buckets["must_fix"]:
+        nets_with_must_fix.update(violation_net_names(v))
     return {
         "ok": must_fix == 0,
         "must_fix": must_fix,
@@ -700,10 +706,30 @@ def drc_validator(
         "unconnected": unconnected,
         "parity": parity_n if parity else None,
         "touched_nets": by_net,
+        "nets_with_must_fix": sorted(nets_with_must_fix),
         "refilled": do_refill,
         "violations": listed[:MAX_LISTED],
         "violations_truncated": max(0, len(listed) - MAX_LISTED),
     }
+
+
+_NET_TAG = re.compile(r"\[([^\]]+)\]")
+
+
+def violation_net_names(v: dict[str, Any]) -> set[str]:
+    """The nets a DRC violation names: the `[NET]` tags KiCad puts into the item descriptions
+    (`Track [GND] on F.Cu`, `Pad 3 [VCC] of U1`) and the description itself; `unconnected-(…)`
+    placeholders and bracketed text with spaces (not a net) are ignored."""
+    found: set[str] = set()
+    for text in [
+        str(v.get("description") or ""),
+        *(str(i.get("description") or "") for i in v.get("items", [])),
+    ]:
+        for m in _NET_TAG.finditer(text):
+            name = m.group(1).strip()
+            if name and not name.startswith("unconnected-(") and " " not in name.strip("/"):
+                found.add(name)
+    return found
 
 
 def placement_summary(
@@ -844,6 +870,7 @@ __all__ = [
     "run_write",
     "schematic_writer",
     "settle_placed",
+    "violation_net_names",
     "sheet_file",
     "sheet_hashes",
     "symbols_of",

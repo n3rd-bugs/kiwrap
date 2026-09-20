@@ -41,7 +41,9 @@ def test_linux_documents_dir_rules(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     xdg_config.mkdir()
     monkeypatch.delenv("XDG_DOCUMENTS_DIR", raising=False)
     assert plat._linux_documents_dir(xdg_config) == Path.home() / "Documents"
-    (xdg_config / "user-dirs.dirs").write_text('XDG_DESKTOP_DIR="$HOME/Desktop"\nXDG_DOCUMENTS_DIR="$HOME/Docs"\n')
+    (xdg_config / "user-dirs.dirs").write_text(
+        'XDG_DESKTOP_DIR="$HOME/Desktop"\nXDG_DOCUMENTS_DIR="$HOME/Docs"\n'
+    )
     assert plat._linux_documents_dir(xdg_config) == Path.home() / "Docs"
     monkeypatch.setenv("XDG_DOCUMENTS_DIR", "/srv/docs")
     assert plat._linux_documents_dir(xdg_config) == Path("/srv/docs")
@@ -50,3 +52,67 @@ def test_linux_documents_dir_rules(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_user_kicad_documents_home_is_read_only_and_ends_in_kicad():
     p = current()
     assert p.user_kicad_documents_home is not None and p.user_kicad_documents_home.name == "KiCad"
+
+
+# ---- child lifetime (kiwrap.platform.lifetime) -------------------------------------------------------
+
+_PARENT = r"""
+import subprocess, sys, time
+from kiwrap.platform.lifetime import bind_child_lifetime, popen_lifetime_kwargs
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], **popen_lifetime_kwargs())
+print("BOUND", bind_child_lifetime(child), child.pid, flush=True)
+time.sleep(120)
+"""
+
+
+def test_bound_child_dies_with_its_parent():
+    """Phase 1c finding 7: the router's JVM survived a killed kiwrap server as an orphan. A child
+    started through `kiwrap.platform.lifetime` (Job Object with kill-on-close on Windows,
+    PDEATHSIG on POSIX) is gone shortly after its parent is killed."""
+    import subprocess
+    import sys
+    import time
+
+    parent = subprocess.Popen(
+        [sys.executable, "-c", _PARENT], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    try:
+        line = parent.stdout.readline() if parent.stdout else ""
+        assert line.startswith("BOUND True "), (line, parent.stderr.read() if parent.stderr else "")
+        child_pid = int(line.split()[2])
+        assert _alive(child_pid)
+        parent.kill()
+        parent.wait(timeout=10)
+        deadline = time.time() + 10
+        while _alive(child_pid) and time.time() < deadline:
+            time.sleep(0.1)
+        assert not _alive(child_pid), f"child {child_pid} outlived its parent"
+    finally:
+        if parent.poll() is None:
+            parent.kill()
+
+
+def _alive(pid: int) -> bool:
+    import ctypes
+    import os
+    import sys
+
+    if sys.platform.startswith("win"):
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.OpenProcess(0x1000, False, int(pid))  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return code.value == 259  # STILL_ACTIVE
+            return True
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True

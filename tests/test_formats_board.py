@@ -354,6 +354,33 @@ def test_nightly_transform_placement_reads_like_at():
     assert BoardFile.loads(both).footprint("R1").position == Vec2(1, 2)
 
 
+def test_copper_layers_are_the_leading_typed_block_like_kicads_parser():
+    """Phase 1c finding: KiCad 8.99 / 9.0.0 wrote `User.N` rows typed `signal` AFTER the `user`
+    rows (10.0.6's multichannel_mixer-unrouted demo); `parseLayers` stops at the first `user` row,
+    so those are user layers, not copper - the codec, the writer and the fab export must agree."""
+    from kiwrap.formats.board_writer import BoardWriter
+
+    text = BOARD_V9.replace(
+        '\t\t(29 "B.CrtYd" user "B.Courtyard")',
+        '\t\t(29 "B.CrtYd" user "B.Courtyard")\n\t\t(39 "User.1" signal)\n\t\t(41 "User.2" power)',
+    )
+    board = BoardFile.loads(text)
+    assert [layer.name for layer in board.layers][-2:] == ["User.1", "User.2"]
+    assert board.copper_layers == ("F.Cu", "B.Cu")
+    user1 = board.layer("User.1")
+    assert user1 is not None and not user1.is_copper and user1.has_copper_type and user1.kind == "signal"
+    assert board.layer("F.Cu").is_copper and board.layer("Edge.Cuts").has_copper_type is False
+    # the writer's own copper list follows the same rule, and setting the stack leaves User.N alone
+    w = BoardWriter(Path(), epoch={"pcb": 20241229}, lib_resolver=None)
+    w.root = BoardFile.loads(text).root
+    w._copper = w._copper_layers()
+    assert w._copper == ["F.Cu", "B.Cu"]
+    assert w.setup(layers=4)["layers"] == ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]
+    names = [row.values()[1] for row in w.root.find("layers").nodes]
+    assert names[:4] == ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"] and names[-2:] == ["User.1", "User.2"]
+    assert BoardFile.from_node(w.root).copper_layers == ("F.Cu", "In1.Cu", "In2.Cu", "B.Cu")
+
+
 def test_rejects_non_board():
     with pytest.raises(ValueError):
         BoardFile.loads("(kicad_sch (version 1))")

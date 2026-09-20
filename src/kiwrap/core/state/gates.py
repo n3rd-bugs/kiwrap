@@ -18,12 +18,20 @@ from kiwrap.core.state.stages import stage_at_least
 GATES: dict[str, str] = {
     "kw_pcb_sync": "erc_clean",
     "kw_pcb_route_auto": "placed",
+    "kw_pcb_fix": "placed",
     "kw_fab_export": "drc_clean",
 }
 
 GATE_FIX: dict[str, str] = {
     "kw_pcb_sync": "run kw_sch_check and fix every ERC error (warnings do not gate) until ok=true",
-    "kw_pcb_route_auto": "place every footprint inside the board outline first (kw_pcb_place / kw_pcb_place_auto)",
+    "kw_pcb_route_auto": (
+        "place every footprint inside the board outline with kw_pcb_place until kw_pcb_check reports no "
+        "off_board / courtyard_overlap items (that settles the project at `placed`)"
+    ),
+    "kw_pcb_fix": (
+        "reach `placed` first (kw_pcb_place until kw_pcb_check is clean): re-routing against an unplaced "
+        "board fixes nothing"
+    ),
     "kw_fab_export": "run kw_pcb_drc and fix every must_fix violation until must_fix == 0",
 }
 

@@ -1,0 +1,196 @@
+{
+ "schema": 1,
+ "kicad": "10.99.0",
+ "client": "kicad-python 0.9.0.dev0@f79cebd1 (KICAD_API_VERSION unknown)",
+ "schematic": {
+  "LoadAllLibraries(symbol)": "handled",
+  "PlaceSymbolFromLibrary": "handled",
+  "body_style_after_place": 0,
+  "DeleteItems": "handled",
+  "DeleteItems(unknown id)": "error: KeyError: 'no item with uuid 9bc02f6e-bfb4-4729-a661-d5f293618b0a'",
+  "ldo_script": "handled",
+  "UpdateItems(symbol, definition stripped)": "handled",
+  "UpdateItems(label)": "handled",
+  "CreateItems(GlobalLabel)": "handled",
+  "CreateItems(HierarchicalLabel)": "handled",
+  "CreateItems(NoConnectMarker)": "handled",
+  "CreateItems(Junction)": "handled",
+  "lone_junction_pruned_on_commit": true,
+  "DeleteItems(labels, marker)": "handled",
+  "annotate": "handled",
+  "assign_footprints": "handled",
+  "SaveCopyOfDocument": "handled",
+  "SaveDocument": "handled",
+  "lib_name_fork_after_update": false,
+  "UpdateItems(symbol, definition echoed)": "handled",
+  "lib_name_fork_after_definition_echo": true,
+  "CreateItems(SheetSymbol)+SaveDocument": "save_fails (bad_request: KiCad returned error: failed to save schematic; in copy: False)"
+ },
+ "board": {
+  "ImportNetlist(dry_run)": "handled",
+  "LoadAllLibraries(footprint)": "handled",
+  "ImportNetlist": "handled",
+  "new_footprints_outside_outline": true,
+  "is_document_modified_after_import": false,
+  "UpdateItems(FootprintInstance)+FlipItems": "handled",
+  "CreateItems(Zone)+RefillZones": "handled",
+  "CreateItems(Via)": "handled",
+  "CreateItems(Track x2)": "handled",
+  "DeleteItems": "handled",
+  "SaveDocument": "handled"
+ },
+ "checks": {
+  "live_netlist_matches_intent": true,
+  "erc_errors": 0,
+  "erc_error_types": [],
+  "netlist_matches_intent": true,
+  "drc_parity_issues": 0
+ },
+ "info": {
+  "junctions_added": 5,
+  "saved_version": "(version 20260830)",
+  "import_added": [
+   "C1",
+   "C2",
+   "D1",
+   "J1",
+   "R1",
+   "U1"
+  ],
+  "new_footprint_positions": {
+   "C2": [
+    11.355,
+    10.405
+   ],
+   "C1": [
+    11.355,
+    7.895
+   ],
+   "J1": [
+    11.645,
+    1.795
+   ],
+   "D1": [
+    5.955,
+    9.115
+   ],
+   "U1": [
+    4.425,
+    3.7
+   ],
+   "R1": [
+    1.705,
+    9.295
+   ]
+  },
+  "saved_pcb_version": "(version 20260901)",
+  "drc_errors": 9
+ },
+ "latency_ms": {
+  "pcb.load_libraries": {
+   "n": 1.0,
+   "median_ms": 51.9,
+   "max_ms": 51.9
+  },
+  "pcb_add_track": {
+   "n": 1.0,
+   "median_ms": 46.5,
+   "max_ms": 46.5
+  },
+  "pcb_add_via": {
+   "n": 1.0,
+   "median_ms": 44.9,
+   "max_ms": 44.9
+  },
+  "pcb_add_zone": {
+   "n": 1.0,
+   "median_ms": 319.9,
+   "max_ms": 319.9
+  },
+  "pcb_delete": {
+   "n": 1.0,
+   "median_ms": 45.1,
+   "max_ms": 45.1
+  },
+  "pcb_place": {
+   "n": 6.0,
+   "median_ms": 62.7,
+   "max_ms": 78.3
+  },
+  "pcb_refill": {
+   "n": 1.0,
+   "median_ms": 259.4,
+   "max_ms": 259.4
+  },
+  "pcb_save": {
+   "n": 1.0,
+   "median_ms": 23.5,
+   "max_ms": 23.5
+  },
+  "pcb_sync": {
+   "n": 2.0,
+   "median_ms": 1162.0,
+   "max_ms": 1211.3
+  },
+  "sch.load_libraries": {
+   "n": 1.0,
+   "median_ms": 48.0,
+   "max_ms": 48.0
+  },
+  "sch_add_junction": {
+   "n": 1.0,
+   "median_ms": 76.2,
+   "max_ms": 76.2
+  },
+  "sch_add_label": {
+   "n": 3.0,
+   "median_ms": 76.9,
+   "max_ms": 77.2
+  },
+  "sch_add_no_connect": {
+   "n": 1.0,
+   "median_ms": 77.1,
+   "max_ms": 77.1
+  },
+  "sch_add_symbol": {
+   "n": 10.0,
+   "median_ms": 61.8,
+   "max_ms": 63.6
+  },
+  "sch_add_wire": {
+   "n": 10.0,
+   "median_ms": 144.7,
+   "max_ms": 156.6
+  },
+  "sch_annotate": {
+   "n": 1.0,
+   "median_ms": 47.5,
+   "max_ms": 47.5
+  },
+  "sch_assign_footprints": {
+   "n": 1.0,
+   "median_ms": 61.3,
+   "max_ms": 61.3
+  },
+  "sch_delete": {
+   "n": 5.0,
+   "median_ms": 45.7,
+   "max_ms": 48.6
+  },
+  "sch_edit": {
+   "n": 2.0,
+   "median_ms": 47.0,
+   "max_ms": 47.1
+  },
+  "sch_save": {
+   "n": 2.0,
+   "median_ms": 22.6,
+   "max_ms": 26.0
+  }
+ },
+ "notes": [
+  "schematic / board / checks are compared on later runs; info and latency_ms are not",
+  "the LDO script is tests/test_ipc_writes_live.py::_build_ldo; nets in EXPECTED_NETS"
+ ],
+ "elapsed_s": 18.8
+}

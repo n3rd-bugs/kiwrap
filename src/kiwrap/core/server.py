@@ -36,7 +36,7 @@ INSTRUCTIONS = (
     "absolute pin endpoints) -> kw_sch_connect (by ref+pin) / kw_sch_add_item (power, PWR_FLAG, no-connect, "
     "labels, sheets) -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints "
     "-> kw_pcb_setup -> kw_pcb_sync (gated on erc_clean) -> kw_pcb_place with kw_pcb_check / kw_pcb_get feedback "
-    "-> kw_pcb_zones / kw_pcb_route -> kw_pcb_drc -> kw_fab_export. Every mutation runs its validator (ERC / DRC / "
+    "-> kw_pcb_zones / kw_pcb_route_auto (Freerouting; kw_pcb_fix repairs must_fix DRC by re-routing) or kw_pcb_route -> kw_pcb_drc -> kw_fab_export. Every mutation runs its validator (ERC / DRC / "
     "placement checks) and puts the numbers in the receipt (validators[], stage, next_suggested, snapshot). "
     "Data first: after every change query structured state (kw_sch_get / kw_sch_stats / kw_pcb_get / "
     "kw_pcb_check) and act on it; renders (kw_sch_render / kw_pcb_render) are secondary. Never edit .kicad_* "
@@ -68,6 +68,9 @@ REPORT_TOOLS = {
     "kw_pcb_place",
     "kw_pcb_zones",
     "kw_pcb_route",
+    # the routing receipts embed the router log summary, the SES report and the DRC
+    "kw_pcb_route_auto",
+    "kw_pcb_fix",
 }
 MAX_RESULT_CHARS = 60_000
 
@@ -133,6 +136,26 @@ def register_tools(mcp: MCPServer, ctx: ToolContext, specs: tuple[ToolSpec, ...]
             annotations=spec.annotations,
             meta=meta or None,
         )(make_callable(spec, ctx))
+
+
+def shutdown_jobs(mcp: MCPServer, *, wait_s: float = 10.0) -> list[str]:
+    """Cancel the background jobs still running (a route job's JVM dies with it) and wait a
+    bounded time; idempotent, safe from `atexit`."""
+    ctx = getattr(mcp, "kiwrap_context", None)
+    if ctx is None:
+        return []
+    try:
+        return ctx.jobs.shutdown(cancel_running=True, wait_s=wait_s)
+    except Exception:  # noqa: BLE001 - shutdown must never raise into the transport teardown
+        return []
+
+
+def install_shutdown_hooks(mcp: MCPServer) -> None:
+    """`atexit`: when the host ends the session by closing stdio (or kills the interpreter
+    orderly), the running jobs are cancelled before the pool threads are joined at exit."""
+    import atexit
+
+    atexit.register(shutdown_jobs, mcp)
 
 
 def build_server(

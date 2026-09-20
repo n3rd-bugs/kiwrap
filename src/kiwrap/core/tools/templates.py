@@ -21,7 +21,12 @@ What these templates encode (docs/VERIFICATION.md claim 9 and docs/research/07-v
 - an optional rectangular outline is written as four legacy-form `gr_line` items
   (`(width 0.1)` + `(tstamp ...)`), the form every reader 7-10 accepts under its own stamp
   (checked with `pcb drc`: 0 violations on 8/9/10, `pcb export svg` on 7 - scratchpad
-  core/outline_check.py). Without an outline every DRC reports `invalid_outline`.
+  core/outline_check.py). Without an outline every DRC reports `invalid_outline`;
+- the `(net 0 "")` table row exists only in the code dialect: from the name-only dialect on
+  (`kiwrap.formats.board_writer.STAMP_NET_NAMES_ONLY`, the stamp KiCad 10 writes) nets are
+  referenced by name and a code row would make `BoardFile.nets` see a code table with one
+  entry and hide every name-referenced net - the Specctra DSN of such a board carried an empty
+  `(network)` and Freerouting routed nothing (Phase 1c finding, tests/test_e2e_reference_board.py).
 """
 
 from __future__ import annotations
@@ -31,16 +36,55 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-# Layer table dialects: (id, name, type) - the minimum a board needs: copper both sides + outline.
+from kiwrap.formats.board_writer import STAMP_NET_NAMES_ONLY
+
+# Layer table dialects: (id, name, type) - copper both sides plus KiCad's standard technical
+# layers (the same set `kiwrap.formats.board_writer` writes and KiCad's own new-board template
+# enables). kicad-cli plots only ENABLED layers: a table without F.Mask / F.Paste / F.SilkS
+# silently yields gerbers without mask, paste and silk (Phase 1c finding, tests/test_fab_live.py).
 LAYERS_V1 = (
     (0, "F.Cu", "signal"),
     (31, "B.Cu", "signal"),
+    (32, "B.Adhes", "user"),
+    (33, "F.Adhes", "user"),
+    (34, "B.Paste", "user"),
+    (35, "F.Paste", "user"),
+    (36, "B.SilkS", "user"),
+    (37, "F.SilkS", "user"),
+    (38, "B.Mask", "user"),
+    (39, "F.Mask", "user"),
+    (40, "Dwgs.User", "user"),
+    (41, "Cmts.User", "user"),
+    (42, "Eco1.User", "user"),
+    (43, "Eco2.User", "user"),
     (44, "Edge.Cuts", "user"),
+    (45, "Margin", "user"),
+    (46, "B.CrtYd", "user"),
+    (47, "F.CrtYd", "user"),
+    (48, "B.Fab", "user"),
+    (49, "F.Fab", "user"),
 )
 LAYERS_V2 = (
     (0, "F.Cu", "signal"),
     (2, "B.Cu", "signal"),
+    (9, "F.Adhes", "user"),
+    (11, "B.Adhes", "user"),
+    (13, "F.Paste", "user"),
+    (15, "B.Paste", "user"),
+    (5, "F.SilkS", "user"),
+    (7, "B.SilkS", "user"),
+    (1, "F.Mask", "user"),
+    (3, "B.Mask", "user"),
+    (17, "Dwgs.User", "user"),
+    (19, "Cmts.User", "user"),
+    (21, "Eco1.User", "user"),
+    (23, "Eco2.User", "user"),
     (25, "Edge.Cuts", "user"),
+    (27, "Margin", "user"),
+    (31, "F.CrtYd", "user"),
+    (29, "B.CrtYd", "user"),
+    (35, "F.Fab", "user"),
+    (33, "B.Fab", "user"),
 )
 
 BUILTIN_PROJECT: dict[str, Any] = {
@@ -138,6 +182,7 @@ def board_text(
         f'\t\t({lid} "{name}" {kind})\n' for lid, name, kind in (LAYERS_V2 if layer_ids_v2 else LAYERS_V1)
     )
     outline = outline_text(*outline_mm) if outline_mm else ""
+    net_table = "" if epoch >= STAMP_NET_NAMES_ONLY else '\t(net 0 "")\n'
     return (
         "(kicad_pcb\n"
         f"\t(version {epoch})\n"
@@ -153,7 +198,7 @@ def board_text(
         "\t(setup\n"
         "\t\t(pad_to_mask_clearance 0)\n"
         "\t)\n"
-        '\t(net 0 "")\n'
+        f"{net_table}"
         f"{outline}"
         ")\n"
     )

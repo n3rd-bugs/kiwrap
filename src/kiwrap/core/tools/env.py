@@ -33,6 +33,9 @@ SUMMARY_KEYS = (
     "cli.has_stackup_json",
     "cli.has_pcb_png",
     "rules.default_min_track_width_mm",
+    "cli.has_specctra_export",
+    "cli.has_specctra_import",
+    "kiwrap.patches",
 )
 
 ENGINE_DIRS = {
@@ -48,6 +51,24 @@ class EnvArgs(BaseModel):
         default=False,
         description="Re-discover installs and re-probe capabilities instead of using the cached record",
     )
+
+
+def _autorouter(ctx: ToolContext) -> dict[str, Any]:
+    discover: Any = getattr(ctx.services, "router_engines", None)
+    if discover is None:
+        try:
+            from kiwrap.backends.router import discover_engines
+        except ImportError:  # the router backend is optional in a build
+            return {"available": False, "reason": "kiwrap.backends.router is not present"}
+        discover = discover_engines
+    try:
+        engines = discover(storage_home=ctx.services.storage_home, fallback=True)
+    except TypeError:  # a test double that takes no `fallback`
+        engines = discover(storage_home=ctx.services.storage_home)
+    except Exception as exc:  # noqa: BLE001 - discovery must never fail kw_env
+        return {"available": False, "reason": str(exc)}
+    to_dict = getattr(engines, "to_dict", None)
+    return dict(to_dict()) if callable(to_dict) else {"available": bool(getattr(engines, "available", False))}
 
 
 def install_dict(install: Any) -> dict[str, Any]:
@@ -103,7 +124,11 @@ def run(ctx: ToolContext, args: EnvArgs) -> Receipt:
         rows.append(row)
 
     storage = ctx.services.storage_home
-    engines = {name: (storage / rel).exists() for name, rel in ENGINE_DIRS.items()}
+    engines: dict[str, Any] = {name: (storage / rel).exists() for name, rel in ENGINE_DIRS.items()}
+    # the autorouter the routing tools will actually start: the resolved JRE / jar / profile
+    # (kiwrap.backends.router.discover_engines, same fallback to the platform's default storage
+    # home as kw_pcb_route_auto), never a bare directory flag
+    engines["autorouter"] = _autorouter(ctx)
     try:
         data_backends = ctx.services.data_backends()
     except AttributeError:  # a hand-built Services double without the method

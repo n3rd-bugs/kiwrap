@@ -47,7 +47,8 @@ class KiwrapError(Exception):
 
     Codes (Phase 0): E_NO_KICAD, E_UNSUPPORTED, E_PROJECT_NOT_FOUND, E_BAD_ARGS, E_KICAD_FAILED,
     E_FILE_LOCKED (KiCad holds a `~*.lck`), E_BUSY (a kiwrap IPC read on the project is in flight),
-    E_GATE (stage gate not satisfied), E_EXTERNAL_EDIT, E_TIMEOUT, E_INTERNAL.
+    E_GATE (stage gate not satisfied), E_EXTERNAL_EDIT, E_TIMEOUT, E_CANCELLED (a background job
+    cancelled through kw_job), E_INTERNAL.
     """
 
     def __init__(

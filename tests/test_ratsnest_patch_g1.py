@@ -123,7 +123,8 @@ def test_capability_and_provider_label(patched, storage_home):
     caps = capabilities_for(patched, storage_home=storage_home)
     assert caps.has("cli.has_ratsnest_export") and "pcb export ratsnest" in caps["cli.subcommands"]
     assert caps.has("ipc.has_get_ratsnest")
-    assert caps["kiwrap.patches"] == [PATCH] and caps.has("kiwrap.patched_build")
+    # an integration build carries every patch of the series (specctra-jobs joined on -5)
+    assert PATCH in caps["kiwrap.patches"] and caps.has("kiwrap.patched_build")
     assert caps.patch_for("cli.has_ratsnest_export") == PATCH
     assert caps.patch_for("cli.has_drc") == ""
 

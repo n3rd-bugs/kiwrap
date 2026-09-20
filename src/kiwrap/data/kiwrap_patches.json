@@ -20,6 +20,20 @@
     "GetRatsnest"
    ],
    "note": "2026-09-19: JOB_EXPORT_PCB_RATSNEST + `kicad-cli pcb export ratsnest [--units U] [--nets N1,N2] [--include-routed]` (JSON only, resources/schemas/ratsnest.v1.json; item pairs the project excludes as DRC unconnected_items are listed with `excluded: true` and left out of the counts and lengths; a through item's end is reported on the layer it shares with the other end) + board_commands.proto GetRatsnest (Since: 11.0, RatsnestEdge.excluded) + API_HANDLER_PCB::handleGetRatsnest; QA: qa_pcbnew RatsnestReport (5 cases incl. issue17429 exclusions and the ratsnest_layers fixture), qa_cli test_pcb_export_ratsnest + _exclusions, qa_api ApiE2E/GetRatsnest. The T5 inventory cannot see GetRatsnest until kicad-python is regenerated against the branch (kiwrap's client builds the message classes from a descriptor, backends.ipc.queries.ratsnest_messages), so `commands` is informational for now. RunBoardJobExportRatsnest (the job over IPC) is deliberately not part of the patch: GetRatsnest returns the data without a file round trip, the CLI/jobset half runs the job, and the extra proto/enum/QA surface is a follow-up once GetRatsnest lands."
+  },
+  {
+   "id": "specctra-jobs",
+   "gap": "routing",
+   "branch": "mr/specctra-jobs",
+   "issue": null,
+   "mr": null,
+   "status": "local",
+   "keys": [
+    "cli.has_specctra_export",
+    "cli.has_specctra_import"
+   ],
+   "commands": [],
+   "note": "2026-09-20: JOB_EXPORT_PCB_SPECCTRA + `kicad-cli pcb export specctra [-o FILE] BOARD` (KiCad's own DSN::ExportBoardToSpecctraFile as a headless job; default output <board>.dsn in the working directory; a malformed outline is a wxLogWarning on stderr and the bounding box is written) and JOB_IMPORT_PCB_SPECCTRA_SES + `kicad-cli pcb import-ses --ses FILE [-o OUT_BOARD] BOARD` (DSN::ImportSpecctraSession in a board-editor BOARD_COMMIT on the headless tool manager, exactly the editor's File > Import > Specctra Session: unlocked tracks/arcs/vias replaced by the session's routes, locked ones kept, SES placement applied to every named footprint including locked ones, unresolved references/layers/padstacks counted and warned, DRC markers dropped; a session without its sections -> exit 3 and the board untouched; without -o the board is saved in place, the project file is not written). `import-ses` is a sibling of `pcb import` because argparse only looks for a subcommand once a command's positionals are consumed and `pcb import` takes the file as its positional. Two commits (one per command), each with the qa_pcbnew cases in test_specctra_export.cpp (export contents; replacement/locked/placement semantics) and the qa_cli cases in test_pcb_specctra.py (DSN contents, DSN->SES->import round trip within the 1 um the DSN's six significant digits keep, locked copper + in-place save, error paths). Drafts: docs/upstream/drafts/specctra-jobs-export-mr.md, specctra-jobs-import-mr.md. Observed while testing, not fixed here: KiCad's own DSN reader (SPECCTRA_DB::LoadPCB) rejects KiCad's export at `(PN ...)` because the keyword table only knows `pn`; nothing in KiCad reads DSN files, so this is inert."
   }
  ],
  "builds": [
@@ -66,6 +80,33 @@
    ],
    "snapshot": "10.99.0+4a04900fd2.json",
    "note": "2026-09-19 RelWithDebInfo integration build = base + mr/g6-headless-jobs (test only) + mr/g1-ratsnest (reworked: excluded flag, shared-layer rule, no --format, Assisted-by trailers); qa_api 108/110 (the two known test-side failures), qa_pcbnew RatsnestReport 5/5, qa_cli ratsnest 2/2; T5 EQUAL to 10.99.0.json"
+  },
+  {
+   "tag": "kiwrap-build/6dd893f7d1-5",
+   "commit": "dfd50b8639",
+   "base": "6dd893f7d1",
+   "branch": "kiwrap/6dd893f7d1",
+   "preset": "msvc-win64-release",
+   "patches": [
+    "ratsnest-export",
+    "specctra-jobs"
+   ],
+   "snapshot": "10.99.0+dfd50b8639.json",
+   "note": "2026-09-20 RelWithDebInfo integration build = -4 (base + mr/g6-headless-jobs + mr/g1-ratsnest) + mr/specctra-jobs (pcb export specctra, pcb import-ses); qa_api 108/110 (the two known test-side failures), qa_pcbnew SpecctraExport*/SpecctraImport* 6/6 + RatsnestReport 5/5, qa_cli test_pcb_specctra.py 5/5 + test_pcb.py 15/15; T4 tree = -4's + the two commands, T5 EQUAL to 10.99.0.json"
+  },
+  {
+   "tag": "kiwrap-build/6dd893f7d1-6",
+   "commit": "2225917b49",
+   "base": "6dd893f7d1",
+   "branch": "kiwrap/6dd893f7d1",
+   "preset": "msvc-win64-release",
+   "patches": [
+    "ratsnest-export",
+    "specctra-jobs",
+    "specctra-fp-zone-frame"
+   ],
+   "snapshot": "10.99.0+2225917b49.json",
+   "note": "2026-09-20 RelWithDebInfo integration build = -5 + mr/specctra-fp-zone-frame (a bug fix in pcbnew's Specctra exporter, no CLI / IPC surface to probe, hence no `patches[]` entry: makeIMAGE() exported a footprint's rule areas from the LIBRARY-frame outline as if it were board geometry, un-rotating it about the footprint position and subtracting the position, so a placed part's keepout landed tens of millimetres away and the router routed through the real one; the fix iterates ZONE::GetLibraryOutline() as the image geometry; docs/upstream/drafts/specctra-fp-zone-frame-mr.md); qa_pcbnew SpecctraExport* 4/4 (new case SpecctraExportFootprintRuleAreaInImageFrame), qa_api re-run; T4 tree = -5's, T5 EQUAL to 10.99.0.json"
   }
  ]
 }

@@ -19,6 +19,15 @@ why the netlist import is hand-written; conformance test T8 for the oracle runs)
   footprint stores mirrored local coordinates (y negated), negated angles, swapped `F.*`/`B.*`
   layers and `(justify mirror)` on its texts (`FOOTPRINT::Flip`, pcbnew/footprint.cpp);
 * `(locked yes)` is a list from 20241229 on and a bare `locked` flag before;
+* a footprint's rule areas (`(zone …)` inside `(footprint …)`) are stored in BOARD coordinates
+  on every dialect before `FIRST_FP_AFFINE_TRANSFORM` (KiCad ≤ 10 moves / rotates / flips them
+  with the footprint: `FOOTPRINT::SetPosition` / `Rotate` / `Flip` on `m_zones`; a `.kicad_mod`
+  holds them in the library frame around (0, 0)) and in the LIBRARY frame from that stamp on
+  (the parser of master converts legacy outlines with `TRANSFORM_TRS::InverseApply`). The
+  writer bakes a placed footprint's zones into the board frame on the legacy dialect
+  (`_bake_zone_frame`) and unbakes them before every placement change (`_unbake_zone_frame`),
+  so `kw_pcb_sync` / `kw_pcb_place` leave the ESP32 module's antenna keep-out where KiCad 10
+  expects it (Phase 1c finding: the keep-out sat at the library coordinates, off-board);
 * the nightly (stamp 20260616+, `FIRST_FP_AFFINE_TRANSFORM`) *writes* a footprint's placement
   as `(transform (translate x y) (rotate r) (scale 1 1))` but still *reads* `(at x y r)`
   (verified: `pcb export pos` and parity DRC on 10.99.0-4083 agree with what this writer
@@ -48,16 +57,16 @@ import math
 import os
 import re
 import uuid as _uuid
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-from kiwrap.formats.board import BoardFile
+from kiwrap.formats.board import STAMP_FP_AFFINE_TRANSFORM, BoardFile, copper_layer_rows
 from kiwrap.formats.dru import DruRule, render_dru
 from kiwrap.formats.epochs import read_stamp
 from kiwrap.formats.fileio import atomic_write_text
-from kiwrap.formats.geometry import BBox
+from kiwrap.formats.geometry import BBox, Vec2, rotate
 from kiwrap.formats.netlist_sync import (
     CONFLICTING_NET,
     FootprintState,
@@ -91,6 +100,11 @@ __all__ = [
 STAMP_FOOTPRINT_FIELDS = 20231007  # `(property "Reference" …)` + `(uuid …)` instead of fp_text/tstamp
 STAMP_LAYER_IDS_V2 = 20241229  # renumbered layer ids, `(locked yes)` lists, `(tenting …)`
 STAMP_NET_NAMES_ONLY = 20260206  # no `(net N "name")` table; `(net "name")` everywhere
+#: `net_settings.meta.version` that carries `netclass_patterns` (KiCad NET_SETTINGS schema 3;
+#: older file versions are migrated by replacing the patterns with the legacy `nets` lists)
+NET_SETTINGS_SCHEMA_PATTERNS = 3
+# STAMP_FP_AFFINE_TRANSFORM (20260616, `(transform …)` placements, footprint zones in the library
+# frame) lives in `kiwrap.formats.board`; it is re-exported here for the callers that import it.
 STAMP_EXCLUDE_FROM_SIM = 20260828  # `exclude_from_sim` footprint attribute (pcb_io_kicad_sexpr.h)
 MIN_STAMP = STAMP_FOOTPRINT_FIELDS
 
@@ -274,6 +288,12 @@ class Dialect:
     @property
     def has_exclude_from_sim(self) -> bool:
         return self.stamp >= STAMP_EXCLUDE_FROM_SIM
+
+    @property
+    def fp_zones_in_board_frame(self) -> bool:
+        """Footprint rule areas are stored in board coordinates (every dialect before the
+        affine-transform one, `FIRST_FP_AFFINE_TRANSFORM`; see the module docstring)."""
+        return self.stamp < STAMP_FP_AFFINE_TRANSFORM
 
     def copper_layer_rows(self, names: Sequence[str]) -> list[tuple[int, str, str, str | None]]:
         rows: list[tuple[int, str, str, str | None]] = []
@@ -688,6 +708,47 @@ def _rotate_items(fp: Node, delta: float) -> None:
                 at.append(Atom.number(new))
 
 
+def _map_zone_points(fp: Node, fn: Callable[[float, float], tuple[float, float]]) -> None:
+    """Apply `fn(x, y) -> (x, y)` to every outline / fill vertex of the footprint's zones."""
+    for zone in fp.find_all("zone"):
+        for poly in [*zone.find_all("polygon"), *zone.find_all("filled_polygon")]:
+            pts = poly.find("pts")
+            if pts is None:
+                continue
+            for xy in pts.nodes:
+                atoms = xy.atoms
+                if xy.head == "xy" and len(atoms) >= 2:
+                    x, y = fn(atoms[0].as_float(), atoms[1].as_float())
+                    atoms[0].value = _num(x)
+                    atoms[1].value = _num(y)
+
+
+def _bake_zone_frame(fp: Node) -> None:
+    """Library frame -> board frame for the footprint's zones (legacy dialect, see the module
+    docstring): `p = rotate(q, rotation) + position`, KiCad's `RotatePoint` convention (the same
+    transform the board model applies to pads)."""
+    x, y, rot = footprint_placement(fp)
+    pos = Vec2(x, y)
+
+    def fn(qx: float, qy: float) -> tuple[float, float]:
+        v = rotate(Vec2(qx, qy), rot) + pos
+        return v.x, v.y
+
+    _map_zone_points(fp, fn)
+
+
+def _unbake_zone_frame(fp: Node) -> None:
+    """Board frame -> library frame (the inverse of `_bake_zone_frame` at the CURRENT placement)."""
+    x, y, rot = footprint_placement(fp)
+    pos = Vec2(x, y)
+
+    def fn(px: float, py: float) -> tuple[float, float]:
+        v = rotate(Vec2(px, py) - pos, -rot)
+        return v.x, v.y
+
+    _map_zone_points(fp, fn)
+
+
 _FLIP_PREFIX = {"F.": "B.", "B.": "F."}
 
 
@@ -707,7 +768,11 @@ def _mirror_y(node: Node, heads: Iterable[str]) -> None:
 
 
 def _mirror_pts(node: Node) -> None:
-    for pts in node.find_all("pts"):
+    """Mirror the y of every `(pts …)` vertex below `node`: a direct child on `fp_poly` /
+    `fp_curve`, nested under `(polygon …)` / `(filled_polygon …)` on a zone."""
+    for pts in node.walk():
+        if pts.head != "pts":
+            continue
         for xy in pts.nodes:
             if xy.head == "xy":
                 atoms = xy.atoms
@@ -1040,14 +1105,13 @@ class BoardWriter:
         return loads(text)
 
     def _copper_layers(self) -> list[str]:
+        """The copper layers the way KiCad's parser takes them: the leading block of typed rows
+        (`kiwrap.formats.board.copper_layer_rows`), never every row typed `signal`."""
         root = self._require()
         table = root.find("layers")
         out: list[str] = []
         if table is not None:
-            for row in table.nodes:
-                vals = row.values()
-                if len(vals) >= 3 and vals[2] in ("signal", "power", "mixed", "jumper"):
-                    out.append(vals[1])
+            out = [row.values()[1] for row in copper_layer_rows(table.nodes) if len(row.values()) >= 2]
         return out or ["F.Cu", "B.Cu"]
 
     def save(self) -> Path:
@@ -1109,12 +1173,8 @@ class BoardWriter:
         table = root.find("layers")
         if table is None:
             raise BoardWriterError("board has no (layers …) table")
-        existing_types = {row.values()[1]: row.values()[2] for row in table.nodes if len(row.values()) >= 3}
-        copper_rows = [
-            row
-            for row in table.nodes
-            if len(row.values()) >= 3 and row.values()[2] in ("signal", "power", "mixed", "jumper")
-        ]
+        copper_rows = copper_layer_rows(table.nodes)
+        existing_types = {row.values()[1]: row.values()[2] for row in copper_rows if len(row.values()) >= 3}
         for row in copper_rows:
             table.remove(row)
         first = next((i for i, c in enumerate(table.children) if isinstance(c, Node)), len(table.children))
@@ -1260,7 +1320,19 @@ class BoardWriter:
                     patterns.append({"netclass": netclass, "pattern": pattern})
                     seen.add((netclass, pattern))
             ns["netclass_patterns"] = patterns
-        ns.setdefault("meta", {"version": 3})
+        # KiCad migrates a `net_settings` whose `meta.version` is below its schema on load, and
+        # `migrateSchema2to3` (file version < 3) REPLACES `netclass_patterns` with the classes'
+        # legacy `nets` lists - a template project (KiCad's own kicad.kicad_pro says version 0)
+        # would silently lose every pattern written here, leaving Default only (seen on 10.0.6:
+        # one class in the DSN export, the Power class never applied by DRC). Version 3 is the
+        # schema that introduced the patterns (common/project/net_settings.cpp); the later
+        # migrations (priorities in file order, tuning_profile) are no-ops for what is written.
+        meta = ns.get("meta") if isinstance(ns.get("meta"), dict) else {}
+        try:
+            file_version = int(meta.get("version", 0))
+        except (TypeError, ValueError):
+            file_version = 0
+        ns["meta"] = {**meta, "version": max(file_version, NET_SETTINGS_SCHEMA_PATTERNS)}
         data.setdefault("meta", {}).setdefault("filename", path.name)
         atomic_write_text(path, json.dumps(data, indent=2) + "\n", newline="\n")
 
@@ -1455,6 +1527,8 @@ class BoardWriter:
         _set_uuid(fp, uuid or _uuid_of(fp))
         if rotation:
             _rotate_items(fp, _normalize180(rotation))
+        if d.fp_zones_in_board_frame:
+            _bake_zone_frame(fp)
         fp.reformat()
         return fp
 
@@ -1761,11 +1835,16 @@ class BoardWriter:
             exclude_from_sim=comp.exclude_from_sim,
             exclude_from_pos_files=True if comp.exclude_from_pos_files else None,
         )
+        board_frame = self.dialect.fp_zones_in_board_frame
+        if board_frame:
+            _unbake_zone_frame(fp)
         if keep_positions and layer.startswith("B."):
             flip_footprint(fp)
         if keep_positions and rot:
             set_footprint_placement(fp, x, y, _normalize180(rot))
             _rotate_items(fp, _normalize180(rot))
+        if board_frame:
+            _bake_zone_frame(fp)
         if locked:
             self._set_locked(fp, True)
         root = self._require()
@@ -1813,7 +1892,12 @@ class BoardWriter:
                 y += row_h + GRID_GAP_MM
                 row_h = 0.0
             px, py = x - ox, y - oy
+            board_frame = self.dialect.fp_zones_in_board_frame
+            if board_frame:
+                _unbake_zone_frame(node)
             set_footprint_placement(node, px, py, footprint_placement(node)[2])
+            if board_frame:
+                _bake_zone_frame(node)
             placed[comp.ref] = (_num(px), _num(py))
             x += w + GRID_GAP_MM
             row_h = max(row_h, h)
@@ -1852,6 +1936,9 @@ class BoardWriter:
         locked: bool | None = None,
     ) -> None:
         fp = self.footprint_node(ref)
+        board_frame = self.dialect.fp_zones_in_board_frame
+        if board_frame:
+            _unbake_zone_frame(fp)
         current_rot = footprint_placement(fp)[2]
         current_side = "back" if (fp.get("layer") or "F.Cu").startswith("B.") else "front"
         if side is not None:
@@ -1867,6 +1954,8 @@ class BoardWriter:
         delta = new_rot - current_rot
         if delta:
             _rotate_items(fp, delta)
+        if board_frame:
+            _bake_zone_frame(fp)
         if locked is not None:
             self._set_locked(fp, locked)
         self._dirty = True
@@ -2011,6 +2100,47 @@ class BoardWriter:
         if node is None or node.parent is None:
             raise BoardWriterError(f"no item with uuid {uuid!r}")
         node.parent.remove(node)
+        self._dirty = True
+
+    def delete_node(self, node: Node) -> None:
+        """Remove one CST node (an item without a uuid that `delete` cannot address)."""
+        if node.parent is None:
+            raise BoardWriterError("the node is not attached to the board")
+        node.parent.remove(node)
+        self._dirty = True
+
+    def mark_dirty(self) -> None:
+        """Record an edit made directly on `root` so `save()` writes it."""
+        self._dirty = True
+
+    def set_locked(self, uuid: str, locked: bool) -> None:
+        """Set the lock flag of a track / arc / via / footprint (KeyError for an unknown uuid).
+
+        KiCad's Specctra session import deletes every UNLOCKED track and via and keeps the
+        locked ones (docs/VERIFICATION.md claim 7), so "keep this copper through a re-route"
+        means locking it. The flag takes the dialect's form: `(locked yes)` after the layer /
+        net on 9+ boards, the bare `locked` symbol on older ones."""
+        node = self._node_by_uuid(uuid)
+        if node is None:
+            raise KeyError(uuid)
+        if node.head == "footprint":
+            self._set_locked(node, locked)
+            self._dirty = True
+            return
+        existing_flag = next((a for a in node.atoms if a.kind == "symbol" and a.value == "locked"), None)
+        existing_list = node.find("locked")
+        if not locked:
+            if existing_flag is not None:
+                node.remove(existing_flag)
+            if existing_list is not None:
+                node.remove(existing_list)
+        elif existing_flag is None and existing_list is None:
+            if self.dialect.locked_as_list:
+                anchor = node.find("net") or node.find(self.dialect.uuid_token) or node.find("tstamp")
+                idx = node.index(anchor) if anchor is not None else len(node.children)
+                node.insert(idx, build("locked", Atom.symbol("yes")))
+            else:
+                node.insert(1, Atom.symbol("locked"))
         self._dirty = True
 
 

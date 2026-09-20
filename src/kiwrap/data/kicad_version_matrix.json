@@ -105,6 +105,8 @@
    "cli.drc_extended_error_types": "verified",
    "cli.netlist_pinfunction_suffix": "verified",
    "cli.has_ratsnest_export": "docs",
+   "cli.has_specctra_export": "docs",
+   "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "docs"
   },
   "10.0.6": {
@@ -407,6 +409,8 @@
    "cli.drc_extended_error_types": "docs",
    "cli.netlist_pinfunction_suffix": "docs",
    "cli.has_ratsnest_export": "docs",
+   "cli.has_specctra_export": "docs",
+   "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "docs"
   },
   "7.0.6": {
@@ -486,6 +490,8 @@
    "ipc.schematic_update_shared_lib_symbol_hangs": "docs",
    "cli.netlist_pinfunction_suffix": "docs",
    "cli.has_ratsnest_export": "docs",
+   "cli.has_specctra_export": "docs",
+   "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "docs"
   },
   "8.0.1": {
@@ -574,6 +580,8 @@
    "cli.drc_extended_error_types": "docs",
    "cli.netlist_pinfunction_suffix": "docs",
    "cli.has_ratsnest_export": "docs",
+   "cli.has_specctra_export": "docs",
+   "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "docs"
   },
   "9.0.5": {
@@ -672,6 +680,8 @@
    "cli.drc_extended_error_types": "docs",
    "cli.netlist_pinfunction_suffix": "docs",
    "cli.has_ratsnest_export": "docs",
+   "cli.has_specctra_export": "docs",
+   "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "docs"
   },
   "10.99.0": {
@@ -719,6 +729,8 @@
    "cli.drc_extended_error_types": "verified",
    "cli.netlist_pinfunction_suffix": "verified",
    "cli.has_ratsnest_export": "verified",
+   "cli.has_specctra_export": "docs",
+   "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "verified",
    "formats.pro": "verified"
   },
@@ -1059,6 +1071,8 @@
     "ipc.schematic_update_shared_lib_symbol_hangs": false,
     "cli.netlist_pinfunction_suffix": false,
     "cli.has_ratsnest_export": false,
+    "cli.has_specctra_export": false,
+    "cli.has_specctra_import": false,
     "ipc.has_get_ratsnest": false
    }
   },
@@ -1512,6 +1526,8 @@
     ],
     "cli.netlist_pinfunction_suffix": false,
     "cli.has_ratsnest_export": false,
+    "cli.has_specctra_export": false,
+    "cli.has_specctra_import": false,
     "ipc.has_get_ratsnest": false
    }
   },
@@ -2251,6 +2267,8 @@
     ],
     "cli.netlist_pinfunction_suffix": false,
     "cli.has_ratsnest_export": false,
+    "cli.has_specctra_export": false,
+    "cli.has_specctra_import": false,
     "ipc.has_get_ratsnest": false
    }
   },
@@ -3183,6 +3201,8 @@
     ],
     "cli.netlist_pinfunction_suffix": true,
     "cli.has_ratsnest_export": false,
+    "cli.has_specctra_export": false,
+    "cli.has_specctra_import": false,
     "ipc.has_get_ratsnest": false
    }
   },
@@ -3902,6 +3922,8 @@
     "ipc.schematic_update_shared_lib_symbol_hangs": false,
     "ipc.footprint_update_rotation_noise": false,
     "cli.has_ratsnest_export": false,
+    "cli.has_specctra_export": false,
+    "cli.has_specctra_import": false,
     "ipc.has_get_ratsnest": false
    }
   }

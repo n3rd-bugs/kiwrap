@@ -5,8 +5,9 @@ data-first read tools of a stage before its validators and renders) so that `too
 deterministic across processes and clients can cache it. `PHASE0_TOOLS` is the original ten;
 `DATA_TOOLS` are the data-first tools (docs/DECISIONS.md D17); `AUTHORING_TOOLS` are the Phase 1b
 schematic / board authoring tools (each stage's mutations come before its reads, so the list reads
-as the flow: add -> connect -> get -> check); `ALL_TOOLS` is what the server registers and
-`TOOL_NAMES` its names.
+as the flow: add -> connect -> get -> check); `kw_intent` (Phase 1c) sits with the setup tools
+because the intent is declared before the first symbol, and `kw_fab_bom` precedes
+`kw_fab_export`; `ALL_TOOLS` is what the server registers and `TOOL_NAMES` its names.
 """
 
 from __future__ import annotations
@@ -14,13 +15,16 @@ from __future__ import annotations
 from kiwrap.core.tools import (
     checks,
     env,
+    fab_bom,
     fab_export,
     help,
+    intent,
     job,
     lib,
     pcb_author,
     pcb_check,
     pcb_get,
+    pcb_route_auto,
     project,
     render,
     sch_author,
@@ -54,6 +58,7 @@ ALL_TOOLS: tuple[ToolSpec, ...] = (
     snapshot.SPEC,
     job.SPEC,
     help.SPEC,
+    intent.SPEC,
     *lib.LIB_TOOLS,
     *sch_author.SCH_AUTHOR_TOOLS,
     sch_get.SPEC,
@@ -62,10 +67,12 @@ ALL_TOOLS: tuple[ToolSpec, ...] = (
     sch_diff.SPEC,
     render.SCH_RENDER,
     *pcb_author.PCB_AUTHOR_TOOLS,
+    *pcb_route_auto.ROUTE_TOOLS,
     pcb_get.SPEC,
     pcb_check.SPEC,
     checks.PCB_DRC,
     render.PCB_RENDER,
+    fab_bom.SPEC,
     fab_export.SPEC,
 )
 TOOL_NAMES: tuple[str, ...] = tuple(t.name for t in ALL_TOOLS)

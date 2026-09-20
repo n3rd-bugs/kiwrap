@@ -24,7 +24,7 @@ from kiwrap.formats.board_writer import (
     read_fp_lib_table,
 )
 from kiwrap.formats.dru import DruRule, parse_dru, render_dru, write_dru
-from kiwrap.formats.sexpr import dumps, load, loads
+from kiwrap.formats.sexpr import Node, dumps, load, loads
 
 CORPUS = Path(__file__).resolve().parent.parent / "conformance" / "corpus"
 MOD_10 = CORPUS / "10.0" / "handwritten" / "R_0603_min.kicad_mod"
@@ -415,4 +415,77 @@ def test_place_on_affine_transform_dialect(tmp_path):
     assert [p.find("at").values() for p in node.find_all("pad")] == [
         ["-0.825", "0", "90"],
         ["0.825", "0", "90"],
+    ]
+
+
+def _mod_with_rule_area() -> Node:
+    """The corpus 0603 with a footprint rule area (a keep-out like the ESP32 module's antenna
+    zone) in the library frame: x -24..24, y -27.75..-6.75 around the footprint origin."""
+    mod = load(MOD_10)
+    mod.append(
+        loads(
+            '(zone (net 0) (net_name "") (layers "F.Cu" "B.Cu") (uuid "11111111-1111-1111-1111-111111111111") '
+            "(hatch full 0.508) (connect_pads (clearance 0)) (min_thickness 0.25) "
+            "(keepout (tracks not_allowed) (vias not_allowed) (pads allowed) (copperpour allowed) (footprints allowed)) "
+            "(fill (thermal_gap 0.5) (thermal_bridge_width 0.5)) "
+            "(polygon (pts (xy -24 -6.75) (xy 24 -6.75) (xy 24 -27.75) (xy -24 -27.75))))"
+        )
+    )
+    return mod
+
+
+def _zone_pts(node: Node) -> list[list[str]]:
+    zone = node.find("zone")
+    return [xy.values() for xy in zone.find("polygon").find("pts").nodes if xy.head == "xy"]
+
+
+def test_footprint_rule_area_follows_the_footprint_in_the_board_frame(tmp_path):
+    """KiCad <= 10 stores a footprint's zones in BOARD coordinates and moves / rotates / flips
+    them with the footprint (`FOOTPRINT::SetPosition` / `Rotate` / `Flip` on `m_zones`); the
+    library file holds them around the footprint origin. Instantiating the ESP32-like module at
+    (25, 6.75) must put its antenna keep-out at x 1..49 / y -21..0 on the board (Phase 1c
+    finding: it sat at the library coordinates, off-board to the top-left), and every later
+    placement change must carry it along exactly like the pads."""
+    w = _writer(tmp_path, EPOCH_10)
+    fp = w.instantiate(_mod_with_rule_area(), "L:U", "U1", "ESP", at_mm=(25, 6.75))
+    w._insert_footprint(fp)
+    assert _zone_pts(w.footprint_node("U1")) == [["1", "0"], ["49", "0"], ["49", "-21"], ["1", "-21"]]
+    # rotate by 90 about the new position: KiCad's RotatePoint convention (x' = y, y' = -x)
+    w.place("U1", (10, 10), rotation=90)
+    assert _zone_pts(w.footprint_node("U1")) == [
+        ["3.25", "34"],
+        ["3.25", "-14"],
+        ["-17.75", "-14"],
+        ["-17.75", "34"],
+    ]
+    # back to 0 at the origin: the library coordinates come back exactly
+    w.place("U1", (0, 0), rotation=0)
+    assert _zone_pts(w.footprint_node("U1")) == [
+        ["-24", "-6.75"],
+        ["24", "-6.75"],
+        ["24", "-27.75"],
+        ["-24", "-27.75"],
+    ]
+    # a flip mirrors the outline about the footprint position (FOOTPRINT::Flip(m_pos, TOP_BOTTOM))
+    w.place("U1", (25, 6.75), side="back")
+    node = w.footprint_node("U1")
+    assert node.get("layer") == "B.Cu"
+    assert _zone_pts(node) == [["1", "13.5"], ["49", "13.5"], ["49", "34.5"], ["1", "34.5"]]
+    w.place("U1", (25, 6.75), side="front")
+    assert _zone_pts(w.footprint_node("U1")) == [["1", "0"], ["49", "0"], ["49", "-21"], ["1", "-21"]]
+    # the sync path: instantiate + grid spread keeps the zone with the part
+    w2 = _writer(tmp_path, EPOCH_10, "b2.kicad_pcb")
+    fp2 = w2.instantiate(_mod_with_rule_area(), "L:U", "U2", "ESP", at_mm=(5, 5), rotation=180)
+    assert _zone_pts(fp2) == [["29", "11.75"], ["-19", "11.75"], ["-19", "32.75"], ["29", "32.75"]]
+    # the affine-transform dialect (the nightly's own files) keeps the library frame untouched
+    w11 = _writer(tmp_path, EPOCH_11, "b11.kicad_pcb")
+    fp11 = w11.instantiate(_mod_with_rule_area(), "L:U", "U1", "ESP", at_mm=(25, 6.75))
+    assert _zone_pts(fp11) == [["-24", "-6.75"], ["24", "-6.75"], ["24", "-27.75"], ["-24", "-27.75"]]
+    w11._insert_footprint(fp11)
+    w11.place("U1", (10, 10), rotation=90, side="back")
+    assert _zone_pts(w11.footprint_node("U1")) == [
+        ["-24", "6.75"],
+        ["24", "6.75"],
+        ["24", "27.75"],
+        ["-24", "27.75"],
     ]

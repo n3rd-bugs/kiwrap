@@ -38,6 +38,10 @@ class Platform:
     # installs libraries under `<major.minor>/3rdparty`); READ ONLY, never created or written.
     # `None` in fakes that have no such directory.
     user_kicad_documents_home: Path | None = None
+    # The storage home this platform uses when `KIWRAP_HOME` is NOT set (`%LOCALAPPDATA%\kiwrap`,
+    # `$XDG_DATA_HOME/kiwrap`): where scripts/bootstrap.* put the managed engines by default, so a
+    # session running under an overridden home can still find them. `None` in fakes.
+    default_storage_home: Path | None = None
 
     @property
     def is_windows(self) -> bool:
@@ -102,7 +106,9 @@ def _windows_temp_dir(home: str | None, local: Path) -> Path:
     system_temp = os.environ.get("TEMP") or os.environ.get("TMP")
     fallback = Path(system_temp) / "kiwrap" if system_temp else local / "kiwrap" / "tmp"
     if len(str(fallback)) > MAX_TEMP_DIR_CHARS:
-        log.warning("temp dir %s is longer than %d chars; KiCad IPC pipe paths may fail", fallback, MAX_TEMP_DIR_CHARS)
+        log.warning(
+            "temp dir %s is longer than %d chars; KiCad IPC pipe paths may fail", fallback, MAX_TEMP_DIR_CHARS
+        )
     return fallback
 
 
@@ -119,6 +125,7 @@ def current() -> Platform:
             user_kicad_config_home=roaming / "kicad",
             temp_dir=_windows_temp_dir(home, local),
             user_kicad_documents_home=_windows_documents_dir() / "KiCad",
+            default_storage_home=local / "kiwrap",
         )
     if sys.platform.startswith("linux"):
         xdg_data = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
@@ -131,5 +138,6 @@ def current() -> Platform:
             user_kicad_config_home=xdg_config / "kicad",
             temp_dir=Path(runtime) / "kiwrap" if runtime else Path("/tmp") / f"kiwrap-{os.getuid()}",
             user_kicad_documents_home=_linux_documents_dir(xdg_config) / "KiCad",
+            default_storage_home=xdg_data / "kiwrap",
         )
     raise UnsupportedPlatformError(f"kiwrap does not support {sys.platform} yet (Windows and Linux only)")

@@ -21,7 +21,8 @@ Dialects handled (all verified against the demo projects shipped with KiCad 7.0.
   pic_programmer and every board the nightly writes). `BoardFile.nets` is built from the table
   when present and from the referenced names otherwise; `Net.code` is None in the latter case;
 * layer id tables that renumber between 7 (`31 "B.Cu"`) and 9+ (`2 "B.Cu"`): layers are looked
-  up by name only;
+  up by name only; the copper layers are the LEADING block of typed rows, as `parseLayers` takes
+  them (`copper_layer_rows`): a `User.N` row typed `signal` after the `user` rows is not copper;
 * `(layerselection 0x00000f0_80000001)` (2 words, 7/8) vs 4 words (9+): kept as text in `setup`;
 * `yes`/`no` (8+) vs `true`/`false` (7, `pcbplotparams`) booleans;
 * `(attr smd exclude_from_bom dnp …)` bare flags and `locked` either as a bare flag (7/8) or as
@@ -74,6 +75,8 @@ from kiwrap.formats.geometry import (
 from kiwrap.formats.sexpr import Node, load, loads
 
 __all__ = [
+    "COPPER_LAYER_KINDS",
+    "STAMP_FP_AFFINE_TRANSFORM",
     "ArcTrack",
     "BoardFile",
     "DesignRules",
@@ -87,6 +90,7 @@ __all__ = [
     "Track",
     "Via",
     "Zone",
+    "copper_layer_rows",
     "courtyard_polygons",
     "read_bool",
 ]
@@ -99,9 +103,18 @@ EDGE_CUTS = "Edge.Cuts"
 
 _TRUE = {"yes", "true", "1"}
 _FALSE = {"no", "false", "0"}
+#: `(layers …)` type words of a copper row (`LAYER::ParseType`, pcbnew/board.cpp: signal / power /
+#: mixed / jumper; `auxiliary`, `front` and `back` are the qualifiers of user layers, `user` the rest).
+COPPER_LAYER_KINDS = ("signal", "power", "mixed", "jumper")
+_KICAD_TYPED_KINDS = (*COPPER_LAYER_KINDS, "auxiliary", "front", "back")
+#: From this format stamp on (`FIRST_FP_AFFINE_TRANSFORM`, the 10.99 nightly / KiCad 11) a footprint's
+#: rule areas are stored in the footprint's LIBRARY frame; before it they are in BOARD coordinates
+#: (`kiwrap.formats.board_writer` module docstring, conformance T7).
+STAMP_FP_AFFINE_TRANSFORM = 20260616
 _GRAPHIC_HEADS = ("fp_line", "fp_arc", "fp_circle", "fp_rect", "fp_poly", "fp_curve")
 _BOARD_GRAPHIC_HEADS = ("gr_line", "gr_arc", "gr_circle", "gr_rect", "gr_poly", "gr_curve")
 _VIA_KINDS = {"blind", "micro", "through"}
+_CHAMFER_BITS = {"top_left": 1, "top_right": 2, "bottom_left": 4, "bottom_right": 8}
 
 
 # ----------------------------------------------------------------------------------------------
@@ -219,6 +232,24 @@ def _layer_names(node: Node, head: str = "layers") -> tuple[str, ...]:
     return tuple(child.values())
 
 
+def copper_layer_rows(rows: Iterable[Node]) -> list[Node]:
+    """The rows of a `(layers …)` table KiCad takes as copper: the LEADING block of typed rows.
+
+    `PCB_IO_KICAD_SEXPR_PARSER::parseLayers` (pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr_parser.cpp,
+    tag 10.0.6 and master) pushes rows onto the copper list until the first row whose type parses to
+    `LT_UNDEFINED` (the `user` word or anything unknown) and never looks at the type word again: the
+    copper count is the length of that block, whatever later rows say. A `(39 "User.1" signal)` row
+    after `(9 "F.Adhes" user)` is therefore a user layer, not copper."""
+    out: list[Node] = []
+    for row in rows:
+        vals = row.values()
+        kind = vals[2] if len(vals) > 2 else ""
+        if kind not in _KICAD_TYPED_KINDS:
+            break
+        out.append(row)
+    return out
+
+
 # ----------------------------------------------------------------------------------------------
 # models
 # ----------------------------------------------------------------------------------------------
@@ -226,16 +257,27 @@ def _layer_names(node: Node, head: str = "layers") -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Layer:
-    """One row of the `(layers …)` table: `(id "name" type ["user name"])`."""
+    """One row of the `(layers …)` table: `(id "name" type ["user name"])`.
+
+    `copper` is set by the parser for the rows KiCad takes as copper (`copper_layer_rows`), which
+    is NOT the same as the row's type word: a `User.N` row typed `signal` after the `user` rows
+    (KiCad 8.99 / 9.0.0 wrote them that way; 10.0.6's multichannel_mixer-unrouted demo is one) is
+    a user layer to KiCad and must be one here."""
 
     id: int | None
     name: str
     kind: str
     user_name: str | None = None
+    copper: bool = False
 
     @property
     def is_copper(self) -> bool:
-        return self.kind in ("signal", "power", "mixed", "jumper")
+        return self.copper
+
+    @property
+    def has_copper_type(self) -> bool:
+        """The row's type word alone (`signal`, `power`, `mixed`, `jumper`)."""
+        return self.kind in COPPER_LAYER_KINDS
 
 
 @dataclass(frozen=True)
@@ -282,11 +324,28 @@ class Pad:
     roundrect_rratio: float | None = None
     rect_delta: Vec2 | None = None
     primitives: tuple[Polygon, ...] = ()  # custom pads: primitive polygons in board coordinates
+    chamfer_ratio: float | None = None  # `(chamfer_ratio r)`: cut = r * min(w, h) (chamfered_rect)
+    chamfer_corners: tuple[str, ...] = ()  # `(chamfer top_left top_right bottom_left bottom_right)`
     node: Node | None = field(default=None, repr=False, compare=False)
 
     @property
     def is_through_hole(self) -> bool:
         return self.type in ("thru_hole", "np_thru_hole")
+
+    @property
+    def chamfer_mask(self) -> int:
+        """KiCad's `RECT_CHAMFER_POSITIONS` bit mask: top_left 1, top_right 2, bottom_left 4,
+        bottom_right 8 (libs/kimath/include/convert_basic_shapes_to_polygon.h)."""
+        return sum(_CHAMFER_BITS.get(c, 0) for c in self.chamfer_corners)
+
+    @property
+    def effective_shape(self) -> str:
+        """The shape KiCad builds: a `roundrect` pad whose `(chamfer …)` lists a corner is a
+        CHAMFERED_RECT (the file format has no `chamfered_rect` word - the parser rejects it -
+        and the writer prints `roundrect` for both; pcb_io_kicad_sexpr_parser.cpp `T_chamfer`)."""
+        if self.shape in ("roundrect", "chamfered_rect") and self.chamfer_mask:
+            return "chamfered_rect"
+        return "roundrect" if self.shape == "chamfered_rect" else self.shape
 
     def on_layer(self, layer: str, copper_layers: Iterable[str] = ("F.Cu", "B.Cu")) -> bool:
         """Layer membership with KiCad's wildcards (`*.Cu`, `F&B.Cu`, `*.Mask`, …) expanded."""
@@ -635,8 +694,13 @@ class _NetTable:
         return net
 
     def nets(self) -> tuple[Net, ...]:
+        """The board's nets: the code table in code order, then any net referenced by name
+        only (a name-dialect board that still carries a `(net 0 "")` row - what kiwrap's own
+        board template wrote before Phase 1c - must not hide its nets behind that one row)."""
         if self.has_codes:
-            return tuple(self.by_code[c] for c in sorted(self.by_code))
+            coded = [self.by_code[c] for c in sorted(self.by_code)]
+            by_name_only = [n for name, n in sorted(self.by_name.items()) if n.code is None and name]
+            return tuple([*coded, *by_name_only])
         return tuple(self.by_name[n] for n in sorted(self.by_name))
 
 
@@ -756,6 +820,9 @@ def _parse_pad(node: Node, fp_pos: Vec2, fp_rot: float, nets: _NetTable) -> Pad:
             drill = Drill(0.0, None, offset)
     delta = _xy(node.find("rect_delta"))
     rr = node.get("roundrect_rratio")
+    chamfer_ratio = node.get("chamfer_ratio")
+    chamfer_node = node.find("chamfer")
+    chamfer_corners = tuple(chamfer_node.values()) if chamfer_node is not None else ()
 
     def transform(p: Vec2) -> Vec2:
         return rotate(p, angle) + position
@@ -777,6 +844,8 @@ def _parse_pad(node: Node, fp_pos: Vec2, fp_rot: float, nets: _NetTable) -> Pad:
         roundrect_rratio=float(rr) if rr is not None else None,
         rect_delta=delta,
         primitives=_pad_primitives(node, transform),
+        chamfer_ratio=float(chamfer_ratio) if chamfer_ratio is not None else None,
+        chamfer_corners=chamfer_corners,
         node=node,
     )
 
@@ -986,13 +1055,18 @@ class BoardFile:
         layers: list[Layer] = []
         layer_table = root.find("layers")
         if layer_table is not None:
+            copper_rows = {id(row) for row in copper_layer_rows(layer_table.nodes)}
             for row in layer_table.nodes:
                 vals = row.values()
                 if len(vals) >= 2:
                     lid = int(vals[0]) if vals[0].lstrip("-").isdigit() else None
                     layers.append(
                         Layer(
-                            lid, vals[1], vals[2] if len(vals) > 2 else "", vals[3] if len(vals) > 3 else None
+                            lid,
+                            vals[1],
+                            vals[2] if len(vals) > 2 else "",
+                            vals[3] if len(vals) > 3 else None,
+                            copper=id(row) in copper_rows,
                         )
                     )
         nets = _NetTable(root)

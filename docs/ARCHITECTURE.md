@@ -187,7 +187,7 @@ Every stage of the flow ran on installed 7–10 binaries. KiCad-side debugging w
 
 **KiCad 11 seams (abstract now, swap later):** `session.start` (GUI now / `kicad-cli api-server --socket`), `document.open` (CLI argument / `OpenDocument`), `netlist.sync` (SWIG / `ImportNetlist`), `schematic.write` (file / IPC), `export` (kicad-cli / `RunBoardJobExport*`), `specctra` (SWIG / own codec).
 
-**Certification (`kiwrap certify`).** An install is *supported* only when T1–T9 pass: T1 CST round-trip (token multiset, ERC set, netlist equal); T2 epoch certification on every install ≥ epoch; T3 negative gates (future stamp / unknown token rejected as KiCad rejects them); T4 `--help` tree snapshot; T5 IPC handler snapshot; T6 quirk probes (ERC ×100, gerbers outdir, `.prl`, help exit code, `.wrl`, wizard); T7 SWIG worker (symbols, shims, 20 consecutive saves, DSN/SES); T8 E2E golden flow; T9 drift canaries (`sch/pcb upgrade` on a copy + semantic diff, `pcbnew.py` def/class diff, nightly 11 run). Budget: ≤1 day per point release, ≤1 week per major. Lint rule: nothing outside `kiwrap.backends` mentions a KiCad version number.
+**Certification (`kiwrap certify`).** An install is *supported* only when T1–T9 pass: T1 CST round-trip (token multiset, ERC set, netlist equal); T2 epoch certification on every install ≥ epoch; T3 negative gates (future stamp / unknown token rejected as KiCad rejects them); T4 `--help` tree snapshot; T5 IPC handler snapshot; T6 quirk probes (ERC ×100, gerbers outdir, `.prl`, help exit code, `.wrl`, wizard); T7 SWIG worker (symbols, shims, 20 consecutive saves, DSN/SES) — as built: `t7_ipc_writes.py` (headless IPC writes) and `t7_specctra_codec.py` (the codec vs KiCad's own DSN export / SES import, Freerouting round trips judged by kicad-cli DRC); T8 E2E golden flow — as built: `t8_board_writer.py` / `t8_sch_writer.py` (the file writers vs KiCad's re-save, parity DRC, pos export); T9 drift canaries (`sch/pcb upgrade` on a copy + semantic diff, `pcbnew.py` def/class diff, nightly 11 run). Budget: ≤1 day per point release, ≤1 week per major. Lint rule: nothing outside `kiwrap.backends` mentions a KiCad version number.
 
 **SWIG-free twins.** The file-based board emitter (nets + `.kicad_mod` definitions resolved through project + global `fp-lib-table`, following nested `Table` entries on 10) and the DSN writer / SES reader are built in Phase 4 and certified against SWIG as oracle on 9/10, so KiCad 11 is not the first time they run.
 
@@ -215,9 +215,9 @@ File-based on 7–10 and by default on 11; the IPC schematic provider backs the 
 
 **Placement loop.** Agent declares intent (edge connectors + side, zones by ref glob, keepouts, decap tethers ≤2 mm, locks) → `kw_pcb_place_auto` (KRT `place_seed` → `place_optimize`, ~1 s; 9/10 formats only, `E_UNSUPPORTED` on 7/8) or explicit coordinates via `kw_pcb_place` (SWIG, or IPC in one commit when live) → receipt with grade, courtyard overlaps, off-board parts and a top-2D render with ratsnest → iterate. No home-grown autoplacer; KiCad's legacy autoplacer (`run_action autoplaceOffboard`) only as an optional live seed.
 
-**Routing loop (`kw_pcb_route_auto`, async job):** snapshot → lock tracks to keep (SES import deletes **all unlocked** tracks/vias and applies SES placement) → SWIG `ExportSpecctraDSN` (fallback SES parser on 7; own codec once certified) → DSN post-processing (copper-to-edge clearance is not exported) → Freerouting 2.4.1 under a managed private JRE 25 via its REST API (progress SSE, cancel, drc JSON; requires `Freerouting-Profile-ID`/`Freerouting-Environment-Host` headers) with flags derived from board rules: `--gui.enabled=false`; **`--router.fanout.enabled=false` unless the board has BGAs** (the fanout pre-pass — not neckdown — produced the 0.15 mm segments that fail KiCad 10's new 0.2 mm default `min_track_width`; `automatic_neckdown` stays at its default, disabling it had no effect); **`--router.copper_to_edge_clearance_um` always set from the board rule** (KiCad's DSN export omits it and Freerouting substitutes 500 µm); `-inc` plane net classes; `-mt 1`; `--router.result_json`; `user_data_path`/logging under storage with `usage_and_diagnostic_data.disable_analytics=true`, `allow_telemetry=false` and update checks off (the default profile phones home); REST bound to 127.0.0.1 on a random port; scratch cwd → `ImportSpecctraSES` → **mandatory zone refill** (`drc --refill-zones --save-board` on 10, ZONE_FILLER on 7–9) → kicad-cli DRC classified must_fix / review / cosmetic → receipt + render. DRC after routing is mandatory, not a formality: Freerouting 2.3–2.4.1 can emit genuine router-introduced overlaps (#858, fixed for 2.5.0), so "0/0" is an observed outcome on the two test boards, never an assumption. Known traps handled: Freerouting ignores copper-layer text; stale fills produce phantom clearance errors; `-drc` mode writes to cwd.
+**Routing loop (`kw_pcb_route_auto`, async job) — as built in Phase 1c (2026-09-20, `kiwrap.core.tools.pcb_route_auto`, `kiwrap.backends.router`, `kiwrap.formats.specctra`, `kiwrap.backends.cli.specctra`):** snapshot (the mutation prologue, gate `placed`) → **clean the dangling stubs** of the nets to route (unlocked track ends on no pad / item / zone of their net; Freerouting must connect every leftover fragment and gives up on nets a clean start routes) → **lock the copper to keep** (SES import deletes **all unlocked** tracks/vias — claim 7; `nets=[…]` locks the other nets' copper for the run, `lock_refs` the nets of those footprints; the flags kiwrap set are removed again afterwards) → **DSN export through the planner operation `routing.autoroute`, providers `cli` → `codec` → `swig`**: the patched `kicad-cli pcb export specctra` / `pcb import-ses` (fork patch `specctra-jobs`, keys `cli.has_specctra_export` / `cli.has_specctra_import`, `provider_used: cli:<v>+specctra-jobs`), kiwrap's own zero-dependency codec (`DsnWriter` / `SesReader` on the lossless CST — certified against KiCad's exporter/importer: 0 DSN differences at 5 µm vs SWIG `ExportSpecctraDSN` on ecc83 / blinker / kit-dev-coldfire 4L / One-Air-Max 4L / StickHub / interf_u / complex_hierarchy / pic_programmer and vs the patched CLI on 11, SES apply == KiCad's importer within 1e-3 mm, T7 `conformance/tests/t7_specctra_codec.py`; the only provider on stock KiCad 11, ranked ahead of SWIG on 10.x), then `pcbnew.ExportSpecctraDSN` / `ImportSpecctraSES` in the bundled python where a driver exists (none is shipped; the live tests bind a test-only oracle) → **the router's DSN hook** (`dsn_post.restrict_nets`: the nets not to route are REMOVED from the DSN's `(network …)` and their wiring made `(type fix)`, one path for every provider — Freerouting 2.4.1 headless ignores `-inc` / `router.ignore_net_classes` entirely, Phase 1c finding 9, verified on the reference board and the blinker: only the requested nets appear in the SES, the DRC after the apply is 0/0) → **Freerouting 2.4.1 under the managed private JRE 25 as a CLI process** (not its REST API: `java -jar … -de DSN -do SES --gui.enabled=false -l en -mp <passes> -mt 1 --router.optimizer.max_threads=1 --router.result_json`, per-run `--user_data_path` seeded with the telemetry-off profile — `usage_and_diagnostic_data.disable_analytics=true`, `allow_telemetry=false`, update checks off — log-line progress into the job, cancel via process-tree kill, `RouterTimeout` on the budget) with flags derived from the board rules (`rules_from_board`): **`--router.fanout.enabled=false` unless the board has BGAs** (the fanout pre-pass — not neckdown — produced the 0.15 mm segments that fail KiCad 10's 0.2 mm default `min_track_width`; claim 8), **`--router.copper_to_edge_clearance_um` always set from `min_copper_edge_clearance`** (KiCad's DSN omits it and Freerouting substitutes 500 µm), `-inc` for plane-only netclasses (kept for a Freerouting that honours it; 2.4.1 headless does not — the `nets=` subset is enforced by the DSN hook), the project's netclass minimums → **SES import with the same codec** (drill from the `Via[…]_<size>:<drill>_um` padstack name, placement ignored and counted) → restore the lock flags → **mandatory zone refill + classified kicad-cli DRC** (`pcb drc --refill-zones --save-board` on 10 and 11 — one path, no IPC `RefillZones`; `zones_stale` reported where a KiCad cannot) → receipt: `rules`, `dsn` summary, `router` (passes, history per pass, score, stop reason, Freerouting's own unrouted list), `routed` counts, `unrouted` = **KiCad's unconnected count, never the router's score** (Freerouting keeps counting pads a plane connects), `drc`, `provider_used`, `degraded[]`, `next_suggested: kw_pcb_fix` when `must_fix > 0` or a connection is open (a re-run keeps and only optimises the existing unlocked copper — same plateau; `from_scratch=true` deletes it first). A failed run after a board write (stub clean-up, kw_pcb_fix's rip-up) re-hashes the board at `placed` so the retry is not an `external_edit`, and its error names the copper that is gone plus the snapshot holding it; `kw_job cancel` ends the job `cancelled` (E_CANCELLED in the snapshot message). The per-project lock is kept alive by a heartbeat while the call runs, so a 6 h router job is never broken by a second mutating call; the JVM is bound to the server's lifetime (Job Object / PDEATHSIG) and the job pool is cancelled at server exit, so no router outlives a killed server; a run whose session was saved when the budget ran out is kept. **Pour order is load-bearing:** the B.Cu GND plane goes in *before* routing (the router works against it, `-inc` its class), the F.Cu pour *after* (a both-sides pour first makes the router think every F.Cu GND pad is connected; no pour first turns GND into track connections the router stalls on). DRC after routing is the judge, not a formality: Freerouting 2.3–2.4.1 can emit genuine router-introduced overlaps (#858, fixed for 2.5.0) and stops at a score plateau on partially routed boards, so "0/0" is an observed outcome per board (ecc83 stripped, blinker, blinker 4L, the ESP32-S3 reference board on 10.0.6 and 10.99), never an assumption; the designed closure for a plateau leftover is `kw_pcb_fix`. Known traps handled: Freerouting ignores copper-layer text; stale fills produce phantom clearance errors; `-drc` mode writes to cwd; KiCad master's DSN writes unlocked copper as `(type protect)` and copper zones as `(wire (polygon …) (type protect) (window …))` (10.0: `(type route)` / `(plane …)`) — `compare_dsn` normalises both, the codec keeps the 10.0 form because Freerouting routes both identically (byte-identical SES for the codec DSN and KiCad's DSN of the same board).
 
-**Second engine.** KRT `route.py` (no Java; more vias; writes DRC constraints into `.kicad_pro`, so KiCad DRC always follows). **Touch-ups:** `kw_pcb_route` offers PCBWorld-style primitives (track polyline / via / unroute) with DRC deltas of touched nets. **Repair:** `kw_pcb_fix` rips up violating nets and re-routes, nudges courtyards, cleans tracks, refills, iterating until `must_fix == 0`.
+**Second engine.** KRT `route.py` (no Java; more vias; writes DRC constraints into `.kicad_pro`, so KiCad DRC always follows) — not wired in Phase 1c. **Touch-ups:** `kw_pcb_route` offers PCBWorld-style primitives (track polyline / via / unroute) with DRC deltas of touched nets. **Repair (`kw_pcb_fix`, built):** DRC → the nets named in must_fix violations (`[NET]` tags, unconnected_items included) → rip up their unlocked copper → clean zero-length / net-less leftovers → re-route only those nets through `routing.fix` (same provider chain, the other nets locked and in the ignore class) → refill + DRC, until `must_fix == 0` or `max_iterations`; violations naming no net are `unfixable`. Courtyard nudging is not implemented.
 
 **PNS router: out of scope.** Not in SWIG or IPC; `run_action('pcbnew.InteractiveRouter.Autoroute')` starts the interactive tool from a selection and then every request answers `AS_BUSY` until a human finishes; only a patched fork (PCBWorld-Engine, GPL) exposes it.
 
@@ -268,11 +268,11 @@ File-based on 7–10 and by default on 11; the IPC schematic provider backs the 
 | `kw_pcb_place` | placement | `project, placements[], relative_to?` | overlaps, off_board, image | SWIG / IPC |
 | `kw_pcb_place_auto` | placement | `project, intent{…}, optimize?` | placements, grade, image | KRT (9/10) |
 | `kw_pcb_render` | board | `project, view?, layers?, region_mm?, overlay?` | image | cli render / svg |
-| `kw_pcb_route_auto` | routing | `project, engine?, nets?, passes?, timeout_s?, lock_refs?, async?` | routed/unrouted, DRC summary or job_id | router + SWIG + cli |
-| `kw_pcb_route` | routing | `project, ops[]` | uuids, drc_delta | SWIG / IPC |
+| `kw_pcb_route_auto` | routing | `project, nets?, passes?, timeout_s?, lock_refs?, clean_dangling?, engine?, provider? auto\|cli\|codec\|swig, run_async?, force?` | job_id, or routed counts, unrouted (KiCad's), router stats, DRC classified, provider_used | router (Freerouting, managed JRE) + planner `routing.autoroute`: patched cli → codec → swig; kicad-cli refill + DRC |
+| `kw_pcb_route` | routing | `project, ops[]` | uuids, drc_delta | file / IPC |
 | `kw_pcb_zones` | routing | `project, zones?, fill?, stitch_vias?` | uuids, filled area | SWIG / cli / IPC |
 | `kw_pcb_drc` | drc | `project, schematic_parity?, refill_zones?` | ok, classified violations | cli drc (SWIG on 7) |
-| `kw_pcb_fix` | drc | `project, actions[], max_iterations?` | before/after | router + SWIG + cli |
+| `kw_pcb_fix` | drc | `project, actions[]?, max_iterations?, passes?, timeout_s?, provider?, run_async?` | must_fix before/after, iterations[], nets_touched, unfixable[] | planner `routing.fix` (same chain) + kicad-cli refill + DRC |
 | `kw_fab_export` | fab | `project, targets?, profile?, force?, async?` | files, warnings, unsupported | cli / jobset / IPC (11) |
 | `kw_fab_bom` | fab | `project, fields?, group_by?` | rows, cost, stats | cli bom/stats + parts DB |
 | `kw_report` | review | `project, out?` | markdown + images | composite |
@@ -293,7 +293,7 @@ File-based on 7–10 and by default on 11; the IPC schematic provider backs the 
 
 **Teaching errors** (`isError: true`): `{code, message, why, fix, candidates[], example}`; `E_UNSUPPORTED` names the oldest KiCad with the capability and the fallback used; every code has a `kw_help` page.
 
-**Stage gates (server-enforced; `force: {reason}` overrides and is logged into the snapshot message):** `kw_pcb_sync` requires last `kw_sch_check.ok`; `kw_pcb_route_auto` requires zero unplaced/off-board footprints; `kw_fab_export` requires `must_fix_count == 0`. `ok` = zero *errors*; warnings are listed and never gate. Must-fix = clearance, shorting_items, tracks_crossing, unconnected_items, hole_clearance, net_conflict, track_width; review = courtyards_overlap, solder_mask_bridge, lib_footprint_issues; cosmetic = silk_*. The must-fix/review/cosmetic tables live in the capability record per version. `kw_pcb_setup` also writes `.kicad_dru` custom rules and netclass→net assignments in `.kicad_pro`, and the corpus includes a 4-layer board (all routing tests so far were 2-layer).
+**Stage gates (server-enforced; `force: {reason}` overrides and is logged into the snapshot message):** `kw_pcb_sync` requires last `kw_sch_check.ok`; `kw_pcb_route_auto` requires stage `placed` (zero copper off-board, zero courtyard overlaps); `kw_fab_export` requires `must_fix_count == 0`. `ok` = zero *errors*; warnings are listed and never gate. Must-fix = clearance, shorting_items, tracks_crossing, unconnected_items, hole_clearance, net_conflict, track_width; review = courtyards_overlap, solder_mask_bridge, lib_footprint_issues; cosmetic = silk_*. The must-fix/review/cosmetic tables live in the capability record per version. `kw_pcb_setup` also writes `.kicad_dru` custom rules and netclass→net assignments in `.kicad_pro`, and the corpus includes a 4-layer board (all routing tests so far were 2-layer).
 
 **Idempotency and safety:** keyed upserts (same `ref` updates), `if_match` content hashes, **content hashes stored with every stage result — each tool re-hashes its inputs and downgrades the stage with `degraded: ['external_edit']` when an agent edited a `.kicad_*` file directly** (the skill says never to, and `kw_sch_edit` exposes a raw CST patch so it never has to), per-project mutation lock, a snapshot per mutation in the private `.kiwrap/snapshots.git` store (plus a pre-mutation snapshot when the design files differ from the last one, i.e. after an external edit), `kw_snapshot restore` as universal undo, editor-lock refusal (`~*.lck`), never edit on disk a board seen live, IPC commits = one undo step each, `%APPDATA%/kicad` untouched (CI assertion).
 
@@ -576,3 +576,97 @@ live. "kipy 0.8.0 cannot send the `document` field" — handled by the git-main 
 the `ipc.commit_needs_document` key. Still open from §17: the ≤ 10 netlist updater (tier 1 on
 those versions), library management tooling (tier 1 lib-table reader is a kiwrap TODO in
 UPSTREAM.md G11), and the Linux/CI mechanics.
+
+---
+
+## 19. Phase 1c 2026-09-20: autorouting, the Specctra codec, fabrication profile, reference board
+
+Five components landed on the Phase 1b tree and were integrated the same day; §8 was rewritten
+to the as-built loop above. What exists now, with the evidence:
+
+**Routing tools.** `kw_pcb_route_auto` and `kw_pcb_fix` (`kiwrap.core.tools.pcb_route_auto`,
+32 tools in the catalog) over `kiwrap.backends.router` (`discover_engines` with a fallback from
+the session's storage home to the platform default where `scripts/bootstrap.ps1` installs the
+engines, `rules_from_board`, `dsn_post`, `Router`) and the planner operations `routing.autoroute`
+/ `routing.fix` with providers `cli` (patched kicad-cli, presence keys) → `codec` → `swig`
+(predicate `swig.available + swig.ses_import_headless`; no driver shipped). Verified live:
+`tests/test_router_live.py` (ecc83 stripped / 4-layer / async / 10.99 through the codec),
+`tests/test_route_auto_providers_live.py` (the patched CLI on the bench build
+`C:/kiwrap-builds/6dd893f7d1-5` = `provider_used cli:10.99.0+specctra-jobs`, 2 and 4 layers,
+`kw_pcb_fix` through the same chain; the codec's DSN == the patched CLI's DSN on the same build;
+the stock nightly and 10.0.6 through the codec with `cli` / `swig` skipped by their predicates),
+every run ending in kicad-cli DRC 0 must_fix / 0 unconnected after the refill.
+
+**The codec** (`kiwrap.formats.specctra`, zero dependencies): `DsnWriter` reproduces
+`specctra_export.cpp` (µm / y-flip / %.6g, KiCad's padstack naming for every pad shape incl. the
+roundrect `CornerListToPolygon` and custom-pad hulls, back-side flip, content-hashed image
+dedupe with `::N`, `REF**` / `@N` uniquifying, netclasses with the `NET_SETTINGS` schema
+migrations replayed, planes with windows, cutout / rule-area keepouts, fix / route wiring),
+`SesReader.apply` has `FromSESSION`'s semantics on a `BoardWriter` (delete unlocked, keep locked,
+placement counted not applied by default, drill from the padstack name, blind / micro / buried
+vias, unknown layer / padstack skipped and counted), `parse_dsn` / `compare_dsn` is the
+semantic, tolerance-based diff that certifies any DSN producer against KiCad's own. T7
+(`conformance/tests/t7_specctra_codec.py`) is the certification: 0 differences at 5 µm on eight
+boards against SWIG 10.0.6, byte-identical Freerouting sessions for the codec DSN and KiCad's,
+applied boards equal to `ImportSpecctraSES` within 1e-3 mm, DRC 0/0 on 10.0.6 and 10.99.
+Phase 1c review fixes (2026-09-20, all re-certified: 0 differences on EVERY 10.0.6 demo incl.
+the 10-layer jetson baseboard, the 12-layer vme-wren, the 8-layer RoyalBlue54L and the 8.99-written
+multichannel_mixer-unrouted): copper layers are the LEADING block of typed `(layers …)` rows the
+way `parseLayers` reads them (`User.N` rows typed `signal` are not copper — `BoardFile`, the
+writer and the fab export agree); a back-side footprint's rule areas mirror their layers through
+the stack like `ZONE::Flip`; a board saved by the nightly (stamp ≥ 20260616) holds footprint zones
+in the LIBRARY frame and the codec writes that outline as the image geometry (KiCad master's own
+exporter had the same bug — fixed on the fork, `mr/specctra-fp-zone-frame`); a via without
+`(drill …)` takes its NET's netclass drill (`PCB_VIA::GetDrillValue`) and `SesReader.apply`
+materialises the drill KiCad saves (the net's class drill when the padstack drill is the Default
+class's); class ids are KiCad 9+/10's EFFECTIVE netclass names (`<name>,Default` for a class that
+leaves a parameter to Default, `A,B` for a net in two classes); every millimetre goes through
+KiCad's integer nanometres (`um`) and placements print ten significant digits; `roundrect` pads
+with `(chamfer …)` are KiCad's CHAMFERED_RECT with the `doChamfer` polygon and id; zone-outline
+arcs are polygonised with `SHAPE_ARC::ConvertToPolyline` at the PCB default accuracy. Remaining
+approximation documented in the module: KiCad 9+ per-layer padstacks as uniform stacks.
+
+**The fork patch `specctra-jobs`** (`mr/specctra-jobs` = base + `pcb export specctra` +
+`pcb import-ses`, tag `kiwrap-build/6dd893f7d1-5`, drafts
+`docs/upstream/drafts/specctra-jobs-{export,import}-mr.md`, UPSTREAM.md G17): KiCad's own
+`ExportBoardToSpecctraFile` and `ImportSpecctraSession` as headless jobs on KiCad 11, which has
+no SWIG. The import has the editor's semantics (locked copper kept, SES placement applied to
+locked footprints too, unresolved items counted, exit 3 with the board untouched on a bad
+session). `kiwrap.backends.cli.specctra.export_dsn[_run]` / `import_ses[_run]` adapt it
+(`Unsupported(fallback='codec')` on stock installs); `tests/test_cli_specctra.py` proves it
+equal to the SWIG oracle on ecc83 / coldfire 4L / blinker.
+
+**Fabrication profile, BOM, intent** (`kiwrap.core.fab`, `kw_fab_bom`, `kw_intent`,
+`kw_fab_export(profile="jlcpcb")`, `kw_pcb_setup(preset=…)`): D9's JLCPCB deliverables — Protel
+gerber naming, PTH/NPTH Excellon + X2 map, CPL with the community rotation table (every
+correction reported), BOM grouped by value + footprint + LCSC (+ DNP) from kicad-cli's
+`sch export bom` or the netlist, a zip bundle, and the intent diff (`missing` / `wrong_pin` /
+`extra` / `unmatched`) surfaced by `kw_sch_check`. Found on the way and fixed: kiwrap's board
+template enabled only F.Cu / B.Cu / Edge.Cuts, so kicad-cli plotted no mask / paste / silk for
+any kiwrap-created board (now KiCad's standard technical layer set).
+
+**Reference board (D5)** — `evals/reference_board` (data-driven plan, grader, `claude -p` runner)
+and `tests/test_e2e_reference_board.py`: the ESP32-S3 board (29 stock-library parts, 3 child
+sheets, 2-layer 50 × 35 mm, JLCPCB preset) from `kw_intent` to the JLCPCB bundle over MCP
+stdio, graded by KiCad only. Results are recorded in the test (`<project>/.kiwrap/e2e-out.json`:
+router passes and per-pass history, routing time, unrouted before / after, DRC before / after
+`kw_pcb_fix`, `provider_used` per stage) and summarised in README.md.
+
+**Bugs found by the integration, fixed in the file tier:** (1) kiwrap's board template wrote a
+`(net 0 "")` row into the KiCad-10 dialect (nets are by name only there): `BoardFile.nets` saw
+a one-entry code table and hid every net, the DSN carried an empty `(network)` and Freerouting
+routed nothing until a kicad-cli `--save-board` had rewritten the file — the template no longer
+writes the row and `_NetTable.nets()` lists name-only nets beside a code table; (2) new
+`.kicad_pro` files said `net_settings.meta.version 0`, and KiCad's `migrateSchema2to3` wipes
+`netclass_patterns` on load (only `Default` reached the DSN / DRC): `BoardWriter` now writes
+schema 3 whenever it writes the project. Still open (UPSTREAM.md / the integrator's report):
+footprint rule areas placed by the file writer on ≤ 10 dialects keep the library's local
+coordinates where KiCad expects board coordinates (harmless for the reference board — the
+antenna keep-out is off-board either way — wrong in general), and KiCad master's own DSN export
+double-subtracts the footprint position for such zones when it loads a ≤ 10 board.
+
+**Engines.** `scripts/bootstrap.ps1` → `%LOCALAPPDATA%/kiwrap/engines/{jre, freerouting}` +
+the telemetry-off profile (`scripts/engines.json` pins Temurin JRE 25.0.4.1 and Freerouting
+2.4.1); `kw_env` reports them through `discover_engines`; a session storage home without them
+falls back to `KIWRAP_ENGINES_HOME`, then the platform default; `KIWRAP_JAVA` /
+`KIWRAP_FREEROUTING_JAR` override the executables.

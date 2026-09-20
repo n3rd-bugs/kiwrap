@@ -146,10 +146,15 @@ def _require_store(project_dir: Path) -> None:
         )
 
 
+#: the kiwrap-owned files under `.kiwrap/` that ARE part of the project: the stage state and the
+#: agent's intent declaration (`kw_intent`, Phase 1c), so `kw_snapshot restore` brings both back
+_STATE_FILES: tuple[str, ...] = (f"{STATE_DIRNAME}/state.json", f"{STATE_DIRNAME}/intent.json")
+
+
 def is_owned_file(rel_path: str) -> bool:
     """Whether a project-relative POSIX path is a file kiwrap snapshots (see the module docstring)."""
     name = rel_path.rsplit("/", 1)[-1]
-    if rel_path == f"{STATE_DIRNAME}/state.json":
+    if rel_path in _STATE_FILES:
         return True
     if name.endswith(_LIB_TABLE_SUFFIX):
         return True
@@ -173,9 +178,9 @@ def owned_files(project_dir: Path) -> list[str]:
             rel = name if rel_dir == "." else f"{rel_dir}/{name}"
             if is_owned_file(rel):
                 out.append(rel)
-    state = project_dir / STATE_DIRNAME / "state.json"
-    if state.is_file():
-        out.append(f"{STATE_DIRNAME}/state.json")
+    for rel in _STATE_FILES:
+        if (project_dir / rel).is_file():
+            out.append(rel)
     return sorted(set(out))
 
 

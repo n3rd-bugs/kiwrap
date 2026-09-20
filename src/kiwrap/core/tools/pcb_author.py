@@ -216,6 +216,13 @@ def settle_after_drc(project: Project, state: Any, drc: dict[str, Any] | None) -
 
 class PcbSetupArgs(BaseModel):
     project: str = Field(description="project directory or .kicad_pro path")
+    preset: str | None = Field(
+        default=None,
+        description=(
+            "a fabrication rules preset (jlcpcb-2layer | jlcpcb-4layer, kiwrap.core.fab): sets `layers` and the "
+            "vendor's safe `rules`; explicit `layers` / `rules` keys override the preset's"
+        ),
+    )
     layers: int | list[str] | None = Field(
         default=None, description="copper layer count (2, 4, ...) or explicit copper layer names"
     )
@@ -282,9 +289,36 @@ def known_nets(ctx: ToolContext, m: Mutation, install: Any, config: Any, project
     return sorted(names)
 
 
+def apply_preset(args: PcbSetupArgs) -> dict[str, Any] | None:
+    """Fold a fab rules preset into `args` (explicit layers / rule keys win); returns the preset."""
+    if not args.preset:
+        return None
+    from kiwrap.core.fab import preset_rules
+
+    try:
+        preset = preset_rules(args.preset)
+    except ValueError as exc:
+        from kiwrap.core.fab import PRESET_NAMES
+
+        raise KiwrapError(
+            "E_BAD_ARGS",
+            str(exc),
+            fix="pick a known preset",
+            candidates=list(PRESET_NAMES),
+            example='kw_pcb_setup(project=..., preset="jlcpcb-2layer", outline={"w": 50, "h": 30})',
+        ) from exc
+    if args.layers is None:
+        args.layers = preset.layers
+    args.rules = {**preset.rules, **(args.rules or {})}
+    if preset.netclasses:
+        args.netclasses = {**preset.netclasses, **(args.netclasses or {})}
+    return preset.to_dict()
+
+
 def pcb_setup(ctx: ToolContext, args: PcbSetupArgs) -> Receipt:
     project = Project.from_path(args.project)
     outline = outline_spec(args.outline)
+    preset = apply_preset(args)
     if not any(
         v is not None for v in (args.layers, args.rules, args.netclasses, args.outline, args.custom_rules)
     ):
@@ -329,6 +363,7 @@ def pcb_setup(ctx: ToolContext, args: PcbSetupArgs) -> Receipt:
                 "netclasses": sorted((args.netclasses or {}).keys()),
                 "outline": args.outline,
                 "custom_rules": bool(args.custom_rules),
+                "preset": preset,
             }
         )
         rehash_board_stages(project, m.state, "synced")
@@ -341,7 +376,10 @@ def pcb_setup(ctx: ToolContext, args: PcbSetupArgs) -> Receipt:
         if args.netclasses:
             known = known_nets(ctx, m, install, config, project)
             m.receipt.warnings.extend(netclass_warnings(args.netclasses, known))
-        m.summary = f"layers={args.layers} rules={sorted((args.rules or {}).keys())} outline={'yes' if args.outline else 'no'}"
+        m.summary = (
+            f"layers={args.layers} rules={sorted((args.rules or {}).keys())} outline={'yes' if args.outline else 'no'}"
+            + (f" preset={args.preset}" if preset else "")
+        )
         m.receipt.next_suggested = (
             "kw_pcb_sync" if not stage_at_least(m.state.stage, "synced") else "kw_pcb_place"
         )
@@ -353,8 +391,9 @@ PCB_SETUP = ToolSpec(
     title="Board setup",
     description=(
         "Board rules and outline: copper layer count or names, design rules (clearance_mm, track_width_mm, "
-        "via_size_mm, via_drill_mm, min_*), netclasses with their nets (written to the .kicad_pro), a rectangle "
-        "or polygon outline on Edge.Cuts and custom DRC rules (.kicad_dru). DRC runs after the write as a summary."
+        "via_size_mm, via_drill_mm, min_*) or a vendor preset (jlcpcb-2layer | jlcpcb-4layer), netclasses with "
+        "their nets (written to the .kicad_pro), a rectangle or polygon outline on Edge.Cuts and custom DRC rules "
+        "(.kicad_dru). DRC runs after the write as a summary."
     ),
     input_model=PcbSetupArgs,
     handler=pcb_setup,

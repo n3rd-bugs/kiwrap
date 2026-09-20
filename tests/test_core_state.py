@@ -141,7 +141,7 @@ def test_record_stage_does_not_go_backwards(tmp_path: Path):
 
 
 def test_gates_and_force():
-    assert set(GATES) == {"kw_pcb_sync", "kw_pcb_route_auto", "kw_fab_export"}
+    assert set(GATES) == {"kw_pcb_sync", "kw_pcb_route_auto", "kw_pcb_fix", "kw_fab_export"}
     assert check_gate("kw_fab_export", "drc_clean") is None
     assert check_gate("kw_fab_export", "exported") is None
     assert check_gate("kw_env", "created") is None
@@ -208,6 +208,35 @@ def test_stale_lock_breaking_never_deletes_a_fresh_lock(tmp_path: Path):
     assert not lock_path.exists()
     b.acquire()
     b.release()
+
+
+def test_lock_heartbeat_keeps_a_long_call_from_being_broken(tmp_path: Path):
+    """Phase 1c finding: kw_pcb_route_auto may hold the lock for hours (timeout_s up to 6 h), so
+    a fixed staleness age broke it under a running router. The holder's heartbeat re-touches
+    the file; a second caller sees a fresh lock, waits and times out with E_FILE_LOCKED."""
+    import os
+
+    lock_path = tmp_path / ".kiwrap" / "lock"
+    holder = ProjectLock(lock_path, timeout_s=1, stale_after_s=0.3, heartbeat_s=0.05)
+    holder.acquire()
+    assert holder.owns() and "token=" in lock_path.read_text()
+    time.sleep(0.6)  # twice the staleness age: without the heartbeat the lock would count as stale
+    other = ProjectLock(lock_path, timeout_s=0.4, stale_after_s=0.3, heartbeat_s=0.05)
+    assert not other._is_stale()
+    with pytest.raises(KiwrapError) as e:
+        other.acquire()
+    assert e.value.code == "E_FILE_LOCKED" and lock_path.exists() and holder.owns()
+    # a holder whose heartbeat died (a crashed process): the lock ages and is broken as before
+    holder._stop_heartbeat()
+    old = time.time() - 10
+    os.utime(lock_path, (old, old))
+    other.acquire()
+    assert other.owns() and not holder.owns()
+    # release() never unlinks a lock that is no longer its own (it was broken and re-taken)
+    holder.release()
+    assert lock_path.exists() and other.owns()
+    other.release()
+    assert not lock_path.exists()
 
 
 def test_project_lock_threads_serialise(tmp_path: Path):
@@ -294,6 +323,7 @@ def test_owned_files_is_an_allow_list():
     assert snap.is_owned_file("blinky.kicad_pro") and snap.is_owned_file("sub/sheet.kicad_sch")
     assert snap.is_owned_file("libs/x.pretty/r.kicad_mod") and snap.is_owned_file("rules.kicad_dru")
     assert snap.is_owned_file("fp-lib-table") and snap.is_owned_file(".kiwrap/state.json")
+    assert snap.is_owned_file(".kiwrap/intent.json")  # kw_intent's declaration restores with the design
     for rel in ("blinky.kicad_prl", ".env", "notes.txt", "secrets.py", ".kiwrap/lock", "x.kicad_"):
         assert not snap.is_owned_file(rel), rel
 
@@ -400,6 +430,28 @@ def test_jobs_run_progress_persist_and_cancel(tmp_path: Path):
         assert [j.name for j in q.list()] == ["t"] * 4
     finally:
         q.shutdown()
+
+
+def test_job_queue_shutdown_cancels_running_jobs_and_waits(tmp_path: Path):
+    """Phase 1c finding 7: a route job kept the server (and its JVM) alive after the host closed
+    stdio. `shutdown()` sets every running job's cancel event and waits a bounded time."""
+    import threading
+
+    q = JobQueue(tmp_path / "jobs", max_workers=1)
+    started = threading.Event()
+
+    def work(handle: JobHandle) -> dict:
+        started.set()
+        while True:
+            handle.check()  # raises JobCancelled once cancelled
+            time.sleep(0.01)
+
+    rec = q.submit("slow", work)
+    assert started.wait(5)
+    cancelled = q.shutdown(cancel_running=True, wait_s=5)
+    assert cancelled == [rec.job_id]
+    assert q.get(rec.job_id).state == "cancelled"
+    assert q.shutdown() == []  # idempotent
 
 
 def test_job_persisted_record_survives_new_queue(tmp_path: Path):

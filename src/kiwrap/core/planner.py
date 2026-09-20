@@ -54,13 +54,22 @@ T = TypeVar("T")
 IPC11 = "ipc11"
 FILE = "file"
 CLI = "cli"
-PROVIDERS: tuple[str, ...] = (IPC11, FILE, CLI)
+# the Specctra DSN/SES codec providers of the routing operations (docs/ARCHITECTURE.md §8):
+# `codec` is kiwrap's own DSN writer / SES reader (kiwrap.formats.specctra, always present once
+# built), `swig` the bundled-python driver on a KiCad that still ships SWIG (swigdriver/)
+CODEC = "codec"
+SWIG = "swig"
+PROVIDERS: tuple[str, ...] = (IPC11, FILE, CLI, CODEC, SWIG)
+#: providers whose `provider_used` label carries no KiCad version (kiwrap computes the answer)
+UNVERSIONED: frozenset[str] = frozenset({FILE, CODEC})
 
 #: errors that mean "this provider cannot serve the request here" rather than "the request is wrong"
 UNAVAILABLE_CODES: dict[str, frozenset[str]] = {
     IPC11: frozenset({"E_UNSUPPORTED", "E_TIMEOUT", "E_KICAD_FAILED"}),
     FILE: frozenset({"E_UNSUPPORTED"}),
     CLI: frozenset({"E_UNSUPPORTED"}),
+    CODEC: frozenset({"E_UNSUPPORTED"}),
+    SWIG: frozenset({"E_UNSUPPORTED", "E_TIMEOUT", "E_KICAD_FAILED"}),
 }
 
 
@@ -128,6 +137,29 @@ _NETLIST = Predicate(
 )
 _RATSNEST = Predicate(
     keys=("cli.has_ratsnest_export",), subcommands={"cli.has_ratsnest_export": "pcb export ratsnest"}
+)
+# the fork's commands are `pcb export specctra` and `pcb import-ses` (a sibling of `pcb import`,
+# whose positional file argument leaves argparse no room for a subcommand - docs/UPSTREAM.md,
+# kiwrap_patches.json `specctra-jobs`); both keys are presence probes of the --help tree
+_SPECCTRA_CLI = Predicate(
+    keys=("cli.has_specctra_export", "cli.has_specctra_import"),
+    subcommands={
+        "cli.has_specctra_export": "pcb export specctra",
+        "cli.has_specctra_import": "pcb import-ses",
+    },
+)
+_SPECCTRA_SWIG = Predicate(keys=("swig.available", "swig.ses_import_headless"))
+
+#: the DSN/SES round trip of the routing tools (docs/ARCHITECTURE.md §8): the patched kicad-cli
+#: (docs/UPSTREAM.md fork workflow; capability keys derived from the `--help` tree), kiwrap's own
+#: codec certified against KiCad's exporter / importer, and the SWIG driver on a KiCad that still
+#: has it (ImportSpecctraSES(BOARD, path) exists from 8.0 - docs/VERIFICATION.md claim 7)
+_ROUTING_PROVIDERS: tuple[Provider, ...] = (
+    Provider(
+        CLI, _SPECCTRA_CLI, note="kicad-cli pcb export specctra / pcb import-ses (kiwrap patch specctra-jobs)"
+    ),
+    Provider(CODEC, note="kiwrap.formats.specctra DsnWriter / SesReader on the lossless CST"),
+    Provider(SWIG, _SPECCTRA_SWIG, note="pcbnew.ExportSpecctraDSN / ImportSpecctraSES in the bundled python"),
 )
 
 OPERATIONS: dict[str, Operation] = {
@@ -281,6 +313,15 @@ OPERATIONS: dict[str, Operation] = {
             Provider(FILE, note="kiwrap.formats.board_writer.add_track / add_via / delete"),
         ),
     ),
+    # ---- autorouting (kw_pcb_route_auto / kw_pcb_fix; docs/ARCHITECTURE.md §8) ------------------
+    # the provider is the DSN/SES codec of the round trip; the router itself is always
+    # Freerouting under the managed JRE (kiwrap.backends.router)
+    "routing.autoroute": Operation(
+        "routing.autoroute", _ROUTING_PROVIDERS, fallback="kw_pcb_route (track / via primitives)"
+    ),
+    "routing.fix": Operation(
+        "routing.fix", _ROUTING_PROVIDERS, fallback="kw_pcb_route (delete + re-add the violating tracks)"
+    ),
 }
 
 
@@ -386,8 +427,8 @@ class Outcome(Generic[T]):
 def provider_label(provider: str, install: Any, *, patch: str = "") -> str:
     """`provider_used` string: `ipc11:<version>`, `cli:<version>`, or plain `file`; a kiwrap
     patch the provider relied on is appended as `+<id>` (`cli:10.99.0+ratsnest-export`)."""
-    if provider == FILE:
-        return FILE
+    if provider in UNVERSIONED:
+        return provider
     version = getattr(install, "version", None)
     label = f"{provider}:{version}" if version else provider
     return f"{label}+{patch}" if patch else label

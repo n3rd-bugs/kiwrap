@@ -5,11 +5,14 @@ timeout)". Jobs run in a small `ThreadPoolExecutor`; state lives in memory and i
 JSON under `<storage_home>/jobs/<job_id>.json` so a restarted server can still answer
 `kw_job(job_id)` for finished jobs. Cancellation is cooperative: the job function receives a
 `JobHandle` and is expected to check `handle.cancelled` / call `handle.progress()` between
-steps; a queued job that is cancelled never starts.
+steps; a queued job that is cancelled never starts. `shutdown()` cancels whatever still runs and
+waits a bounded time for it (the server calls it when its transport ends), so a job's external
+processes are not left behind a dead server.
 """
 
 from __future__ import annotations
 
+import builtins
 import contextlib
 import json
 import threading
@@ -17,7 +20,7 @@ import time
 import traceback
 import uuid
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -177,5 +180,25 @@ class JobQueue:
         with self._lock:
             return sorted(self._jobs.values(), key=lambda r: r.created_at)
 
-    def shutdown(self) -> None:
+    def running(self) -> builtins.list[JobRecord]:  # the class's own `list()` shadows the builtin
+        with self._lock:
+            return [r for r in self._jobs.values() if r.state in ("queued", "running")]
+
+    def shutdown(self, *, cancel_running: bool = True, wait_s: float = 10.0) -> builtins.list[str]:
+        """Stop the queue at server exit: every queued / running job gets its cancel event (the
+        router kills its JVM within a poll interval; a KiCad step ends with its own timeout),
+        then the pool is given `wait_s` for those jobs to record their outcome before the
+        futures are abandoned. Returns the ids of the jobs that were still running. Called after
+        `mcp.run()` returns and from `atexit` (idempotent), so a host that ends the session does
+        not leave a route job - and its router - alive behind a dead stdio."""
+        live = self.running() if cancel_running else []
+        for rec in live:
+            handle = self._handles.get(rec.job_id)
+            if handle is not None:
+                handle._cancel.set()
+        futures = [self._futures[r.job_id] for r in live if r.job_id in self._futures]
+        if futures and wait_s > 0:
+            with contextlib.suppress(Exception):
+                wait(futures, timeout=wait_s)
         self._pool.shutdown(wait=False, cancel_futures=True)
+        return [r.job_id for r in live]

@@ -65,6 +65,20 @@ Extra keys this implementation adds (same conventions):
                                    docs/UPSTREAM.md G1; no release has it): KiCad's own airwires per net
                                    with both end items, anchor positions and layers. Derived from the
                                    `--help` tree like the keys above (presence, never the version).
+    cli.has_specctra_export bool   `pcb export specctra` (kiwrap fork patch specctra-jobs, drafts under
+                                   docs/upstream/drafts/specctra-jobs-*.md; no release has it): the board
+                                   as a Specctra DSN, KiCad's own
+                                   exporter (DSN::ExportBoardToSpecctraFile) run headless as a job -
+                                   what SWIG ExportSpecctraDSN gave on <= 10 (docs/VERIFICATION.md
+                                   claim 7). Derived from the `--help` tree (presence, never the version).
+    cli.has_specctra_import bool   `pcb import-ses --ses FILE [-o OUT] BOARD` (same patch): KiCad's own
+                                   session importer (DSN::ImportSpecctraSession) run headless as a job
+                                   with the editor's semantics - unlocked tracks/arcs/vias replaced by
+                                   the session's routes, locked ones kept, SES placement applied to
+                                   every named footprint (locked too), unresolved items skipped with a
+                                   warning on stderr; a session missing its sections fails with exit 3
+                                   and leaves the board untouched (claim 7 on 8-10 said "partial
+                                   mutation on False" - the job's commit is reverted instead).
     ipc.has_get_ratsnest    bool   the headless api-server answers `GetRatsnest` (same patch). Seeded
                                    false; `capabilities_for` DERIVES it from `ipc.headless` AND
                                    `cli.has_ratsnest_export` (the api-server is the probed kicad-cli
@@ -559,6 +573,8 @@ def flatten_help_tree(tree: dict[str, Any]) -> dict[str, Any]:
             "cli.has_sch_diff": "sch diff" in nodes,
             "cli.has_pcb_png": "pcb export png" in nodes,
             "cli.has_ratsnest_export": "pcb export ratsnest" in nodes,
+            "cli.has_specctra_export": "pcb export specctra" in nodes,
+            "cli.has_specctra_import": "pcb import-ses" in nodes,
             "cli.drc_refill_flags": {"--refill-zones", "--save-board"} <= drc_flags,
             "cli.help_exit_code": max(
                 (n["exit_code"] for n in nodes.values()), default=tree.get("exit_code", 0)

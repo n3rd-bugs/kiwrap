@@ -30,6 +30,7 @@ from kiwrap.core.state.locks import project_mutation
 from kiwrap.core.state.project import Project, ProjectState
 from kiwrap.core.state.receipts import ReceiptOut, error_to_result, receipt_to_result
 from kiwrap.core.state.snapshots import create as snapshot_create
+from kiwrap.core.state.snapshots import head as snapshot_head
 from kiwrap.core.state.snapshots import is_dirty as snapshot_is_dirty
 from kiwrap.core.state.stages import ExternalEditCheck, check_external_edit, next_suggested
 
@@ -115,6 +116,15 @@ def to_kiwrap_error(exc: BaseException) -> KiwrapError:
                 "fallback": fallback,
                 "kicad": getattr(getattr(exc, "install", None), "version", None),
             },
+        )
+    if "JobCancelled" in names:
+        # kw_job(action='cancel') reached the running tool: the job ends `cancelled`, the snapshot
+        # message says so (never E_INTERNAL / E_TIMEOUT)
+        return KiwrapError(
+            "E_CANCELLED",
+            "cancelled by kw_job(action='cancel')",
+            why="the background job was cancelled; the board holds whatever the tool had written before the cancel",
+            fix="run the tool again (kw_snapshot restore <ref> brings the pre-call state back if needed)",
         )
     if "NoKiCadError" in names:
         return KiwrapError(
@@ -328,6 +338,7 @@ class Mutation:
     summary: str = ""
     history_extra: dict[str, Any] = field(default_factory=dict)
     pre_snapshot: str | None = None  # sha of the state-before-this-call snapshot, when one was needed
+    baseline: str | None = None  # the snapshot holding the files as they were when this call began
     failure_code: str | None = None  # error code when the handler raised (marks the snapshot message)
 
     @property
@@ -406,6 +417,7 @@ def _snapshot_before(m: Mutation) -> None:
     try:
         if snapshot_is_dirty(m.project.dir):
             m.pre_snapshot = snapshot_create(m.project.dir, f"[kiwrap] pre-{m.tool} (state before this call)")
+        m.baseline = m.pre_snapshot or snapshot_head(m.project.dir)
     except KiwrapError as exc:
         m.history_extra.setdefault("warnings", []).append(f"pre-call snapshot failed: {exc.message}")
 

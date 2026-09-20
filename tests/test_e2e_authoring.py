@@ -8,14 +8,22 @@ KiCad, with KiCad as the judge at every step.
     -> kw_sch_add_item pwr_flag / hierarchical_label -> kw_sch_check (0 errors)
     -> kw_sch_annotate -> kw_sch_assign_footprints (nothing unresolved)
     -> kw_pcb_setup (2 layers, 40 x 30 mm, JLCPCB-ish rules) -> kw_pcb_sync (parity 0)
-    -> kw_pcb_place + kw_pcb_check until 0 overlaps / 0 off-board -> kw_pcb_route (every net)
-    -> kw_pcb_zones (GND pour, both sides) -> kw_pcb_drc -> kw_fab_export (gerbers, drill, pos)
+    -> kw_pcb_place + kw_pcb_check until 0 overlaps / 0 off-board
+    -> routing, two variants of the same conversation:
+       hand: kw_pcb_route (every net as track primitives) -> kw_pcb_zones (GND pour, both sides)
+       auto: kw_pcb_zones (the B.Cu GND plane the router works against) -> kw_pcb_route_auto
+             (Freerouting 2.4.1 under the managed JRE, a background job polled with kw_job)
+             -> kw_pcb_fix when the router left must_fix items -> kw_pcb_zones (the F.Cu pour)
+    -> kw_pcb_drc -> kw_fab_export (gerbers, drill, pos)
 
 The whole conversation goes through `kiwrap serve` over stdio with the mcp client (the agent's
 surface, tests/test_mcp_protocol.py), one scenario per install: the 10.99 nightly answers the
 writes from `ipc11` (headless api-server), 10.0.6 from the `file` engine; kicad-cli of the same
 install validates every step. Every call's provider / degraded / stage is recorded in
-`<project>/.kiwrap/e2e-log.json` and printed at the end (`-s`).
+`<project>/.kiwrap/e2e-log.json` and printed at the end (`-s`). The autorouted variant needs the
+engines scripts/bootstrap.ps1 installs (`%LOCALAPPDATA%/kiwrap/engines`; the server finds them
+from its throw-away storage home through `discover_engines(fallback=True)`) and skips otherwise;
+the DSN/SES codec on the stock installs is kiwrap's own (`provider_used: codec`).
 """
 
 from __future__ import annotations
@@ -29,6 +37,8 @@ from typing import Any
 import anyio
 import pytest
 from mcp import Client, StdioServerParameters
+
+from kiwrap.backends.router import discover_engines
 
 pytestmark = [pytest.mark.kicad, pytest.mark.slow]  # ~60 s per scenario: KiCad validates every write
 
@@ -46,7 +56,13 @@ WRITE_TOOLS = (
     "kw_pcb_place",
     "kw_pcb_zones",
     "kw_pcb_route",
+    "kw_pcb_route_auto",
+    "kw_pcb_fix",
 )
+
+#: the autorouter's budget on the blinker (11 parts, 8 nets; a clean run takes a few seconds)
+AUTO_PASSES = 60
+AUTO_TIMEOUT_S = 300.0
 
 
 class FlowError(AssertionError):
@@ -86,10 +102,14 @@ class Log:
         return "\n".join(lines)
 
 
-async def flow(call: Call, work: Path, target: str, log: Log) -> dict[str, Any]:
+async def flow(call: Call, work: Path, target: str, log: Log, *, router: str = "hand") -> dict[str, Any]:
     """The agent's conversation. `call(tool, args)` returns the structured content (a teaching
-    error raises FlowError). Returns the final numbers."""
-    out: dict[str, Any] = {}
+    error raises FlowError). `router` is `hand` (kw_pcb_route primitives, the pour after) or
+    `auto` (the B.Cu plane, kw_pcb_route_auto + kw_pcb_fix, the F.Cu pour after). Returns the
+    final numbers."""
+    if router not in ("hand", "auto"):
+        raise ValueError(f"router must be hand|auto, not {router!r}")
+    out: dict[str, Any] = {"routing_mode": router}
     proj = work / "blinky"
     p = str(proj)
 
@@ -405,7 +425,7 @@ async def flow(call: Call, work: Path, target: str, log: Log) -> dict[str, Any]:
 
     # placement planned from the footprints' pad geometry (kw_lib_info / the sync receipt): the
     # DIP's right column escapes to a column of 0603s at x = 37.3, RESET goes under the DIP on B.Cu
-    placements = [
+    placements: list[dict[str, Any]] = [
         {"ref": "J1", "at_mm": [4.0, 13.5]},
         {"ref": "C1", "at_mm": [5.0, 8.5], "rotation": 90},
         {"ref": "U1", "at_mm": [12.0, 8.0]},
@@ -465,51 +485,29 @@ async def flow(call: Call, work: Path, target: str, log: Log) -> dict[str, Any]:
     def net_of(ref: str, n: str) -> str:
         return str(pads[(ref, n)]["net"])
 
-    # ---- routing: every non-GND connection as tracks, GND through the pour ----------------------
-    ops: list[dict[str, Any]] = []
+    async def pour(layers: list[str], key: str) -> None:
+        sc = await ok(
+            "kw_pcb_zones",
+            project=p,
+            zones=[{"net": "GND", "layers": layers, "rect_mm": [0, 0, 40, 30], "clearance_mm": 0.3}],
+        )
+        out[key] = {
+            "filled": sc["data"]["filled"],
+            "drc": {k: v for k, v in (sc["data"]["drc"] or {}).items() if k != "violations"},
+            "provider": sc["provider_used"],
+            "degraded": sc["degraded"],
+        }
+        if not sc["data"]["filled"] and "refill_unavailable" not in sc["degraded"]:
+            raise FlowError(f"kw_pcb_zones not filled: {sc}")
 
-    def track(points: list[list[float]], net: str, layer: str = "F.Cu") -> None:
-        ops.append({"op": "track", "points_mm": points, "net": net, "layer": layer})
-
-    vin, v33 = net_of("U1", "3"), net_of("U1", "2")
-    disch, thres, cont = net_of("U2", "7"), net_of("U2", "6"), net_of("U2", "5")
-    blink, led = net_of("U2", "3"), net_of("R4", "2")
-    track([pad("J1", "1"), [pad("J1", "1")[0], pad("U1", "3")[1]], pad("U1", "3")], vin)
-    track([pad("C1", "1"), [pad("C1", "1")[0], pad("U1", "3")[1]]], vin)
-    # KiCad does not treat the SOT-223's two "2" pads as connected: tie them, then on to C2
-    track(sorted(u1_pad2), v33)
-    track([pad("U1", "2"), pad("C2", "1")], v33)
-    track([pad("C2", "1"), [pad("C2", "1")[0], 10.5], [pad("U2", "8")[0], 10.5], pad("U2", "8")], v33)
-    track([pad("U2", "8"), [pad("R1", "1")[0], pad("U2", "8")[1]], pad("R1", "1")], v33)
-    track([pad("U2", "7"), [pad("R1", "2")[0], pad("U2", "7")[1]]], disch)
-    track([pad("R1", "2"), pad("R2", "1")], disch)
-    track([pad("U2", "6"), [pad("R2", "2")[0], pad("U2", "6")[1]]], thres)
-    track([pad("R2", "2"), pad("C3", "1")], thres)
-    track([pad("U2", "6"), [30.8, pad("U2", "6")[1]], [30.8, pad("U2", "2")[1]], pad("U2", "2")], thres)
-    track([pad("U2", "5"), [pad("U2", "5")[0], pad("C4", "2")[1]], pad("C4", "2")], cont)
-    track([pad("U2", "4"), [29.5, pad("U2", "4")[1]], [29.5, pad("U2", "8")[1]], pad("U2", "8")], v33, "B.Cu")
-    track([pad("U2", "3"), pad("R4", "1")], blink)
-    track([pad("R4", "2"), pad("D1", "2")], led)
-    sc = await ok("kw_pcb_route", project=p, ops=ops)
-    out["route"] = {
-        "applied": len(sc["data"]["applied"]),
-        "touched_nets": sc["data"]["touched_nets"],
-        "drc": sc["data"]["drc"],
-    }
-
-    sc = await ok(
-        "kw_pcb_zones",
-        project=p,
-        zones=[{"net": "GND", "layers": ["F.Cu", "B.Cu"], "rect_mm": [0, 0, 40, 30], "clearance_mm": 0.3}],
-    )
-    out["zones"] = {
-        "filled": sc["data"]["filled"],
-        "drc": sc["data"]["drc"],
-        "provider": sc["provider_used"],
-        "degraded": sc["degraded"],
-    }
-    if not sc["data"]["filled"] and "refill_unavailable" not in sc["degraded"]:
-        raise FlowError(f"kw_pcb_zones not filled: {sc}")
+    # ---- routing: by the autorouter (plane first, pour after) or by hand (pour after) --------
+    if router == "auto":
+        await pour(["B.Cu"], "zones_before")
+        await route_auto(ok, p, out, log)
+        await pour(["F.Cu"], "zones")
+    else:
+        await route_by_hand(ok, p, out, pads, u1_pad2)
+        await pour(["F.Cu", "B.Cu"], "zones")
 
     sc = await ok("kw_pcb_drc", project=p, schematic_parity=True)
     d = sc["data"]
@@ -545,6 +543,130 @@ async def flow(call: Call, work: Path, target: str, log: Log) -> dict[str, Any]:
     return out
 
 
+Ok = Callable[..., Awaitable[dict[str, Any]]]
+
+
+async def route_by_hand(
+    ok: Ok,
+    p: str,
+    out: dict[str, Any],
+    pads: dict[tuple[str, str], dict[str, Any]],
+    u1_pad2: list[list[float]],
+) -> None:
+    """Every non-GND connection as track primitives planned from the pad positions (never
+    guessed); GND goes through the pour placed afterwards."""
+
+    def pad(ref: str, n: str) -> list[float]:
+        x = pads[(ref, n)]
+        return [x["x_mm"], x["y_mm"]]
+
+    def net_of(ref: str, n: str) -> str:
+        return str(pads[(ref, n)]["net"])
+
+    ops: list[dict[str, Any]] = []
+
+    def track(points: list[list[float]], net: str, layer: str = "F.Cu") -> None:
+        ops.append({"op": "track", "points_mm": points, "net": net, "layer": layer})
+
+    vin, v33 = net_of("U1", "3"), net_of("U1", "2")
+    disch, thres, cont = net_of("U2", "7"), net_of("U2", "6"), net_of("U2", "5")
+    blink, led = net_of("U2", "3"), net_of("R4", "2")
+    track([pad("J1", "1"), [pad("J1", "1")[0], pad("U1", "3")[1]], pad("U1", "3")], vin)
+    track([pad("C1", "1"), [pad("C1", "1")[0], pad("U1", "3")[1]]], vin)
+    # KiCad does not treat the SOT-223's two "2" pads as connected: tie them, then on to C2
+    track(sorted(u1_pad2), v33)
+    track([pad("U1", "2"), pad("C2", "1")], v33)
+    track([pad("C2", "1"), [pad("C2", "1")[0], 10.5], [pad("U2", "8")[0], 10.5], pad("U2", "8")], v33)
+    track([pad("U2", "8"), [pad("R1", "1")[0], pad("U2", "8")[1]], pad("R1", "1")], v33)
+    track([pad("U2", "7"), [pad("R1", "2")[0], pad("U2", "7")[1]]], disch)
+    track([pad("R1", "2"), pad("R2", "1")], disch)
+    track([pad("U2", "6"), [pad("R2", "2")[0], pad("U2", "6")[1]]], thres)
+    track([pad("R2", "2"), pad("C3", "1")], thres)
+    track([pad("U2", "6"), [30.8, pad("U2", "6")[1]], [30.8, pad("U2", "2")[1]], pad("U2", "2")], thres)
+    track([pad("U2", "5"), [pad("U2", "5")[0], pad("C4", "2")[1]], pad("C4", "2")], cont)
+    track([pad("U2", "4"), [29.5, pad("U2", "4")[1]], [29.5, pad("U2", "8")[1]], pad("U2", "8")], v33, "B.Cu")
+    track([pad("U2", "3"), pad("R4", "1")], blink)
+    track([pad("R4", "2"), pad("D1", "2")], led)
+    sc = await ok("kw_pcb_route", project=p, ops=ops)
+    out["route"] = {
+        "applied": len(sc["data"]["applied"]),
+        "touched_nets": sc["data"]["touched_nets"],
+        "drc": sc["data"]["drc"],
+    }
+
+
+async def wait_job(ok: Ok, tool: str, sc: dict[str, Any], budget_s: float, log: Log) -> dict[str, Any]:
+    """The routing tools default to a background job: poll it the way an agent does (kw_job
+    wait) and return the finished job's receipt (logged as `<tool>(result)`)."""
+    job_id = (sc.get("data") or {}).get("job_id")
+    if not job_id:
+        return sc
+    for _ in range(int(budget_s // 30) + 20):
+        sc = await ok("kw_job", job_id=job_id, action="wait", wait_s=30)
+        if sc["data"].get("done"):
+            break
+    job = sc["data"]["job"]
+    if not sc["data"].get("done") or job.get("state") != "done":
+        raise FlowError(f"{tool} job did not finish: {json.dumps(job, default=str)[:1500]}")
+    result = job["result"] or {}
+    log.add(f"{tool}(result)", result, error=False)
+    return result
+
+
+async def route_auto(ok: Ok, p: str, out: dict[str, Any], log: Log) -> None:
+    """kw_pcb_route_auto (a background job) -> kw_pcb_fix when the router left must_fix items or
+    an open connection (the designed closure for a plateau leftover, docs/ARCHITECTURE.md
+    section 8). The caller pours the B.Cu GND plane before and the F.Cu pour after (pour order:
+    the router sees the plane as GND's connectivity, the top pour ties the F.Cu GND pads in
+    once the copper is there)."""
+    sc = await ok("kw_pcb_route_auto", project=p, passes=AUTO_PASSES, timeout_s=AUTO_TIMEOUT_S)
+    sc = await wait_job(ok, "kw_pcb_route_auto", sc, AUTO_TIMEOUT_S, log)
+    d = sc.get("data") or {}
+    out["route_auto"] = {
+        "provider": sc.get("provider_used"),
+        "degraded": sc.get("degraded"),
+        "stage": sc.get("stage"),
+        "ok": d.get("ok"),
+        "engine": d.get("engine"),
+        "dsn": d.get("dsn"),
+        "router": {k: v for k, v in (d.get("router") or {}).items() if k not in ("log", "stdout", "stderr")},
+        "routed": d.get("routed"),
+        "drc": {k: v for k, v in (d.get("drc") or {}).items() if k != "violations"},
+        "duration_s": d.get("duration_s"),
+        "next": sc.get("next_suggested"),
+    }
+    rdrc = d.get("drc") or {}
+    out["fix"] = None
+    if rdrc.get("must_fix") or (d.get("routed") or {}).get("unrouted"):
+        sc = await ok("kw_pcb_fix", project=p, max_iterations=3, passes=AUTO_PASSES, timeout_s=AUTO_TIMEOUT_S)
+        sc = await wait_job(ok, "kw_pcb_fix", sc, 3 * AUTO_TIMEOUT_S, log)
+        fd = sc.get("data") or {}
+        out["fix"] = {
+            "provider": sc.get("provider_used"),
+            "ok": fd.get("ok"),
+            "must_fix": fd.get("must_fix"),
+            "iterations": [
+                {
+                    k: v
+                    for k, v in it.items()
+                    if k
+                    in (
+                        "iteration",
+                        "nets",
+                        "scope",
+                        "ripped_up",
+                        "margin_mm",
+                        "must_fix_before",
+                        "must_fix_after",
+                    )
+                }
+                for it in (fd.get("iterations") or [])
+            ],
+            "unfixable": fd.get("unfixable"),
+            "drc": {k: v for k, v in (fd.get("drc") or {}).items() if k != "violations"},
+        }
+
+
 def _fab_files(data: dict[str, Any]) -> list[Any]:
     files = data.get("files")
     if isinstance(files, dict):
@@ -565,7 +687,9 @@ def server_params(home: Path) -> StdioServerParameters:
     )
 
 
-async def run_over_stdio(home: Path, work: Path, target: str, log: Log) -> dict[str, Any]:
+async def run_over_stdio(
+    home: Path, work: Path, target: str, log: Log, router: str = "hand"
+) -> dict[str, Any]:
     async with Client(server_params(home), mode="auto") as c:
 
         async def call(tool: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -579,10 +703,22 @@ async def run_over_stdio(home: Path, work: Path, target: str, log: Log) -> dict[
                 )
             return sc
 
-        return await flow(call, work, target, log)
+        return await flow(call, work, target, log, router=router)
 
 
-def _run(target: str, tmp_path: Path, storage_home: Path) -> tuple[dict[str, Any], Log]:
+def real_engines_or_skip() -> Any:
+    """The managed JRE + Freerouting scripts/bootstrap.ps1 installed into the REAL storage home
+    (the session's storage home is a throw-away directory; the server falls back to the platform
+    default the same way, `discover_engines(fallback=True)`)."""
+    engines = discover_engines(fallback=True)
+    if not engines.available:
+        pytest.skip("managed JRE / Freerouting not installed (scripts/bootstrap.ps1)")
+    return engines
+
+
+def _run(
+    target: str, tmp_path: Path, storage_home: Path, *, router: str = "hand"
+) -> tuple[dict[str, Any], Log]:
     """One scenario over MCP stdio; the user's real KiCad config of the target install is hashed
     before and after (the flow exercises more KiCad processes than any other test: kicad-cli
     ERC / netlist / DRC / exports and, on 11, headless api-servers) - it must never change."""
@@ -592,15 +728,17 @@ def _run(target: str, tmp_path: Path, storage_home: Path) -> tuple[dict[str, Any
     install = next((i for i in discover() if i.major_minor == target and not i.is_bench_build), None)
     hash_before = sandbox.user_config_hash(install) if install is not None else None
     log = Log()
-    work = tmp_path / f"e2e-{target.replace('.', '_')}"
+    work = tmp_path / f"e2e-{target.replace('.', '_')}-{router}"
     work.mkdir()
+    out: dict[str, Any] = {}
     try:
-        out = anyio.run(run_over_stdio, storage_home, work, target, log)
+        out = anyio.run(run_over_stdio, storage_home, work, target, log, router)
     finally:
         print("\n" + log.dump())
         state = work / "blinky" / ".kiwrap"
         if state.is_dir():
             (state / "e2e-log.json").write_text(json.dumps(log.rows, indent=1, default=str), encoding="utf-8")
+            (state / "e2e-out.json").write_text(json.dumps(out, indent=1, default=str), encoding="utf-8")
     if install is not None:
         assert sandbox.user_config_hash(install) == hash_before, (
             f"the e2e flow modified the user's real KiCad {target} config (%APPDATA%/kicad)"
@@ -617,6 +755,9 @@ def _run(target: str, tmp_path: Path, storage_home: Path) -> tuple[dict[str, Any
             "sync",
             "place",
             "check",
+            "zones_before",
+            "route_auto",
+            "fix",
             "zones",
             "drc",
             "drc_violations",
@@ -762,6 +903,90 @@ def test_e2e_blinker_on_kicad_10_over_stdio(tmp_path: Path, storage_home: Path):
         (r["tool"], r["provider_used"]) for r in writes
     ]
     assert all("ipc11_unavailable" not in (r["degraded"] or []) for r in writes)
+
+
+def _assert_autorouted(out: dict[str, Any], log: Log) -> None:
+    """The autorouted variant's numbers: Freerouting ran from the managed engines through
+    kiwrap's codec (`provider_used: codec` on a stock install), the mandatory refill + DRC judged
+    it, kw_pcb_fix closed whatever the router left, and the final DRC is 0 must_fix / 0
+    unconnected without forcing the fab gate."""
+    _assert_common(out, log)
+    assert out["routing_mode"] == "auto"
+    assert out["zones_before"]["filled"] is True
+    ra = out["route_auto"]
+    assert ra["provider"] == "codec", ra["provider"]
+    assert ra["engine"]["name"] == "freerouting" and ra["engine"]["version"], ra["engine"]
+    assert ra["router"]["ok"] is True and ra["router"]["exit_code"] == 0, ra["router"]
+    assert ra["router"]["passes"] >= 1 and ra["router"]["history"], ra["router"]
+    assert ra["dsn"]["provider"] == "codec" and ra["dsn"]["nets"] >= 7, ra["dsn"]
+    assert ra["routed"]["tracks_added"] > 0, ra["routed"]
+    assert ra["drc"]["refilled"] is True, ra["drc"]
+    assert ra["stage"] in ("placed", "drc_clean")
+    if ra["drc"]["must_fix"] or ra["routed"]["unrouted"]:
+        assert ra["next"] == "kw_pcb_fix" and out["fix"] is not None, ra
+        assert out["fix"]["ok"] is True and out["fix"]["must_fix"]["after"] == 0, out["fix"]
+    else:
+        assert out["fix"] is None
+    assert out["drc"]["unconnected"] == 0 and out["drc"]["must_fix"] == 0, out["drc_violations"]
+    route_rows = [r for r in log.rows if r["tool"] == "kw_pcb_route_auto"]
+    assert route_rows and route_rows[0]["provider_used"] == "jobs", route_rows
+    assert any(r["tool"] == "kw_job" for r in log.rows)
+    assert not any(r["tool"] == "kw_pcb_route" for r in log.rows)
+
+
+@pytest.mark.kicad_version("10.99")
+def test_e2e_blinker_autorouted_on_the_kicad_11_preview_over_stdio(tmp_path: Path, storage_home: Path):
+    """The same conversation with kw_pcb_route_auto instead of hand routing on the 10.99 nightly:
+    the board writes stay ipc11, the DSN/SES round trip is kiwrap's codec (the stock nightly has
+    no SWIG and no `pcb export specctra`), kicad-cli 10.99 refills and judges."""
+    real_engines_or_skip()
+    out, log = _run("10.99", tmp_path, storage_home, router="auto")
+    _assert_autorouted(out, log)
+    by_tool: dict[str, list[dict[str, Any]]] = {}
+    for r in log.rows:
+        by_tool.setdefault(r["tool"], []).append(r)
+    for tool in ("kw_sch_add_symbol", "kw_sch_connect", "kw_sch_annotate", "kw_pcb_sync", "kw_pcb_zones"):
+        assert all(str(r["provider_used"]).startswith("ipc11:") for r in by_tool[tool]), tool
+    assert all(
+        str(r["provider_used"]).startswith("cli:10.99")
+        for r in by_tool["kw_sch_check"] + by_tool["kw_pcb_drc"]
+    )
+    _no_api_server_left()
+    _no_jvm_left()
+
+
+@pytest.mark.kicad_version("10.0")
+def test_e2e_blinker_autorouted_on_kicad_10_over_stdio(tmp_path: Path, storage_home: Path):
+    """10.0.6 with kw_pcb_route_auto: file-engine writes, kiwrap's codec (ranked ahead of the
+    driverless SWIG provider), kicad-cli 10.0.6 refills and judges."""
+    real_engines_or_skip()
+    out, log = _run("10.0", tmp_path, storage_home, router="auto")
+    _assert_autorouted(out, log)
+    writes = [r for r in log.rows if r["tool"] in WRITE_TOOLS and r["tool"] not in ("kw_pcb_route_auto",)]
+    assert writes and all(r["provider_used"] == "file" for r in writes), [
+        (r["tool"], r["provider_used"]) for r in writes
+    ]
+    _no_jvm_left()
+
+
+def _no_jvm_left() -> None:
+    """PROCESS HYGIENE: no Freerouting JVM of the managed engines survives the conversation
+    (the router kills its process tree on timeout / cancel and waits for it otherwise)."""
+    import subprocess
+
+    ps = subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | Select-Object -ExpandProperty CommandLine",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    ours = [ln for ln in ps.stdout.splitlines() if "blinky" in ln.lower() and "freerouting" in ln.lower()]
+    assert not ours, ours
 
 
 def _no_api_server_left() -> None:

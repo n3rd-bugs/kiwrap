@@ -44,6 +44,7 @@ ERROR_CODES = (
     "E_GATE",
     "E_EXTERNAL_EDIT",
     "E_TIMEOUT",
+    "E_CANCELLED",
     "E_INTERNAL",
     "E_LIB_NOT_FOUND",
     "E_LIB_UNSUPPORTED",
@@ -112,6 +113,7 @@ def test_catalog_is_deterministic_and_annotated():
         "kw_snapshot",
         "kw_job",
         "kw_help",
+        "kw_intent",
         "kw_lib_search",
         "kw_lib_info",
         "kw_sch_add_symbol",
@@ -130,10 +132,13 @@ def test_catalog_is_deterministic_and_annotated():
         "kw_pcb_place",
         "kw_pcb_zones",
         "kw_pcb_route",
+        "kw_pcb_route_auto",
+        "kw_pcb_fix",
         "kw_pcb_get",
         "kw_pcb_check",
         "kw_pcb_drc",
         "kw_pcb_render",
+        "kw_fab_bom",
         "kw_fab_export",
     )
     for spec in ALL_TOOLS:
@@ -177,7 +182,11 @@ def test_env_lists_installs_and_capabilities(h: Harness):
     assert d["installs"][0]["capabilities"]["cli.has_drc"] is True
     assert d["installs"][0]["capabilities"]["formats.sch"] == 20260306
     assert d["default_install"] == "10.0.0" and d["storage"]["home"] == str(h.home)
-    assert set(d["engines"]) == {"freerouting", "jre", "krt", "jlcparts"}
+    assert set(d["engines"]) == {"freerouting", "jre", "krt", "jlcparts", "autorouter"}
+    # the resolved autorouter (JRE + jar the routing tools start), not a bare directory flag
+    assert set(d["engines"]["autorouter"]) >= {"available"}
+    if d["engines"]["autorouter"]["available"]:
+        assert d["engines"]["autorouter"]["freerouting_version"] and d["engines"]["autorouter"]["java"]
     n = len([c for c in h.backend.calls if c[0] == "discover"])
     h.ok("kw_env")
     assert len([c for c in h.backend.calls if c[0] == "discover"]) == n  # cached
@@ -557,7 +566,7 @@ def test_fab_export_gate_force_and_files(h: Harness):
     assert sc["data"] == {"required_stage": "drc_clean", "stage": "created"}
     h.fail("kw_fab_export", "E_BAD_ARGS", project=proj, force={})
     h.fail("kw_fab_export", "E_BAD_ARGS", project=proj, targets=["gerbers", "hologram"])
-    h.fail("kw_fab_export", "E_UNSUPPORTED", project=proj, profile="jlcpcb", force={"reason": "x"})
+    h.fail("kw_fab_export", "E_BAD_ARGS", project=proj, profile="oshpark", force={"reason": "x"})
     sc = h.ok("kw_fab_export", project=proj, targets=["gerbers", "bom"], force={"reason": "prototype"})
     assert sc["ok"] and sc["stage"] == "exported" and sc["data"]["forced"] == "prototype"
     assert set(sc["data"]["files"]) == {"gerbers", "bom"} and len(sc["changed"]["added"]) == 3

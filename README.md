@@ -1,15 +1,24 @@
 # kiwrap — an AI-agent-facing wrapper over KiCad
 
-**Status: Phase 1b implemented — 2026-09-20.** KiCad 11 (nightly) is the primary target
+**Status: Phase 1c implemented — 2026-09-20.** KiCad 11 (nightly) is the primary target
 (decision D16): a headless IPC backend on `kicad-cli api-server` gives structured, data-first
-feedback (D17) — board/schematic items, nets, connectivity, ratsnest — and now authors
-schematics and boards (symbols, wires, labels, power, hierarchical sheets, annotation,
-footprint assignment, board setup, netlist sync, placement, zones, routing primitives) with
-file-tier and kicad-cli fallbacks on KiCad 10.0.x, 9 and 8. An agent conversation over MCP
-stdio builds a two-sheet LDO + 555 blinker from nothing to gerbers with ERC 0 / parity 0 /
-DRC 0 on the 10.99 nightly (ipc11) and 10.0.6 (file), tests/test_e2e_authoring.py. A
-source-build bench of the fork exists for the CLI/IPC additions listed in
-[docs/UPSTREAM.md](docs/UPSTREAM.md). Autorouting (Freerouting) and the VS Code extension are next.
+feedback (D17) — board/schematic items, nets, connectivity, ratsnest — and authors schematics
+and boards (symbols, wires, labels, power, hierarchical sheets, annotation, footprint
+assignment, board setup, netlist sync, placement, zones, routing primitives) with file-tier
+and kicad-cli fallbacks on KiCad 10.0.x, 9 and 8. Phase 1c adds **autorouting**
+(`kw_pcb_route_auto` / `kw_pcb_fix`: Freerouting 2.4.1 under a managed JRE 25 over a Specctra
+DSN/SES round trip — kiwrap's own codec certified against KiCad's exporter/importer, the
+patched `kicad-cli pcb export specctra` / `pcb import-ses` on the fork build, mandatory refill +
+kicad-cli DRC as the judge), the **JLCPCB fabrication profile** (`kw_fab_export(profile=
+"jlcpcb")`, `kw_fab_bom`, `kw_pcb_setup(preset=…)`), **intent** (`kw_intent`, diffed by
+`kw_sch_check`) and the **D5 reference board** eval. An agent conversation over MCP stdio
+builds a two-sheet LDO + 555 blinker from nothing to gerbers — hand-routed and autorouted — with
+ERC 0 / parity 0 / DRC 0 on the 10.99 nightly (ipc11) and 10.0.6 (file)
+(tests/test_e2e_authoring.py), and the ESP32-S3 reference board (29 parts, 3 sheets, 2 layers)
+from `kw_intent` to a JLCPCB bundle with the grader green — ERC 0, intent diff empty, unrouted
+0, must_fix 0 — on both (tests/test_e2e_reference_board.py; numbers below). A source-build
+bench of the fork carries the CLI/IPC additions listed in [docs/UPSTREAM.md](docs/UPSTREAM.md).
+The VS Code extension is next.
 
 kiwrap lets an AI agent (Claude Code inside VS Code; Windows only — decision D18)
 do end-to-end electronics development on KiCad — spec → schematic → ERC → board → placement →
@@ -26,19 +35,41 @@ uv run pytest -q                 # ~5 min with four KiCads installed; ~1 min wit
 uv run kiwrap serve              # MCP server over stdio (Claude Code picks it up from .mcp.json)
 ```
 
-Tools (28): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
+Tools (32): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
+`kw_intent` (declare nets / rails / interfaces; diffed against KiCad's netlist by `kw_sch_check`),
 `kw_lib_search` / `kw_lib_info` (FTS index over the sym-/fp-lib-tables), the schematic authoring
 tools `kw_sch_add_symbol` (absolute pin endpoints back), `kw_sch_connect`, `kw_sch_add_item`
 (power, PWR_FLAG, labels, sheets), `kw_sch_edit`, `kw_sch_annotate`, `kw_sch_assign_footprints`,
 the reads `kw_sch_get` (symbols with pin nets, wires, labels, hierarchy, netlist), `kw_sch_stats`,
 `kw_sch_check` (ERC + netlist), `kw_sch_diff` (KiCad 11), the board authoring tools
 `kw_pcb_setup`, `kw_pcb_sync` (KiCad's netlist, parity-checked), `kw_pcb_place`, `kw_pcb_zones`,
-`kw_pcb_route` (track / via primitives with per-net DRC deltas), the reads `kw_pcb_get`
+`kw_pcb_route` (track / via primitives with per-net DRC deltas), `kw_pcb_route_auto`
+(Freerouting over DSN/SES, a background job with pass / unrouted progress), `kw_pcb_fix` (rip up
+the nets of must_fix violations and re-route them until DRC is clean), the reads `kw_pcb_get`
 (footprints, pads, tracks, vias, zones, nets, connectivity), `kw_pcb_check` (courtyard overlaps,
-off-board, unrouted / ratsnest), `kw_pcb_drc`, `kw_fab_export`, and the secondary renders
-`kw_sch_render` / `kw_pcb_render`. Every tool names its provider (`ipc11`, `file`, `cli`) and any degradation. The
-agent-facing protocol is in [AGENTS.md](AGENTS.md) and the skill in
+off-board, unrouted / ratsnest), `kw_pcb_drc`, `kw_fab_bom`, `kw_fab_export` (generic or the
+JLCPCB profile: Protel gerbers, PTH/NPTH drills, corrected CPL, BOM, zip), and the secondary
+renders `kw_sch_render` / `kw_pcb_render`. Every tool names its provider (`ipc11`, `file`,
+`cli`, `codec`, `cli:<v>+<patch>`) and any degradation. The agent-facing protocol is in
+[AGENTS.md](AGENTS.md) and the skill in
 [.claude/skills/kiwrap-flow/SKILL.md](.claude/skills/kiwrap-flow/SKILL.md).
+
+## Phase 1c end-to-end numbers (2026-09-20)
+
+Recorded by `tests/test_e2e_reference_board.py` and `tests/test_e2e_authoring.py` (each run
+writes `<project>/.kiwrap/e2e-out.json` and `e2e-log.json` with `provider_used` per call):
+
+| flow | KiCad | writes | DSN/SES | router | result |
+|---|---|---|---|---|---|
+| ESP32-S3 reference board, 29 parts / 52 nets | 10.99.0-4083 | ipc11 (+ file for sheets, no-connects, footprints, setup) | codec | Freerouting 2.4.1, run-dependent: 4 passes, 21.7 s, 221 tracks + 34 vias, 70 -> 0 unrouted (full-suite run); or 18 passes, 12.3 s, 231 + 38, 70 -> 1 (score plateau) and `kw_pcb_fix` 2 rounds (the net alone stalls, the 2 mm neighbourhood closes it) -> 0 | ERC 0, intent diff 0 (strict), parity 0, DRC 0 must_fix / 0 unconnected after refill, grade passed, 18 JLCPCB files, 202-206 tool calls, 4.5-5.4 min |
+| ESP32-S3 reference board | 10.0.6 | file | codec | 4 passes, 39.8 s, 217 tracks + 28 vias, 70 -> 0 (full-suite run); or 18 passes, 12.3 s, 204 + 38, 70 -> 1 and `kw_pcb_fix` 1 round -> 0 | ERC 0, intent diff 0, parity 0, DRC 0/0, grade passed, 18 files, 202 tool calls, 2.1 min |
+| blinker, 11 parts / 8 nets, autorouted | 10.99.0-4083 | ipc11 | codec | 2 passes, 3.2 s, 37-38 tracks + 5-6 vias, 21 -> 0 unrouted, no fix needed | DRC 0 must_fix / 0 unconnected (1 review: the nightly's own `lib_footprint_mismatch` on import), gerbers + drill + pos, 2.8 min |
+| blinker, autorouted | 10.0.6 | file | codec | 2 passes, 3.2 s, 36-37 tracks + 5-6 vias, 21 -> 0 unrouted, no fix needed | DRC 0/0, gerbers + drill + pos, 56 s |
+| ecc83 demo stripped to 0 copper (2 and 4 layers), `tests/test_route_auto_providers_live.py` | bench 10.99.0+dfd50b8639 | file | `cli:10.99.0+specctra-jobs` (patched kicad-cli); the codec's DSN == the CLI's | 0 unrouted | DRC 0/0 on both, `kw_pcb_fix` closes two stripped nets through the same chain |
+
+Unrouted is always KiCad's `unconnected_items` count after `pcb drc --refill-zones --save-board`,
+never Freerouting's own score. Pour order matters for the router: the B.Cu GND plane before
+routing, the F.Cu pour after (docs/ARCHITECTURE.md §8).
 
 ## Read in this order
 
@@ -69,7 +100,7 @@ src/kiwrap/            single MIT distribution (src layout)
   backends/cli/        kicad-cli adapters with the verified quirks (ERC JSON ×100, exit codes, .kicad_prl, out dirs, …) + structured exports
   backends/ipc/        KiCad 11 headless IPC sessions (kicad-python), mm-unit readers, connectivity queries, writes, T5 probe
   core/                MCP server, kw_* tools, receipts/teaching errors, stage machine + gates, locks, snapshots, jobs
-conformance/           T1 CST round-trip, T2 file models vs KiCad, T4 kicad-cli help drift, T5 IPC handler snapshot, T6 quirks + corpus
+conformance/           T1 CST round-trip, T2 file models vs KiCad, T4 kicad-cli help drift, T5 IPC handler snapshot, T6 quirks, T7 IPC writes + Specctra codec vs KiCad's DSN/SES, T8 writers vs KiCad + corpus
 tests/                 unit + live tests (auto-skip without KiCad)
 scripts/               bootstrap.ps1 / bootstrap.sh, engines.json (pinned JRE/Freerouting), seed_config_root.py, ci/
 ```

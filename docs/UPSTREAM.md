@@ -99,7 +99,7 @@ flagged **kiwrap TODO** so they are not confused with KiCad gaps.
 | Zone refill after routing | 1 / 2 | `pcb drc --refill-zones --save-board` (`cli.drc_refill_flags`, 10+) / `RefillZones` | T5: `RefillZones pcb -> AS_OK` |
 | Track creation (write path) | 2 | `writes.add_track` (`BeginCommit`/`CreateItems`/`EndCommit`) | 59 → 60 tracks, saved |
 | Track on a non-copper layer silently dropped | 3 (bug, minor) | — | Escain !2722 closed; kiwrap validates the layer client-side before `CreateItems` |
-| DSN / SES for Freerouting | 1 | own codec (Phase 4 twin) / SWIG ≤ 10 | unchanged by D16 |
+| DSN / SES for Freerouting | 1 (codec) / 1 on the fork build (CLI) / 1 SWIG ≤ 10 | `kiwrap.formats.specctra` `DsnWriter` / `SesReader` (own codec, certified T7: 0 DSN differences at 5 µm vs `ExportSpecctraDSN` on 8 demos, SES apply == `ImportSpecctraSES` within 1e-3 mm); `backends.cli.specctra` on the fork's `pcb export specctra` / `pcb import-ses` (`cli.has_specctra_export` / `cli.has_specctra_import`); planner `routing.autoroute` = cli → codec → swig | Phase 1c: `kw_pcb_route_auto` / `kw_pcb_fix` live on 10.0.6 and 10.99 through the codec, on the bench build through the patched CLI, every run judged by `pcb drc --refill-zones` (0/0). Stock KiCad 11 has no SWIG and no DSN/SES command → gap **G17** (implemented on the fork) |
 
 ### 1.4 DRC / ERC review
 
@@ -506,6 +506,81 @@ regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`
   optional in-process cloaking of popup menus (untested). Rebase cost on every base bump is the
   ongoing price of carrying it.
 
+### G17 — Specctra DSN export / SES import as headless jobs (priority 2) — implemented on the fork
+
+- **Why kiwrap needs it:** autorouting is a DSN → Freerouting → SES round trip. KiCad ≤ 10 exposes
+  `pcbnew.ExportSpecctraDSN` / `ImportSpecctraSES` through the bundled python (claim 7); KiCad 11
+  has no SWIG, no bundled python, and no `kicad-cli` command or IPC message for either (T5: not in
+  inventory; the only Specctra code paths are the editor's File menu). kiwrap ships its own
+  codec (`kiwrap.formats.specctra`, tier 1, certified against KiCad's exporter / importer), so
+  stock 11 works; the KiCad-side job is what makes KiCad itself the exporter / importer on 11
+  and what certifies the codec there.
+- **Status 2026-09-20:** implemented on the fork branch `mr/specctra-jobs` (= `base/6dd893f7d1`
+  + `9cf760954d` "ADDED: Export a board to Specctra DSN (pcb export specctra)" +
+  `090e4d4820` "ADDED: Import a Specctra session into a board (pcb import-ses)", KiCad style,
+  `Assisted-by: Claude Code`), merged into `kiwrap/6dd893f7d1` at `dfd50b8639`, built and
+  registered as `C:/kiwrap-builds/6dd893f7d1-5` (tag `kiwrap-build/6dd893f7d1-5`; T4 snapshot
+  `conformance/snapshots/cli-help/10.99.0+dfd50b8639.json`, T5 EQUAL to stock). Pushed to the
+  private origin only; MRs **not** opened (D19), drafts
+  `docs/upstream/drafts/specctra-jobs-export-mr.md` and `specctra-jobs-import-mr.md` (open the
+  export MR first, the import MR after it lands). Manifest `kiwrap_patches.json` id
+  `specctra-jobs`, status `local`.
+- **What it is:** `JOB_EXPORT_PCB_SPECCTRA` + `kicad-cli pcb export specctra [-o FILE] BOARD`
+  (KiCad's own `DSN::ExportBoardToSpecctraFile`; default `<board>.dsn`; a malformed outline is a
+  `wxLogWarning` on stderr and the bounding box is written — no modal dialog) and
+  `JOB_IMPORT_PCB_SPECCTRA_SES` + `kicad-cli pcb import-ses --ses FILE [-o OUT_BOARD] BOARD`
+  (`DSN::ImportSpecctraSession` in a `BOARD_COMMIT` on the headless tool manager the jobs
+  handler already has for DRC: exactly the editor's File → Import → Specctra Session — unlocked
+  tracks / arcs / vias replaced, locked kept, DRC markers dropped, SES placement applied to every
+  named footprint including locked ones, unresolved references / layers / padstacks counted and
+  warned once; a session without its sections → exit 3 with the board untouched; without `-o`
+  saved in place, the project file never written; jobset types `pcb_export_specctra` /
+  `pcb_import_ses`). `import-ses` is a sibling of `pcb import` because argparse only looks for a
+  subcommand once a command's positionals are consumed and `pcb import` takes the file as its
+  positional. QA: `qa_pcbnew` `SpecctraExportCarriesBoardContents`,
+  `SpecctraImportReplacesUnlockedCopper` (+ 4 pre-existing, 6/6), `qa_cli`
+  `test_pcb_specctra.py` 5/5 (contents, default name, round trip within 1 µm, locked copper +
+  in-place save, error paths), clang-format clean.
+- **Verified against the SWIG oracle** (`tests/test_cli_specctra.py`, 15/15 with
+  `KIWRAP_KICAD_ROOTS=C:\kiwrap-buildsdd893f7d1-5`): DSN == 10.0.6's `ExportSpecctraDSN` on
+  ecc83 / kit-dev-coldfire 4L / blinker; import == `ImportSpecctraSES` within 1e-3 mm (ecc83
+  half-stripped + one locked track; coldfire with a placement moving two footprints, copper ==
+  the original 2935 segments / 253 vias); same DRC after refill; blinker 70 % stripped re-routed
+  to 0/0. The routing tools use it first when present
+  (`tests/test_route_auto_providers_live.py`: `provider_used cli:10.99.0+specctra-jobs`, 2 and
+  4 layers, `kw_pcb_fix` through the same chain; the codec's DSN == the CLI's on the same build).
+- **kiwrap side:** `kiwrap.backends.cli.specctra.export_dsn[_run]` / `import_ses[_run]`
+  (`Unsupported(fallback='codec')` on stock installs; `import_ses` copies `.kicad_pro` /
+  `.kicad_dru` next to an `-o` in another directory so DRC keeps the board's rules), planner
+  `routing.autoroute` / `routing.fix` = `cli` → `codec` → `swig` with presence keys
+  `cli.has_specctra_export` / `cli.has_specctra_import` derived from the `--help` tree.
+- **Dialect notes for the MR text** (differences from 10.0's exporter, both upstream master
+  changes, not ours): unlocked copper is `(type protect)` (b76f3d52f5), copper zones are `(wire
+  (polygon …) (type protect) (window …))` in `wiring` (31220febea). Observed and inert: KiCad's
+  own DSN reader (`SPECCTRA_DB::LoadPCB`, used by nothing) rejects KiCad's export at `(PN …)`
+  because the keyword table only knows `pn` — a possible one-line separate fix.
+- **Follow-up fix on the fork (2026-09-20, Phase 1c review finding 3):** master's `makeIMAGE`
+  un-rotated and subtracted the footprint position from a footprint rule area's outline although
+  master stores those outlines in the LIBRARY frame (`ZONE::GetLibraryOutline`), so a placed
+  part's keepout landed `lib − position` away from the part (blinker R1 at (37.3, 14.6): 41.6 mm
+  off, whatever dialect the input file had — the earlier note that "a board saved by the nightly
+  exports the same from both" was wrong: the codec and the CLI disagreed with each other AND with
+  10.0.6's SWIG export, which is the truth). Branch `mr/specctra-fp-zone-frame` (=
+  `base/6dd893f7d1` + `236ec0b0ec` "Export a footprint's rule areas in the image frame",
+  `Assisted-by: Claude Code`): the library outline is the image geometry (the flip for back parts
+  already mirrors it); QA case `SpecctraExportFootprintRuleAreaInImageFrame` (a rotated, placed
+  footprint with a rule area: the DSN holds the library corners, none of the shifted ones);
+  `qa_pcbnew SpecctraExport*` 4/4, `qa_api` 108/110 (the two known test-side failures), merged
+  into `kiwrap/6dd893f7d1` at `2225917b49`, built and registered as
+  `C:/kiwrap-builds/6dd893f7d1-6` (tag `kiwrap-build/6dd893f7d1-6`; T4 tree = -5's, T5 EQUAL to
+  stock). Draft `docs/upstream/drafts/specctra-fp-zone-frame-mr.md`: its own MR (a bug fix, not
+  part of the two job MRs); kiwrap's codec now writes the library outline for stamp ≥ 20260616
+  and the board-frame transform before it, so `pcb export specctra` on the fork and the codec
+  agree with 10.0.6's SWIG export for both dialects (T7 `test_t7_library_frame_footprint_keepout…`).
+- **Effort:** done (2 d). **Acceptance:** medium (two small jobs following the export-job
+  pattern; the import's editor semantics are documented in the draft). **Detection:**
+  `cli.has_specctra_export`, `cli.has_specctra_import`.
+
 Summary table (priority = order of work; "P" = priority):
 
 | P | Gap | Kind | Effort | Acceptance | Detection key |
@@ -525,6 +600,7 @@ Summary table (priority = order of work; "P" = priority):
 | 5 | G8 pins as items | convenience | 1 d | medium | `ipc.schematic_pins_are_items` |
 | 5 | G12 DRC per-type caps | fix | 0.5 d | medium | `cli.drc_unlimited_violations` |
 | 6 | G9 unfiltered GetOpenDocuments | trivial | 0.5 d | low | — |
+| 2 | G17 Specctra export / SES import jobs (`pcb export specctra`, `pcb import-ses`) — **on the fork**, two MRs to open, plus the exporter bug fix `mr/specctra-fp-zone-frame` (footprint rule areas in the image frame) as a third, independent MR | feature + fix | done (2 d) | medium | `cli.has_specctra_export`, `cli.has_specctra_import` |
 | — | G15 display input mode (`KICAD_INPUT_FROM_EVENTS`, Windows GUI only) — **on the fork**, MR on hold (D19); not an agent signal | feature (platform) | done (pcbnew); 0.5 d eeschema matrix + 0.5 d pre-MR hygiene | low-medium (assistive-input framing) | manifest + `kiwrap.patched_build`, runtime cloak check (`gui.input_from_events`) |
 
 ---

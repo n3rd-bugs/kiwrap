@@ -74,11 +74,15 @@ def bearer_guard(app: ASGIApp, token: str) -> ASGIApp:
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
-    from kiwrap.core.server import build_server
+    from kiwrap.core.server import build_server, install_shutdown_hooks, shutdown_jobs
 
     mcp = build_server(Path(args.storage_home) if args.storage_home else None)
+    install_shutdown_hooks(mcp)
     if not args.http:
-        mcp.run("stdio")
+        try:
+            mcp.run("stdio")
+        finally:
+            shutdown_jobs(mcp)
         return 0
     import anyio
     import uvicorn
@@ -101,7 +105,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
     config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="warning")
-    anyio.run(uvicorn.Server(config).serve)
+    try:
+        anyio.run(uvicorn.Server(config).serve)
+    finally:
+        shutdown_jobs(mcp)
     return 0
 
 
