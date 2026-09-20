@@ -23,12 +23,17 @@ scratchpad phase2/kw_live/probe1.py, then tests/test_gui_session_live.py):
   so `close()` records the `~*.lck` files that appeared during start-up and deletes them once the
   process is confirmed dead (the sandbox is a scratch copy owned by kiwrap; a lock that predates
   the session is left alone, like `sessions._remove_stale_lock`).
-- `KICAD_INPUT_FROM_EVENTS=cloak` (fork branch `mr/display-input`, docs/DISPLAY.md §12.5) is
-  exported only when the install carries the patch (`input_from_events()` below: the install's
-  `kiwrap-install.json` patches, the manifest `builds[]` entry of its commit, or a capability key
-  `gui.input_from_events` when the capability layer grows one) and the requested mode is not
-  `mirror`; `cloaked` is then read back from `DwmGetWindowAttribute(DWMWA_CLOAKED)` on the frame
-  after readiness so a build that silently lacks the patch is reported, not assumed.
+- The product mode is `view` (docs/DECISIONS.md D20): the editor is a normal visible window on
+  the desktop, started without activation, streamed into the VS Code tab, and the person
+  interacts with it natively (`raise`). `KICAD_INPUT_FROM_EVENTS=cloak` (fork branch
+  `mr/display-input`, docs/DISPLAY.md §12.5, parked) is exported ONLY when `mode="hidden"` is
+  requested explicitly AND the install carries the patch (`input_from_events()` below: the
+  manifest `builds[]` entry of the install's BUILT commit, the same reader as `kw_env`'s
+  `gui.input_from_events`; the install's own `kiwrap-install.json` claim is not consulted, so a
+  re-registered 6dd893f7d1-7 answers False everywhere); `cloaked` is then read back from
+  `DwmGetWindowAttribute(DWMWA_CLOAKED)` on the frame after readiness so a build that silently
+  lacks the patch is reported, not assumed. `auto` and `mirror` are accepted as spellings of
+  `view` (older callers); neither ever cloaks.
 
 Shape:
 - Every process runs with `ConfigRoot.env()` of a root seeded with `enable_api_server=True`
@@ -94,7 +99,7 @@ from kiwrap.backends.ipc.sessions import (
     bind_gui_session,
     unbind_gui_session,
 )
-from kiwrap.capability import Capabilities, capabilities_for, load_patch_manifest
+from kiwrap.capability import Capabilities, build_carries_patch, capabilities_for
 from kiwrap.installation import KiCadInstallation
 from kiwrap.platform import current
 from kiwrap.platform.lifetime import bind_child_lifetime, popen_lifetime_kwargs
@@ -128,7 +133,10 @@ log = logging.getLogger(__name__)
 DISPLAY_INPUT_PATCH = "display-input"
 GUI_CAPABILITY_KEY = "gui.input_from_events"
 EDITORS: tuple[str, ...] = ("pcb", "sch", "project")
-MODES: tuple[str, ...] = ("auto", "hidden", "mirror")
+#: `view` is the product mode (D20); `auto` / `mirror` are accepted as its older spellings and
+#: resolve to it; `hidden` is the experimental cloaked mode (explicit request + display-input patch)
+MODES: tuple[str, ...] = ("view", "auto", "mirror", "hidden")
+VIEW_MODE = "view"
 RECORDS_DIRNAME = "gui-sessions"
 DEFAULT_READY_TIMEOUT_S = 180.0  # fresh sandbox root on the nightly: 35 s measured; libraries scale it
 DEFAULT_REQUEST_TIMEOUT_MS = 10_000
@@ -175,23 +183,20 @@ class GuiUnsupportedError(GuiSessionError):
 def input_from_events(install: KiCadInstallation, caps: Capabilities | None = None) -> bool:
     """Whether this install's KiCad honours `KICAD_INPUT_FROM_EVENTS` (fork patch `display-input`).
 
-    Presence, never the version: the install's own `kiwrap-install.json` lists the patch ids it
-    was built with (`KiCadInstallation.kiwrap_patches`), the manifest's `builds[]` entry of the
-    BUILT commit lists them too, and a capability record may carry `gui.input_from_events` once
-    the capability layer grows the key (the patch has no CLI/IPC surface to probe, so a build's
-    own metadata is the only presence signal). Stock installs answer False."""
+    One rule, shared with `kw_env` (`capability.build_carries_patch`, the source of the key
+    `gui.input_from_events`): the manifest's `builds[]` entry of the install's BUILT commit must
+    list the patch. The patch has no CLI/IPC surface to probe, and the install's own
+    `kiwrap-install.json` claim (`KiCadInstallation.kiwrap_patches`) is deliberately NOT consulted
+    - the same "never the install's own claim" rule as `kiwrap.patches`, so a re-registered build
+    whose manifest entry dropped the patch (D20: 6dd893f7d1-7) answers False here, in `kw_env`
+    and in the launch receipt's `hidden_available` alike. A capability record that already
+    carries the key (derived from the same function) short-circuits. Stock installs answer
+    False."""
     if caps is not None:
         with contextlib.suppress(Exception):
             if caps.has(GUI_CAPABILITY_KEY):
                 return True
-    if DISPLAY_INPUT_PATCH in install.kiwrap_patches:
-        return True
-    commit = install.extra.get("commit", "")
-    if commit:
-        for build in load_patch_manifest().get("builds", []):
-            if build.get("commit") == commit and DISPLAY_INPUT_PATCH in (build.get("patches") or []):
-                return True
-    return False
+    return build_carries_patch(install, DISPLAY_INPUT_PATCH)
 
 
 # --- Win32 window helpers (ctypes only; reached only on Windows through `current().is_windows`) ----
@@ -907,7 +912,7 @@ class GuiSession(_FramesMixin):
     install: KiCadInstallation
     project_dir: Path
     editor: str = "pcb"
-    mode: str = "auto"
+    mode: str = VIEW_MODE
     config_root: ConfigRoot | None = None
     capabilities_record: Capabilities | None = None
     ready_timeout_s: float = DEFAULT_READY_TIMEOUT_S
@@ -1055,19 +1060,21 @@ class GuiSession(_FramesMixin):
         return wanted
 
     def _resolve_mode(self) -> tuple[str, bool]:
-        """(mode_used, cloak): `hidden` needs the display-input patch; `auto` takes it when present."""
+        """(mode_used, cloak): `view` (the product path, D20; `auto` / `mirror` are its older
+        spellings) never cloaks; `hidden` is honoured only when requested explicitly AND the
+        install carries the display-input patch, and refused honestly otherwise."""
         if self.mode not in MODES:
             raise SessionError(f"unknown mode {self.mode!r}", fix=f"one of {MODES}")
-        patched = input_from_events(self.install, self.capabilities)
-        if self.mode == "hidden" and not patched:
+        if self.mode != "hidden":
+            return VIEW_MODE, False
+        if not input_from_events(self.install, self.capabilities):
             raise GuiUnsupportedError(
                 f"KiCad {self.install.version} at {self.install.root} cannot run hidden: it lacks the "
                 f"`{DISPLAY_INPUT_PATCH}` patch (KICAD_INPUT_FROM_EVENTS)",
-                why="hidden mode cloaks the editor windows from inside KiCad (fork branch mr/display-input)",
-                fix="use mode='mirror' (visible on the desktop) or target a bench build that carries the patch",
+                why="hidden mode cloaks the editor windows from inside KiCad (fork branch mr/display-input, "
+                "experimental and parked under docs/DECISIONS.md D20)",
+                fix="use mode='view' (the live view; the person interacts with the KiCad window on the desktop)",
             )
-        if self.mode == "mirror" or not patched:
-            return "mirror", False
         return "hidden", True
 
     def start(self) -> GuiSession:
@@ -1164,7 +1171,7 @@ class GuiSession(_FramesMixin):
                     "cloak requested (KICAD_INPUT_FROM_EVENTS=cloak) but no frame reports DWMWA_CLOAKED: "
                     "this build does not honour the variable; the window is visible on the desktop"
                 )
-                self.mode_used = "mirror"
+                self.mode_used = VIEW_MODE
             self._write_record()  # mode_used / cloaked are now known to a second process too
             bind_gui_session(self.project_dir, self)
             return self
@@ -1410,7 +1417,7 @@ class RemoteGuiSession(_FramesMixin):
         self.files = [Path(f) for f in info.get("files", []) or []]
         self.socket_path = Path(info["socket"]) if info.get("socket") else None
         self.temp_dir = Path(info["temp"]) if info.get("temp") else None
-        self.mode = str(info.get("mode", "auto"))
+        self.mode = str(info.get("mode", VIEW_MODE))
         self.mode_used = str(info.get("mode_used", ""))
         self.cloak_requested = bool(info.get("cloak_requested", False))
         self.cloaked: bool | None = info.get("cloaked")
@@ -1782,7 +1789,7 @@ def launch(
     project_dir: str | Path,
     *,
     editor: str = "pcb",
-    mode: str = "auto",
+    mode: str = VIEW_MODE,
     config_root: ConfigRoot | None = None,
     capabilities: Capabilities | None = None,
     storage_home: Path | None = None,

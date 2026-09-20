@@ -12,19 +12,23 @@ view without the extension being told anything - WGC delivers a frame because th
 changed (§7.4).
 
 Actions
-- `launch(project, editor=pcb|sch|project, mode=auto|hidden|mirror, target_kicad?)`: start the
-  GUI on the project's target install (or `target_kicad`). `hidden` needs a build carrying the
-  `display-input` patch (the editor runs cloaked with `KICAD_INPUT_FROM_EVENTS=cloak`, invisible
-  on the desktop, captured by the helper); `auto` takes hidden when the build has it, else
-  `mirror` (visible on the desktop, never activated). Returns `{session_id, pid, install,
-  api_socket, token, editors[], mode_used, cloaked}` (the contract's launch shape).
+- `launch(project, editor=pcb|sch|project, mode=view, target_kicad?)`: start the GUI on the
+  project's target install (or `target_kicad`): a normal window on the desktop, started without
+  activation (`SW_SHOWNOACTIVATE`, the foreground handed back if KiCad took it), streamed into
+  the VS Code tab by the helper; the person interacts with KiCad natively (`raise`). Returns
+  `{session_id, pid, install, api_socket, token, editors[], mode_used, cloaked}` (the contract's
+  launch shape; `mode_used` is `view`). `mode="hidden"` is an experimental, parked path (docs/
+  DECISIONS.md D20): only on a build carrying the `display-input` patch the editor runs cloaked
+  (`KICAD_INPUT_FROM_EVENTS=cloak`), refused with E_UNSUPPORTED elsewhere; `auto` / `mirror` are
+  older spellings of `view`.
 - `attach(session_id?, helper={port, token, version})`: the extension registers the display
   helper it started for this session; screenshots then come through the helper's `/control`.
 - `status(session_id?)`: liveness, editors (surfaces with hwnd / rect / dpi / cloaked), socket.
 - `screenshot(session_id?, surface?, max_px)`: PNG <= 1024 px: the helper when attached, else a
-  `PrintWindow` capture of the frame (what the user sees, GL canvas included, cloaked too), else
+  `PrintWindow` capture of the frame (what the user sees, GL canvas included), else
   `kw_pcb_render` / `kw_sch_render` of the SAVED file (`degraded: [live_view_unavailable]`).
-- `raise(session_id?, surface?)`: bring the frame to the front (a no-op for a cloaked one).
+- `raise(session_id?, surface?)`: bring the frame to the front (the way a person takes over:
+  the tab's "Raise KiCad" button calls it; a no-op for a cloaked one).
 - `detach(session_id?)`: close documents through the API where handled, terminate, remove the
   lock files the GUI took, unbind the project (headless servers serve it again).
 
@@ -45,7 +49,7 @@ from kiwrap.core.tools._base import DESTRUCTIVE, ToolContext, ToolSpec, read_sta
 
 Action = Literal["launch", "attach", "status", "screenshot", "detach", "raise"]
 Editor = Literal["pcb", "sch", "project"]
-Mode = Literal["auto", "hidden", "mirror"]
+Mode = Literal["view", "hidden", "auto", "mirror"]
 MAX_PX = 1024
 TARGET_BYTES = 100_000
 
@@ -110,10 +114,12 @@ class LiveArgs(BaseModel):
         default="pcb", description="launch: pcb (pcbnew), sch (eeschema) or project (kicad manager)"
     )
     mode: Mode = Field(
-        default="auto",
+        default="view",
         description=(
-            "launch: hidden = cloaked editor driven by the helper (needs the display-input patch); "
-            "mirror = visible on the desktop, never activated; auto = hidden when available"
+            "launch: view (default) = a visible KiCad window on the desktop, never activated, streamed live "
+            "into the VS Code tab; the person interacts with it natively. hidden = EXPERIMENTAL, parked "
+            "(D20): cloaked editor driven by the helper, only on a build carrying the display-input patch. "
+            "auto / mirror are older spellings of view."
         ),
     )
     target_kicad: str | None = Field(

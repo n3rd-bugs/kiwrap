@@ -21,19 +21,20 @@ bench of the fork carries the CLI/IPC additions listed in [docs/UPSTREAM.md](doc
 
 **Phase 2 (integrated and verified end to end, 2026-09-20): the VS Code extension.** `extension/`
 (TypeScript, MIT, a private `.vsix` built by `scripts/build_extension.ps1` into `dist/`) is an MCP
-client of its own `kiwrap serve`; it shows **Live KiCad** — the real, sandboxed KiCad editors
-streamed into `.kicad_pcb` / `.kicad_sch` tabs by the Rust helper `helper/kiwrap-live.exe`
-(Windows.Graphics.Capture, loopback + token) — in three modes: capture-only view on any KiCad,
-**hidden** (KiCad cloaked, invisible on the desktop, the tab is the UI: posted input, dialogs
-composited) on a build carrying the fork's `mr/display-input` patch (the registered bench build
-`6dd893f7d1-7`), and an opt-in mirror on stock; plus ERC/DRC in the Problems panel, a KiCad picker
-and a one-command Claude Code setup. The server side is the `kw_live` tool (a sandboxed GUI session
-whose API socket the `ipc11` provider binds to) and the two-server model: the agent's own `kiwrap
-serve` finds the extension's session through its record and writes into the same window — measured
-in `extension/test/e2e` (10/10): an agent's `kw_pcb_place` over a second MCP client repainted the
-live tab 431-474 ms after the call started (`kw_pcb_place` 870-979 ms via ipc11), hidden-mode input
-91-138 ms per event, 15/15 footprints rotated by posted keys and read back over IPC. Details and the
-numbers: [docs/EXTENSION.md](docs/EXTENSION.md) (§9.1), user guide
+client of its own `kiwrap serve`; it shows **Live KiCad** — the real, sandboxed stock KiCad editors
+(10.0.x / 10.99) streamed live into the `.kicad_pcb` / `.kicad_sch` tabs by the Rust helper
+`helper/kiwrap-live.exe` (Windows.Graphics.Capture, loopback + token). The user sees the agent's
+edits live; to edit by hand they raise KiCad (the tab's *Raise KiCad* button, a double-click) and
+work in the real window — decision D20: the live view with native interaction is the product, the
+cloaked/injecting modes measured in DISPLAY.md stay parked as experiments. Plus ERC/DRC in the
+Problems panel, a KiCad picker and a one-command Claude Code setup. The server side is the
+`kw_live` tool (a sandboxed GUI session whose API socket the `ipc11` provider binds to) and the
+two-server model: the agent's own `kiwrap serve` finds the extension's session through its record
+and writes into the same window — measured in `extension/test/e2e` (12/12 in a real dev host): an
+agent's `kw_pcb_place` over a second MCP client repainted the live tab 431-474 ms after the call
+started (`kw_pcb_place` 870-979 ms via ipc11), *Raise KiCad* put the real pcbnew / eeschema in the
+foreground within ~0.9 s (`GetForegroundWindow`), on 10.99 and on 10.0.6. Details and the numbers:
+[docs/EXTENSION.md](docs/EXTENSION.md) (§9.1, §9.2), user guide
 [extension/README.md](extension/README.md), the measured display investigation
 [docs/DISPLAY.md](docs/DISPLAY.md), screenshots `docs/research/display/img/phase2-*.png`.
 

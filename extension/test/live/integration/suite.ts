@@ -3,8 +3,10 @@
  * loaded through --extensionTestsPath). Drives the harness extension (test/live/harness) against the
  * fake helper (test/live/fake_helper): session open through the fake kw_live client, helper spawn +
  * hello, /control surfaces, the custom editor showing frames, DOM-level input forwarded to /stream with
- * DPI-exact coordinates, the clipboard bridge both ways, the 3D panel, hidden-tab stream close +
- * resync on reveal, the screenshot command, view-only click-to-raise, and clean shutdown.
+ * DPI-exact coordinates (the EXPERIMENTAL `events` input mode, asked for explicitly: the settings keep
+ * the product default kiwrap.live.inputMode = none), the clipboard bridge both ways, the 3D panel,
+ * hidden-tab stream close + resync on reveal, the screenshot command, the live view (the product
+ * path: nothing injected, "Raise KiCad" / double-click raise the window), and clean shutdown.
  *
  * A tiny sequential runner instead of mocha so nothing has to be resolvable from the scratch folder.
  */
@@ -52,12 +54,12 @@ export async function run(): Promise<void> {
       for (const c of ['kiwrap.live.open', 'kiwrap.live.close', 'kiwrap.live.status', 'kiwrap.live.raise', 'kiwrap.live.forwardKey', 'kiwrap.live.openSurface', 'kiwrap.live.screenshot', 'kiwrap.live.attach']) { assert(cmds.includes(c), `command ${c}`); }
       assert(vscode.workspace.getConfiguration('kiwrap.live').get<string>('helperPath', '').endsWith('fake_helper.mjs'), 'helperPath setting points at the fake helper');
     }],
-    ['kiwrap.live.open: kw_live launch (fake) -> helper spawned -> surfaces listed -> hidden mode', async () => {
-      const st = await api.open({ project: PROJECT, editor: 'pcb', file: PCB });
-      assert(calls[0]?.name === 'kw_live' && calls[0].args.action === 'launch' && calls[0].args.mode === 'auto' && calls[0].args.project === PROJECT, `launch call ${JSON.stringify(calls[0])}`);
+    ['kiwrap.live.open (experimental inputMode events): kw_live launch hidden (fake) -> helper spawned -> surfaces listed', async () => {
+      const st = await api.open({ project: PROJECT, editor: 'pcb', file: PCB, inputMode: 'events' });
+      assert(calls[0]?.name === 'kw_live' && calls[0].args.action === 'launch' && calls[0].args.mode === 'hidden' && calls[0].args.project === PROJECT, `launch call ${JSON.stringify(calls[0])}`);
       assert(st.pid === process.pid, 'session pid from kw_live');
       assert(st.helper && st.helper.port > 0 && /fake/.test(st.helper.version), `helper hello ${JSON.stringify(st.helper)}`);
-      assert(st.mode === 'hidden', `mode hidden (patched install), got ${st.mode}`);
+      assert(st.mode === 'hidden', `mode hidden (fake kw_live cloaked the install), got ${st.mode}`);
       const kinds = st.surfaces.map((s) => s.kind).sort();
       assert(kinds.includes('pcb') && kinds.includes('sch'), `surfaces ${kinds.join(',')}`);
       const hello = readLog().find((r) => r.ev === 'hello');
@@ -181,20 +183,36 @@ export async function run(): Promise<void> {
       const s = await snap(pcbView);
       assert(!s.connected && s.cardVisible, 'editor shows the placeholder card after close');
     }],
-    ['view-only mode: a click raises KiCad instead of injecting', async () => {
-      await api.open({ project: PROJECT, editor: 'pcb', file: PCB, mode: 'view' });
+    ['live view (the default): kw_live launched in view mode, nothing injected, "Raise KiCad" and a double-click raise the window', async () => {
+      const n = calls.length;
+      await api.open({ project: PROJECT, editor: 'pcb', file: PCB });   // no inputMode: the setting (none)
+      const launch = calls.slice(n).find((c) => c.name === 'kw_live' && c.args.action === 'launch');
+      assert(launch && launch.args.mode === 'view', `kw_live launched in view mode: ${JSON.stringify(launch)}`);
       assert(api.status().mode === 'view', 'mode view');
       const hello = readLog().filter((r) => r.ev === 'hello').pop();
-      assert(hello && hello.inject === 'none' && hello.cloak === false, `helper restarted with --inject none: ${JSON.stringify(hello)}`);
+      assert(hello && hello.inject === 'none' && hello.cloak === false, `helper restarted with --inject none and no --cloak-expected: ${JSON.stringify(hello)}`);
       pcbView = await waitFor('pcb editor view', () => api.editors.viewFor(PCB));
-      const s = await waitFor('frames in view mode', async () => { const x = await snap(pcbView); return x.connected && x.mode === 'view' && x.stats.frames >= 1 ? x : null; }, 20000, 250);
+      const s = await waitFor('frames in view mode', async () => { const x = await snap(pcbView); return x.connected && x.mode === 'view' && x.stats.frames >= 1 ? x : null; }, 20000, 250) as Snapshot & { hudMode: string; raiseVisible: boolean; raiseCount: number; lastRaise: string | null };
+      assert(s.hudMode === 'live view' && s.raiseVisible, `HUD says "live view" with the Raise button: ${JSON.stringify({ hudMode: s.hudMode, raiseVisible: s.raiseVisible })}`);
       const since = Date.now();
-      pcbView.testDispatch({ kind: 'pointer', name: 'pointerdown', init: { clientX: s.canvasRect.left + 10, clientY: s.canvasRect.top + 10, button: 0, buttons: 1 } });
-      pcbView.testDispatch({ kind: 'pointer', name: 'pointerup', init: { clientX: s.canvasRect.left + 10, clientY: s.canvasRect.top + 10, button: 0, buttons: 0 } });
+      const x = s.canvasRect.left + 10, y = s.canvasRect.top + 10;
+      // a single click only focuses the tab; keys are not forwarded
+      pcbView.testDispatch({ kind: 'pointer', name: 'pointerdown', init: { clientX: x, clientY: y, button: 0, buttons: 1 } });
+      pcbView.testDispatch({ kind: 'pointer', name: 'pointerup', init: { clientX: x, clientY: y, button: 0, buttons: 0 } });
       pcbView.testDispatch({ kind: 'key', name: 'keydown', target: 'window', init: { key: 'a', code: 'KeyA' } });
-      await waitFor('raise request on /control', () => readLog().some((r) => r.ev === 'raise' && r.surface === 'pcb-1' && r.t >= since), 8000);
-      await sleep(500);
-      assert(inputs('pcb-1', since).filter((e) => e.type === 'mouse' || e.type === 'key').length === 0, 'no mouse/key injected in view mode');
+      await sleep(600);
+      assert(!readLog().some((r) => r.ev === 'raise' && r.t >= since), 'a single click does not raise');
+      // a double-click raises (kiwrap.live.raiseOnDoubleClick, default true)
+      pcbView.testDispatch({ kind: 'mouse', name: 'dblclick', init: { clientX: x, clientY: y, button: 0 } });
+      await waitFor('raise request on /control after the double-click', () => readLog().some((r) => r.ev === 'raise' && r.surface === 'pcb-1' && r.t >= since), 8000);
+      const afterDbl = await snap(pcbView) as Snapshot & { raiseCount: number; lastRaise: string | null };
+      assert(afterDbl.raiseCount >= 1 && afterDbl.lastRaise === 'dblclick', `page counted the raise: ${JSON.stringify({ raiseCount: afterDbl.raiseCount, lastRaise: afterDbl.lastRaise })}`);
+      // the Raise KiCad button (the primary action)
+      const raises = readLog().filter((r) => r.ev === 'raise' && r.t >= since).length;
+      pcbView.testDispatch({ kind: 'mouse', name: 'click', target: 'btn-raise', init: {} });
+      await waitFor('raise request on /control after the button', () => readLog().filter((r) => r.ev === 'raise' && r.surface === 'pcb-1' && r.t >= since).length > raises, 8000);
+      await sleep(300);
+      assert(inputs('pcb-1', since).filter((e) => e.type === 'mouse' || e.type === 'key' || e.type === 'wheel').length === 0, 'no mouse/key/wheel injected in the live view');
     }],
     ['final close leaves no helper behind', async () => {
       const helperPid = api.status().helper?.pid ?? 0;

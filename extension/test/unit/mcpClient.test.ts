@@ -103,8 +103,9 @@ describe('McpClient (fake stdio server)', function () {
   });
 
   it('kw_live launch / status / screenshot / detach through the wrapper', async () => {
-    const launch = await server.live({ action: 'launch', project: 'C:/fake/fake.kicad_pro', editor: 'sch', mode: 'auto' });
+    const launch = await server.live({ action: 'launch', project: 'C:/fake/fake.kicad_pro', editor: 'sch', mode: 'view' });
     assert.equal(launch.data.session_id, 'live-1');
+    assert.equal(launch.data.mode_used, 'view');
     assert.equal(launch.data.pid, 4242);
     assert.deepEqual(launch.data.editors, ['sch']);
     const status = await server.live({ action: 'status', project: 'C:/fake/fake.kicad_pro', session_id: 'live-1' });

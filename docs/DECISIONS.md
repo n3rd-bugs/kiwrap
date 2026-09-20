@@ -179,3 +179,19 @@ until the end-to-end flow works. Upstream contributions are prepared as drafts u
 **Consequence:** `origin` of `C:\src\kicad` is the private repo; `public` is the read-only mirror
 remote; nothing is pushed to gitlab.com. The KiCad-side commits keep the `Assisted-by:` trailer
 KiCad's contribution policy requires, ready for the day they are submitted.
+
+## D20 — Live view without hidden KiCad (resolves DISPLAY.md §12.8 decision 1)
+
+**Choice (owner, 2026-09-20):** the product's live experience is the capture-only view — the
+real KiCad window stays on the desktop (launched sandboxed by kiwrap with its API enabled), each
+editor streams into its VS Code tab, an agent's edits appear live, and the user interacts with
+KiCad natively (the tab's *Raise KiCad* button or the window itself). The hidden/cloaked mode
+and the input injectors are **not** part of the product: `mr/display-input` stays parked in the
+fork (not merged into the integration branch), the helper's `events`/`mirror`/`hybrid` modes
+remain experimental settings off by default, and no user-facing text promises "KiCad inside
+VS Code" beyond the live view.
+**Why:** the owner does not want the complexity of running KiCad hidden as long as users see the
+updates live.
+**Consequence:** stock KiCad 10.0.x/11 is the only requirement for the live view; the
+display-input bench build (6dd893f7d1-7) is unregistered; DISPLAY.md decisions 5, 11, 13, 14
+are closed as "not pursued"; the e2e keeps the stock view-only scenario as the product path.

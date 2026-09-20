@@ -1,7 +1,7 @@
 /**
  * End-to-end driver (Phase 2 integration, docs/EXTENSION.md): the REAL extension in an Extension
  * Development Host of the installed VS Code, the real `uv run kiwrap serve`, the real Rust helper,
- * real sandboxed KiCad GUIs (stock 10.99 view-only, the display-input bench build hidden), and a
+ * real sandboxed stock KiCad GUIs in the live view (10.99, and 10.0.x when installed), and a
  * second kiwrap MCP client (test/e2e/agent.py) playing the agent. See suite/e2e.test.ts.
  *
  *   npm run test:e2e            (or node out/test/e2e/runTest.js)
@@ -9,8 +9,10 @@
  * Environment: KIWRAP_REPO (default: the parent of extension/), KIWRAP_E2E_SCRATCH (default:
  * os.tmpdir()/kiwrap-e2e), KIWRAP_E2E_IMG (where the phase2-*.png evidence goes; default
  * <repo>/docs/research/display/img), KIWRAP_KICAD_DEMOS (a directory holding ecc83), KIWRAP_E2E_STOCK
- * (the stock install spec, default "10.99"), KIWRAP_E2E_HIDDEN (the install root carrying
- * mr/display-input; default: the first kw_env install with gui.input_from_events; "skip" skips).
+ * (the stock install spec, default "10.99"), KIWRAP_E2E_STOCK2 (a second stock install to open the
+ * live view on, default "10.0"; "skip" skips), KIWRAP_E2E_HIDDEN (opt-in, the experimental cloaked
+ * mode parked under D20: "1" = the first kw_env install with gui.input_from_events, or an install
+ * root; default: skipped).
  *
  * The scratch workspace holds a copy of the ecc83 demo (the v2 project removed) and the Phase 1b
  * blinker board (tests/fixtures/specctra/blinker_10). The extension uses kiwrap's DEFAULT storage
@@ -91,7 +93,7 @@ async function main(): Promise<void> {
         // extension finds the checkout through KIWRAP_REPO (extensionTestsEnv below)
         'kiwrap.storageHome': '',
         'kiwrap.checkOnSave': false,
-        'kiwrap.live.mode': 'auto',
+        'kiwrap.live.inputMode': 'none',
         'kiwrap.live.hud': true,
         'security.workspace.trust.enabled': false,
         'update.mode': 'none',

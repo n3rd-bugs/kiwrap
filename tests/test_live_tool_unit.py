@@ -43,12 +43,12 @@ class FakeSession:
     install: Any
     project_dir: Path
     editor: str = "pcb"
-    mode: str = "auto"
+    mode: str = "view"
     session_id: str = "gfake0001"
     token: str = "tok"
     running: bool = True
     pid: int | None = 4242
-    mode_used: str = "mirror"
+    mode_used: str = "view"
     cloaked: bool | None = False
     helper: Any = None
     locks_taken: list[Path] = field(default_factory=list)
@@ -207,13 +207,22 @@ def test_png_encode_is_a_valid_rgb_png():
         gui_sessions.png_encode(4, 4, b"\x00" * 8)
 
 
-def test_input_from_events_is_presence_based(tmp_path):
+def test_input_from_events_is_presence_based(tmp_path, monkeypatch):
+    """One reader for `gui.input_from_events`: the manifest's builds[] entry of the BUILT commit
+    (capability.build_carries_patch). The install's own kiwrap-install.json claim is not a
+    signal, so kw_env, kw_live mode=hidden and the receipt's hidden_available agree (D20)."""
+    import kiwrap.capability as capability
+
     stock = _install(tmp_path / "stock")
     assert gui_sessions.input_from_events(stock) is False
-    patched = _install(
+
+    # the install's own claim alone (a re-registered bench build whose manifest entry dropped
+    # the patch, like 6dd893f7d1-7 after D20) does not count
+    claimed = _install(
         tmp_path / "bench", kiwrap_patches="ratsnest-export,display-input", commit="deadbeef00"
     )
-    assert gui_sessions.input_from_events(patched) is True
+    assert gui_sessions.input_from_events(claimed) is False
+    assert capability.build_carries_patch(claimed, "display-input") is False
 
     class Caps:
         def has(self, key: str) -> bool:
@@ -221,14 +230,23 @@ def test_input_from_events_is_presence_based(tmp_path):
 
     assert gui_sessions.input_from_events(stock, Caps()) is True
 
-    # a manifest build entry names the patch for the BUILT commit
-    from kiwrap.capability import load_patch_manifest
+    # a manifest build entry naming the patch for the BUILT commit is the signal
+    manifest = {
+        "schema": capability.PATCHES_SCHEMA,
+        "base": "6dd893f7d1",
+        "patches": [],
+        "builds": [{"tag": "kiwrap-build/test-1", "commit": "deadbeef00", "patches": ["display-input"]}],
+    }
+    monkeypatch.setattr(capability, "load_patch_manifest", lambda: manifest)
+    by_commit = _install(tmp_path / "bench2", commit="deadbeef00")
+    assert gui_sessions.input_from_events(by_commit) is True
+    assert gui_sessions.input_from_events(claimed) is True  # same commit, now listed
+    assert gui_sessions.input_from_events(_install(tmp_path / "bench3", commit="0000000000")) is False
 
-    manifest = load_patch_manifest()
-    commits = [b["commit"] for b in manifest.get("builds", []) if "display-input" in (b.get("patches") or [])]
-    if commits:
-        by_commit = _install(tmp_path / "bench2", commit=commits[0])
-        assert gui_sessions.input_from_events(by_commit) is True
+    # the live manifest: no registered build lists display-input (D20)
+    monkeypatch.undo()
+    live = capability.load_patch_manifest()
+    assert not [b["tag"] for b in live.get("builds", []) if "display-input" in (b.get("patches") or [])]
 
 
 def test_helper_endpoint_never_leaks_the_token():
@@ -390,7 +408,7 @@ def test_kw_live_launch_status_attach_raise_detach(tmp_path):
     assert launched.data["pid"] == 4242 and launched.data["api_socket"] == "ipc://fake/kicad/api.sock"
     assert launched.data["token"] == "tok" and launched.data["hidden_available"] is False
     assert launched.data["editors"][0]["kind"] == "pcb" and launched.provider_used == "gui:10.99.0"
-    assert svc.launched[0]["editor"] == "pcb" and svc.launched[0]["mode"] == "auto"
+    assert svc.launched[0]["editor"] == "pcb" and svc.launched[0]["mode"] == "view"
     assert svc.launched[0]["config_root"]["enable_api_server"] is True
 
     st = live_tool.run(ctx, live_tool.LiveArgs(action="status"))
@@ -492,7 +510,7 @@ def test_kw_live_maps_backend_errors_to_catalogue_codes(tmp_path):
     )
 
     def unsupported(*a: Any, **k: Any) -> Any:
-        raise gui_sessions.GuiUnsupportedError("cannot run hidden", fix="mode='mirror'")
+        raise gui_sessions.GuiUnsupportedError("cannot run hidden", fix="mode='view'")
 
     svc.gui_launch = unsupported  # type: ignore[method-assign]
     with pytest.raises(KiwrapError) as exc2:

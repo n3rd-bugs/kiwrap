@@ -9,15 +9,19 @@ every module that launches one), always sandboxed (`kiwrap.sandbox.ensure(enable
 a per-session TEMP, no activation), always killed by PID; the user's `%APPDATA%/kicad` hash is
 asserted unchanged. Run with `-p no:xdist`.
 
-The hidden-mode test needs a bench build carrying the `display-input` patch (its
-`kiwrap-install.json` lists it; `KIWRAP_KICAD_ROOTS` or `<storage>/installs.json` must name the
-root): the frame's `DWMWA_CLOAKED` is read with ctypes here, independently of the supervisor.
+The hidden-mode test is opt-in (`KIWRAP_E2E_HIDDEN=1`; docs/DECISIONS.md D20 parked the cloaked
+mode) and needs a bench build carrying the `display-input` patch (the manifest's `builds[]` entry
+of its commit must list it - `src/kiwrap/data/kiwrap_patches.json`, the only presence signal; the
+install's own `kiwrap-install.json` claim does not count - and `KIWRAP_KICAD_ROOTS` or
+`<storage>/installs.json` must name the root): the frame's
+`DWMWA_CLOAKED` is read with ctypes here, independently of the supervisor.
 """
 
 from __future__ import annotations
 
 import ctypes
 import json
+import os
 import shutil
 import time
 from pathlib import Path
@@ -69,6 +73,8 @@ def gui_install(request, installs):
 
 @pytest.fixture(scope="module")
 def display_install(installs):
+    if os.environ.get("KIWRAP_E2E_HIDDEN", "") not in ("1", "true", "yes"):
+        pytest.skip("hidden mode is experimental (D20): set KIWRAP_E2E_HIDDEN=1 to run it")
     found = [i for i in installs if gui_sessions.input_from_events(i)]
     if not found:
         pytest.skip("no installed KiCad carries the display-input patch")
@@ -166,7 +172,7 @@ def test_launch_bind_place_screenshot_detach(gui_install, storage_home, tmp_path
         assert session.socket_path.parent.parent == session.temp_dir
         assert len(str(session.socket_path)) <= current().max_socket_path
         assert session.version().startswith(gui_install.version.split(".")[0])
-        assert session.mode_used == "mirror" and session.cloaked is False  # stock: no patch, visible
+        assert session.mode_used == "view" and session.cloaked is False  # the product path: visible
         assert session.in_job, "the GUI must die with kiwrap (Job Object)"
         status = session.status()
         assert status["alive"] and status["api_socket"] == session.socket_url
@@ -302,12 +308,17 @@ def test_one_gui_at_a_time(gui_install, storage_home, tmp_path, _hygiene):
         other = _scratch_ecc83(gui_install, tmp_path / "second")
         with pytest.raises(gui_sessions.GuiBusyError):
             gui_sessions.launch(gui_install, other.dir, editor="pcb", storage_home=storage_home)
-        # hidden mode is refused honestly on a stock install
+        # hidden mode is refused honestly on a stock install; the older spellings resolve to view
         if not gui_sessions.input_from_events(gui_install):
             with pytest.raises(gui_sessions.GuiUnsupportedError):
                 gui_sessions.GuiSession(
                     install=gui_install, project_dir=other.dir, mode="hidden", storage_home=storage_home
                 )._resolve_mode()
+        for spelling in ("view", "auto", "mirror"):
+            resolved = gui_sessions.GuiSession(
+                install=gui_install, project_dir=other.dir, mode=spelling, storage_home=storage_home
+            )._resolve_mode()
+            assert resolved == ("view", False), spelling
     finally:
         session.close()
     assert not gui_sessions.live_gui_sessions()
@@ -320,7 +331,7 @@ def test_kw_live_tool_round_trip(gui_install, storage_home, tmp_path, monkeypatc
     project = _scratch_ecc83(gui_install, tmp_path)
     ctx = _ctx(storage_home)
     launched = live_tool.run(
-        ctx, live_tool.LiveArgs(action="launch", project=str(project.dir), editor="pcb", mode="auto")
+        ctx, live_tool.LiveArgs(action="launch", project=str(project.dir), editor="pcb")
     )
     sid = launched.data["session_id"]
     try:
@@ -328,7 +339,7 @@ def test_kw_live_tool_round_trip(gui_install, storage_home, tmp_path, monkeypatc
         assert launched.data["token"] and launched.data["install"] == gui_install.key()
         assert launched.provider_used == f"gui:{gui_install.version}"
         assert [e for e in launched.data["editors"] if e["kind"] == "pcb"]
-        assert launched.data["mode_used"] == "mirror" and launched.data["cloaked"] is False
+        assert launched.data["mode_used"] == "view" and launched.data["cloaked"] is False
         # status by id, by project, and by "the only one"
         for args in (
             live_tool.LiveArgs(action="status", session_id=sid),
@@ -373,7 +384,7 @@ def test_kw_live_tool_round_trip(gui_install, storage_home, tmp_path, monkeypatc
     assert getattr(exc.value, "code", "") == "E_BAD_ARGS"
 
 
-# ---- hidden mode on a build carrying mr/display-input ------------------------------------------------------
+# ---- hidden mode on a build carrying mr/display-input (experimental, opt-in: KIWRAP_E2E_HIDDEN=1) ---------
 
 
 def test_hidden_mode_cloaks_the_editor(display_install, storage_home, tmp_path, _hygiene):
@@ -397,15 +408,12 @@ def test_hidden_mode_cloaks_the_editor(display_install, storage_home, tmp_path, 
         assert len(session.board().get_footprints()) == 15
         record = json.loads(session.record.read_text(encoding="utf-8"))
         assert record["pid"] == session.pid and record["locks"]
-        # auto mode on this build also picks hidden (resolved without launching)
-        auto = gui_sessions.GuiSession(
-            install=display_install, project_dir=project.dir, mode="auto", storage_home=storage_home
-        )
-        assert auto._resolve_mode() == ("hidden", True)
-        mirror = gui_sessions.GuiSession(
-            install=display_install, project_dir=project.dir, mode="mirror", storage_home=storage_home
-        )
-        assert mirror._resolve_mode() == ("mirror", False)
+        # D20: even on this build the default (and every non-hidden spelling) stays the view
+        for spelling in ("view", "auto", "mirror"):
+            other = gui_sessions.GuiSession(
+                install=display_install, project_dir=project.dir, mode=spelling, storage_home=storage_home
+            )
+            assert other._resolve_mode() == ("view", False), spelling
     finally:
         pid = session.pid
         session.close()

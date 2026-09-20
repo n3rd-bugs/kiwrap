@@ -200,7 +200,7 @@ export function registerCommands(deps: Deps): void {
     session.live = { kind: 'launching' };
     session.fire();
     try {
-      const r = await server.live({ action: 'launch', project: p.pro, editor, mode: 'auto', target_kicad: kicadInstallSetting() });
+      const r = await server.live({ action: 'launch', project: p.pro, editor, mode: 'view', target_kicad: kicadInstallSetting() });
       session.live = { kind: 'running', session: r.data };
       session.log(`kw_live launch: session ${r.data.session_id} pid ${r.data.pid} (${r.data.install})`);
       void vscode.window.showInformationMessage(

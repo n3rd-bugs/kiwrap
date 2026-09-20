@@ -9,7 +9,7 @@
 </head>
 <body>
 <div id="viewport" data-vscode-context='{"preventDefaultContextMenuItems": true, "webviewSection": "kiwrap.live"}'>
-  <div id="stage" tabindex="0" aria-label="Live KiCad view">
+  <div id="stage" tabindex="0" aria-label="Live view of the KiCad editor">
     <canvas id="canvas" width="1" height="1"></canvas>
     <div id="cursor" class="hidden"></div>
   </div>
@@ -20,13 +20,13 @@
   </div>
   <div id="hud" data-mode="view" data-conn="idle">
     <span id="hud-title">no surface</span>
-    <span id="hud-mode" class="pill">view-only</span>
+    <span id="hud-mode" class="pill">live view</span>
     <span id="hud-conn" class="pill">idle</span>
     <span id="hud-size"></span>
     <span id="hud-fps">0 fps</span>
     <span id="hud-kbps">0 kbit/s</span>
     <span id="hud-lat">lat -</span>
-    <button id="btn-raise" title="Bring the real KiCad window to the front">Raise KiCad</button>
+    <button id="btn-raise" class="primary" title="Bring the real KiCad window to the front to edit by hand (double-click on the picture does the same)">Raise KiCad</button>
     <button id="btn-lock" class="hidden" title="Toggle pointer lock">Lock pointer</button>
     <button id="btn-hud" title="Collapse the HUD">&#9662;</button>
   </div>

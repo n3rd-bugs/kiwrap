@@ -16,7 +16,7 @@ const id = (re) => { const m = typesSrc.match(re); if (!m) { throw new Error(`ty
 
 const EDITOR = id(/LIVE_EDITOR_VIEW_TYPE = '([^']+)'/);
 const PANEL = id(/LIVE_PANEL_VIEW_TYPE = '([^']+)'/);
-const CTX = Object.fromEntries([...typesSrc.matchAll(/^\s+(shield|shieldPalette|active): '(kiwrap\.live\.\w+)',$/gm)].map((m) => [m[1], m[2]]));
+const CTX = Object.fromEntries([...typesSrc.matchAll(/^\s+(shield|shieldPalette|input|active): '(kiwrap\.live\.\w+)',$/gm)].map((m) => [m[1], m[2]]));
 const CMD = Object.fromEntries([...typesSrc.matchAll(/^\s+(\w+): '(kiwrap\.live\.\w+)',$/gm)].filter((m) => !(m[1] in CTX)).map((m) => [m[1], m[2]]));
 const chordsSrc = fs.readFileSync(path.join(liveDir, 'chords.ts'), 'utf8');
 const arr = (name) => {
@@ -35,21 +35,23 @@ const kbSrc = fs.readFileSync(path.join(liveDir, 'keybindings.ts'), 'utf8');
 const focusNegatives = [...(kbSrc.match(/FOCUS_NEGATIVES = \[([^\]]+)\]/)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]);
 if (!focusNegatives.length) { throw new Error('keybindings.ts: FOCUS_NEGATIVES not found'); }
 const focusClause = focusNegatives.map((k) => `!${k}`).join(' && ');
+// `input` (keybindings.ts): the shield is armed only while an experimental input mode injects; on the
+// product path (the live view) the key is false and VS Code's keyboard behaviour is untouched (D20)
 const keybindings = [
-  ...chords.chords.map((key) => ({ command: CMD.forwardKey, key, args: { key }, when: `${CTX.shield} && ${activeClause} && ${focusClause}` })),
-  ...chords.palette.map((key) => ({ command: CMD.forwardKey, key, args: { key }, when: `${CTX.shield} && ${CTX.shieldPalette} && ${activeClause} && ${focusClause}` })),
+  ...chords.chords.map((key) => ({ command: CMD.forwardKey, key, args: { key }, when: `${CTX.shield} && ${CTX.input} && ${activeClause} && ${focusClause}` })),
+  ...chords.palette.map((key) => ({ command: CMD.forwardKey, key, args: { key }, when: `${CTX.shield} && ${CTX.input} && ${CTX.shieldPalette} && ${activeClause} && ${focusClause}` })),
 ];
 
 const fragment = {
   commands: [
     // ext-core's kiwrap.openLive ("Open Live KiCad", in the menus) delegates here; this one takes the
-    // full argument object ({project, editor, file, mode, target_kicad}) and stays palette-only
-    { command: CMD.open, title: 'Live KiCad: Open session (project / editor / mode)', category: 'kiwrap', icon: '$(circuit-board)' },
+    // full argument object ({project, editor, file, inputMode, target_kicad}) and stays palette-only
+    { command: CMD.open, title: 'Live KiCad: Open session (project / editor)', category: 'kiwrap', icon: '$(circuit-board)' },
     { command: CMD.attach, title: 'Live KiCad: Attach to running KiCad (pid)', category: 'kiwrap' },
     { command: CMD.openSurface, title: 'Live KiCad: Show KiCad window in a tab (3D viewer, ...)', category: 'kiwrap' },
     { command: CMD.close, title: 'Live KiCad: Close session', category: 'kiwrap' },
     { command: CMD.status, title: 'Live KiCad: Status', category: 'kiwrap' },
-    { command: CMD.raise, title: 'Live KiCad: Raise KiCad window', category: 'kiwrap' },
+    { command: CMD.raise, title: 'Live KiCad: Raise KiCad (bring the window to the front)', category: 'kiwrap' },
     { command: CMD.screenshot, title: 'Live KiCad: Screenshot surface', category: 'kiwrap' },
     { command: CMD.forwardKey, title: 'Live KiCad: Forward key (internal)', category: 'kiwrap' },
   ],
@@ -70,15 +72,15 @@ const fragment = {
       // executables are machine-scoped: a repository's .vscode/settings.json must not be able to point them at its own binaries (finding 14)
       'kiwrap.live.helperPath': { type: 'string', default: '', scope: 'machine', description: 'Path of kiwrap-live.exe. Empty = <extension>/bin/kiwrap-live.exe, then helper/target/{release,debug}/kiwrap-live.exe next to the extension folder (dev). A .js/.mjs path is run with node (tests). Machine scope: user settings only.' },
       'kiwrap.live.nodePath': { type: 'string', default: '', scope: 'machine', description: 'Node executable used for a .js helper (tests). Empty = the extension host itself (ELECTRON_RUN_AS_NODE). Machine scope: user settings only.' },
-      'kiwrap.live.mode': { type: 'string', enum: ['auto', 'hidden', 'mirror', 'view'], default: 'auto', enumDescriptions: ['hidden when the launched install carries mr/display-input, otherwise view-only', 'hidden KiCad (cloaked, input by window messages); needs a build with mr/display-input', 'KiCad visible on the desktop, mirrored and driven from the tab (stock KiCad, opt-in)', 'capture only; a click raises the real window'], description: 'How the Live KiCad tab treats input (docs/DISPLAY.md 12.6).' },
-      'kiwrap.live.mirrorInjector': { type: 'string', enum: ['hybrid', 'mirror'], default: 'hybrid', enumDescriptions: ['posted input with a borrowed cursor (VS Code keeps the foreground; docs/DISPLAY.md 12.4)', 'SendInput (KiCad must be visible and foreground; the first spike\'s injector)'], description: 'Which helper injector the "mirror" mode uses on stock KiCad.' },
-      'kiwrap.live.shieldKeys': { type: 'boolean', default: true, description: 'While a Live KiCad tab is active, swallow the VS Code keybindings a KiCad user would press (Ctrl+W, Ctrl+P, F5, ...).' },
+      'kiwrap.live.raiseOnDoubleClick': { type: 'boolean', default: true, description: 'Live view: a double-click on the picture raises the real KiCad window (the same as the tab\'s "Raise KiCad" button). A single click only focuses the tab.' },
+      'kiwrap.live.inputMode': { type: 'string', enum: ['none', 'mirror', 'hybrid', 'events'], default: 'none', enumDescriptions: ['the live view (default, the supported mode): the tab shows the real KiCad editor live; to edit by hand, raise KiCad', 'EXPERIMENTAL, unsupported: drive the visible KiCad from the tab with SendInput', 'EXPERIMENTAL, unsupported: drive the visible KiCad from the tab with posted input and a borrowed cursor', 'EXPERIMENTAL, unsupported: cloaked KiCad driven with posted messages; needs a fork build carrying mr/display-input, falls back to the live view otherwise'], description: 'EXPERIMENTAL. Anything but "none" injects the tab\'s mouse and keyboard into KiCad; these modes are unsupported research paths (docs/DECISIONS.md D20) and may leave KiCad or the pointer in an odd state. The keybinding shield is armed only while an input mode is active.' },
+      'kiwrap.live.shieldKeys': { type: 'boolean', default: true, description: 'While an EXPERIMENTAL input mode injects into a focused Live KiCad tab, swallow the VS Code keybindings a KiCad user would press (Ctrl+W, Ctrl+P, F5, ...). Has no effect in the live view (kiwrap.live.inputMode = none): VS Code\'s keys stay VS Code\'s.' },
       'kiwrap.live.keepCommandPalette': { type: 'boolean', default: true, description: 'Keep Ctrl+Shift+P / F1 for VS Code even while the shield is on.' },
-      'kiwrap.live.pointerLock': { type: 'boolean', default: false, description: 'Lock the pointer on click (mirror / hidden modes) so drags never leave the tab. Esc releases it.' },
-      'kiwrap.live.hud': { type: 'boolean', default: true, description: 'Show the fps / latency / mode HUD in the tab.' },
+      'kiwrap.live.pointerLock': { type: 'boolean', default: false, description: 'EXPERIMENTAL input modes: lock the pointer on click so drags never leave the tab. Esc releases it.' },
+      'kiwrap.live.hud': { type: 'boolean', default: true, description: 'Show the HUD in the tab (surface, fps / latency, the "Raise KiCad" button).' },
       'kiwrap.live.fit': { type: 'string', enum: ['fit', 'native'], default: 'fit', description: 'fit = scale the KiCad frame down to the tab; native = 1 surface px per device px, the tab scrolls when the frame is larger.' },
-      'kiwrap.live.fitWindowToTab': { type: 'boolean', default: true, description: 'In hidden and mirror modes, size the captured KiCad window to the tab (physical pixels) so the stream is 1:1 and the menus, toolbars and panels stay legible. View-only sessions leave the desktop window alone.' },
-      'kiwrap.live.hiddenCloseDelayMs': { type: 'number', default: 1500, description: 'Grace period before a hidden tab closes its stream (it reconnects and resyncs when shown again).' },
+      'kiwrap.live.fitWindowToTab': { type: 'boolean', default: true, description: 'EXPERIMENTAL input modes only: size the captured KiCad window to the tab (physical pixels) so the stream is 1:1 and the menus, toolbars and panels stay legible. The live view never touches the desktop window.' },
+      'kiwrap.live.hiddenCloseDelayMs': { type: 'number', default: 1500, description: 'Grace period before a tab that is no longer visible closes its stream (it reconnects and resyncs when shown again).' },
       'kiwrap.live.autoOpen3d': { type: 'boolean', default: false, description: 'Open a tab automatically when KiCad shows a 3D viewer.' },
       'kiwrap.live.retainContextWhenHidden': { type: 'boolean', default: true, description: 'Keep Live KiCad webviews alive while hidden (faster tab switches, more memory).' },
     },

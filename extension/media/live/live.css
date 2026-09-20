@@ -13,8 +13,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--vscode
 #hud.focused { border-color: var(--vscode-focusBorder, #007fd4); }
 #hud.collapsed > :not(#btn-hud) { display: none; }
 #hud .pill { padding: 0 6px; border-radius: 8px; background: #444; }
-#hud[data-mode="hidden"] #hud-mode { background: #2c6; color: #000; }
-#hud[data-mode="mirror"] #hud-mode { background: #fa3; color: #000; }
+#hud[data-mode="view"] #hud-mode { background: #285; }
+#hud[data-mode="hidden"] #hud-mode, #hud[data-mode="mirror"] #hud-mode { background: #fa3; color: #000; }
+#btn-raise.primary { font-weight: 600; }
 #hud[data-conn="connected"] #hud-conn { background: #285; }
 #hud[data-conn="disconnected"] #hud-conn, #hud[data-conn="connecting"] #hud-conn { background: #a52; }
 button { font: inherit; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #fff); cursor: pointer; }

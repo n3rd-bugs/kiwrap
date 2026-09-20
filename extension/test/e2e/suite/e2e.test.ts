@@ -1,19 +1,25 @@
 /**
- * The Phase 2 end-to-end, for real, inside an Extension Development Host (test/e2e/runTest.ts):
+ * The Phase 2 end-to-end, for real, inside an Extension Development Host (test/e2e/runTest.ts).
+ * The product path (docs/DECISIONS.md D20: the live view of a stock KiCad, native interaction):
  *
  *  1. activate; Configure Claude Code writes .mcp.json (+ CLAUDE.md block, skill copy)
  *  2. the .kicad_pcb opens in the kiwrap.preview custom editor and renders
- *  3. Open Live KiCad: kw_live launches a sandboxed stock KiCad (view-only on a stock build), the
- *     Rust helper attaches, the kiwrap.live custom editor streams the real pcbnew frame; the
- *     .kicad_sch tab shows eeschema (a second, schematic session)
+ *  3. Open Live KiCad: kw_live launches a sandboxed stock KiCad in view mode (a visible window,
+ *     never activated), the Rust helper attaches with --inject none, the kiwrap.live custom editor
+ *     streams the real pcbnew frame; "Raise KiCad" brings the window to the front
+ *     (GetForegroundWindow verified); the .kicad_sch tab shows eeschema (a second, schematic
+ *     session); the same on stock 10.0.6 when it is installed
  *  4. an agent-style edit through a SECOND kiwrap MCP client (test/e2e/agent.py, its own
  *     `kiwrap serve`): kw_pcb_place on the bound project -> the footprint moves in the live tab
  *     (frame timing + before/after screenshots)
- *  5. Run ERC / DRC -> Problems panel entries with locations, while the session is live
- *  6. hidden mode on a build carrying mr/display-input: KiCad cloaked (nothing on the desktop),
- *     input from the tab (click, wheel, Home, select-all + R read back over IPC, dialog), the
- *     user's cursor and foreground untouched
- *  7. close everything: no KiCad / helper processes left, the project's lock files gone
+ *  5. Run ERC / DRC -> Problems panel entries with locations, while the session is live; the
+ *     keybinding shield stays disarmed (VS Code's keys are VS Code's in the live view)
+ *  6. close everything: no KiCad / helper processes left, the project's lock files gone
+ *
+ * Opt-in (KIWRAP_E2E_HIDDEN=1 or an install root; the experimental, parked path): the cloaked
+ * mode on a build carrying mr/display-input - KiCad invisible on the desktop, input from the tab
+ * (click, wheel, Home, select-all + R read back over IPC, dialog), the user's cursor and
+ * foreground untouched, the shield armed.
  *
  * Evidence: PNGs under KIWRAP_E2E_IMG (phase2-*.png, downscaled to stay < 300 KB) and the
  * measurements in <out>/e2e-report.json.
@@ -34,11 +40,17 @@ const OUT = process.env.KIWRAP_E2E_OUT ?? path.join(WS, '..', 'out');
 const IMG = process.env.KIWRAP_E2E_IMG ?? OUT;
 const UDD = process.env.KIWRAP_E2E_UDD ?? '';
 const STOCK = process.env.KIWRAP_E2E_STOCK ?? '10.99';
+/** The second stock install to open the live view on (a version spec kw_env lists); '' / 'skip' skips that step. */
+const STOCK2 = process.env.KIWRAP_E2E_STOCK2 ?? '10.0';
+/** Opt-in: '1' = the first install with gui.input_from_events, a path = that install root, '' / 'skip' = skipped. */
 const HIDDEN = process.env.KIWRAP_E2E_HIDDEN ?? '';
 const PROJECT = path.join(WS, 'ecc83');
 const PRO = path.join(PROJECT, 'ecc83-pp.kicad_pro');
 const PCB = path.join(PROJECT, 'ecc83-pp.kicad_pcb');
 const SCH = path.join(PROJECT, 'ecc83-pp.kicad_sch');
+/** The Phase 1b blinker board (10.0 format): what the 10.0.x live-view step opens, since the ecc83 copy is re-saved in the 10.99 format by then. */
+const BLINKER_PROJECT = path.join(WS, 'blinker');
+const BLINKER_PCB = path.join(BLINKER_PROJECT, 'blinky.kicad_pcb');
 const CAPTURE = path.resolve(__dirname, '..', '..', '..', '..', 'test', 'e2e', 'capture.ps1');
 const AGENT = path.resolve(__dirname, '..', '..', '..', '..', 'test', 'e2e', 'agent.py');
 
@@ -97,6 +109,34 @@ function captureRect(name: string, r: Surface['rect_px']): string {
 /** Bring the dev host to the foreground and type a chord (capture.ps1 -Mode keys); `sent` is false when it could not. */
 function sendKeys(keys: string): { sent: boolean; foreground_pid?: number; host_pid?: number; reason?: string } {
   return JSON.parse(ps(['-Mode', 'keys', '-Udd', UDD, '-Keys', keys]));
+}
+/** Bring the dev host back to the foreground (after "Raise KiCad" handed it to KiCad). */
+function activateHost(): { activated: boolean; foreground_pid?: number; host_pid?: number } {
+  return JSON.parse(ps(['-Mode', 'activate', '-Udd', UDD]));
+}
+/**
+ * "Raise KiCad" from the tab (the primary action of the live view) and verify with
+ * GetForegroundWindow that the real KiCad window took the foreground; then hand it back to the
+ * dev host so the run continues in VS Code.
+ */
+async function raiseAndVerify(view: LiveView, kicadPid: number, how: 'button' | 'dblclick' | 'command'): Promise<{ how: string; ms: number; foreground_after: { hwnd: number; pid: number; title: string }; kicad_foreground: boolean; host_back: boolean }> {
+  const before = (await snap(view)) as Snapshot & { raiseCount?: number };
+  const t0 = Date.now();
+  if (how === 'button') { view.testDispatch({ kind: 'mouse', name: 'click', target: 'btn-raise', init: {} }); }
+  else if (how === 'dblclick') { const r = before.canvasRect; view.testDispatch({ kind: 'mouse', name: 'dblclick', init: { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 0 } }); }
+  else { await vscode.commands.executeCommand('kiwrap.live.raise'); }
+  let fg = probe().foreground;
+  for (let i = 0; i < 40 && fg.pid !== kicadPid; i++) { await sleep(100); fg = probe().foreground; }
+  const ms = Date.now() - t0;
+  const kicadForeground = fg.pid === kicadPid;
+  if (how !== 'command') {
+    const after = (await snap(view)) as Snapshot & { raiseCount?: number; lastRaise?: string };
+    assert.ok((after.raiseCount ?? 0) > (before.raiseCount ?? 0) && after.lastRaise === how, `the page sent the raise (${how}): ${JSON.stringify({ before: before.raiseCount, after: after.raiseCount, last: after.lastRaise })}`);
+  }
+  await sleep(300);
+  const back = activateHost();
+  await sleep(300);
+  return { how, ms, foreground_after: fg, kicad_foreground: kicadForeground, host_back: !!back.activated };
 }
 function untitledEditors(): number {
   return vscode.window.tabGroups.all.flatMap((g) => g.tabs).filter((t) => t.input instanceof vscode.TabInputText && t.input.uri.scheme === 'untitled').length;
@@ -261,7 +301,7 @@ describe('kiwrap Phase 2 end to end (real server, helper, KiCad GUIs, second MCP
     assert.ok(fs.statSync(shot).size > 1000);
   });
 
-  it('4. Open Live KiCad (stock, view-only): sandboxed pcbnew streams into the .kicad_pcb tab', async () => {
+  it('4. Open Live KiCad (stock): the live view of a sandboxed pcbnew streams into the .kicad_pcb tab; Raise KiCad brings the window to the front', async () => {
     const t0 = Date.now();
     const fg0 = probe();
     await vscode.workspace.getConfiguration('kiwrap').update('kicadInstall', STOCK, vscode.ConfigurationTarget.Workspace);
@@ -273,22 +313,35 @@ describe('kiwrap Phase 2 end to end (real server, helper, KiCad GUIs, second MCP
     const fg1 = probe();
     const owner = await ownerStatus();
     assert.notEqual(fg1.foreground.pid, kicadPid, `KiCad holds the foreground after launch: ${JSON.stringify(fg1.foreground)} (before: ${JSON.stringify(fg0.foreground)}; supervisor: ${JSON.stringify(owner.foreground)})`);
-    assert.equal(st.mode, 'view', `stock build => view-only, got ${st.mode}`);
+    assert.equal(st.mode, 'view', `the live view, got ${st.mode}`);
+    assert.equal(owner.mode_used, 'view', `kw_live resolved mode_used ${owner.mode_used}`);
     assert.ok(st.helper && st.helper.port > 0, `helper ${JSON.stringify(st.helper)}`);
     const pcb = await waitFor('pcb surface', () => api.live.sessions.surfaces.find('pcb'), 30000);
-    assert.ok(!pcb.cloaked, 'stock build: not cloaked');
+    assert.ok(!pcb.cloaked, 'the live view: not cloaked');
     pcbView = await waitFor('kiwrap.live editor for the board', () => api.live.editors.viewFor(PCB), 30000);
     pcbView.panel.reveal(undefined, false);
-    const s = await waitFor('frames in the tab', async () => {
+    const s = await waitFor('sized frames in the tab', async () => {
       const x = await snap(pcbView);
-      return x.connected && x.stats.frames >= 1 && x.surface === pcb.id ? x : null;
-    }, 60000, 250);
+      return x.connected && x.stats.frames >= 1 && x.surface === pcb.id && x.frameW > 400 && x.frameH > 300 ? x : null;
+    }, 90000, 250) as Snapshot & { hudMode?: string; raiseVisible?: boolean };
     const tFrame = Date.now() - t0;
     assert.ok(s.frameW > 400 && s.frameH > 300, `frame ${s.frameW}x${s.frameH}`);
     assert.equal(s.mode, 'view');
+    assert.equal(s.hudMode, 'live view', 'the HUD names the live view');
+    assert.equal(s.raiseVisible, true, 'the Raise KiCad button is there');
     const helperShot = await saveHelperShot(api, pcb.id, 'phase2-live-pcb-helper');
     await sleep(500);
     const hostShot = captureHost('phase2-live-pcb-tab');
+    // Raise KiCad (the tab's button, then a double-click on the picture): the real window takes the
+    // foreground (GetForegroundWindow), the way a person takes over; the dev host is brought back
+    const raiseButton = await raiseAndVerify(pcbView, kicadPid, 'button');
+    console.log(`[e2e] raise (button): KiCad foreground=${raiseButton.kicad_foreground} in ${raiseButton.ms} ms, host back=${raiseButton.host_back}`);
+    const raiseDbl = await raiseAndVerify(pcbView, kicadPid, 'dblclick');
+    console.log(`[e2e] raise (double-click): KiCad foreground=${raiseDbl.kicad_foreground} in ${raiseDbl.ms} ms, host back=${raiseDbl.host_back}`);
+    report.raise = { button: raiseButton, dblclick: raiseDbl };
+    assert.ok(raiseButton.kicad_foreground, `Raise KiCad (button) did not bring KiCad to the front: ${JSON.stringify(raiseButton.foreground_after)}`);
+    assert.ok(raiseDbl.kicad_foreground, `a double-click did not bring KiCad to the front: ${JSON.stringify(raiseDbl.foreground_after)}`);
+    pcbView.panel.reveal(undefined, false);
     // the core model mirrors the live state (tree / status bar)
     assert.equal(api.session.live.kind, 'running');
     // the agent's server (a second process) sees the session and the registered helper
@@ -379,10 +432,12 @@ describe('kiwrap Phase 2 end to end (real server, helper, KiCad GUIs, second MCP
     assert.ok(startToFrame < 3000, `the tab repainted ${startToFrame} ms after the agent's call`);
   });
 
-  it('5b. the keybinding shield stays out of the sidebar and the terminal (finding 6)', async function () {
-    // Ctrl+N with the Explorer focused must open an untitled editor although a live tab is the
-    // active editor; with the live tab focused the shield swallows it. Real keys (SendKeys), so the
-    // dev host must be foreground: skipped, not failed, when the OS refuses that.
+  it('5b. the keybinding shield is disarmed in the live view: VS Code keys stay VS Code keys (D20)', async function () {
+    // kiwrap.live.inputMode is none (the product path), so the 178-chord shield is not bound
+    // (context key kiwrap.live.input is false): Ctrl+N opens an untitled editor with the Explorer
+    // focused AND with the live tab focused. Real keys (SendKeys), so the dev host must be
+    // foreground: skipped, not failed, when the OS refuses that.
+    assert.equal(api.live.sessions.inputActive, false, 'no input mode injects in the live view');
     pcbView.panel.reveal(undefined, false);
     await vscode.commands.executeCommand('workbench.view.explorer');
     await sleep(500);
@@ -401,13 +456,13 @@ describe('kiwrap Phase 2 end to end (real server, helper, KiCad GUIs, second MCP
     const r2 = sendKeys('^n');
     await sleep(800);
     const withTab = untitledEditors() - before2;
-    report.shield = { sidebar_focus_opened: withSidebar, live_tab_focus_opened: withTab, r1, r2 };
-    console.log(`[e2e] shield: Ctrl+N opened ${withSidebar} editor(s) with the sidebar focused, ${withTab} with the live tab focused`);
+    report.shield = { input_mode: 'none', input_active: api.live.sessions.inputActive, sidebar_focus_opened: withSidebar, live_tab_focus_opened: withTab, r1, r2 };
+    console.log(`[e2e] shield (live view, disarmed): Ctrl+N opened ${withSidebar} editor(s) with the sidebar focused, ${withTab} with the live tab focused`);
     await vscode.commands.executeCommand('workbench.action.closeAllEditors').then(undefined, () => undefined);
     await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(PCB), 'kiwrap.live');
     pcbView = await waitFor('kiwrap.live editor for the board', () => api.live.editors.viewFor(PCB), 30000);
     assert.equal(withSidebar, 1, 'Ctrl+N reaches VS Code while the Explorer has the focus');
-    if (r2.sent) { assert.equal(withTab, 0, 'Ctrl+N is shielded while the live tab has the focus'); }
+    if (r2.sent) { assert.equal(withTab, 1, 'Ctrl+N reaches VS Code while the live tab has the focus (no shield in the live view)'); }
   });
 
   it('6. Run ERC / DRC while the session is live: Problems panel entries with locations', async () => {
@@ -485,34 +540,84 @@ describe('kiwrap Phase 2 end to end (real server, helper, KiCad GUIs, second MCP
     const sch = await waitFor('sch surface', () => api.live.sessions.surfaces.find('sch'), 60000);
     const schView = await waitFor('kiwrap.live editor for the schematic', () => api.live.editors.viewFor(SCH), 30000);
     schView.panel.reveal(undefined, false);
-    const s = await waitFor('sch frames', async () => {
+    const s = await waitFor('sized sch frames', async () => {
       const x = await snap(schView);
-      return x.connected && x.stats.frames >= 1 && x.surface === sch.id ? x : null;
-    }, 60000, 250);
+      return x.connected && x.stats.frames >= 1 && x.surface === sch.id && x.frameW > 400 && x.frameH > 300 ? x : null;
+    }, 90000, 250);
+    assert.equal(s.mode, 'view');
     const helperShot = await saveHelperShot(api, sch.id, 'phase2-live-sch-helper');
     await sleep(400);
     const hostShot = captureHost('phase2-live-sch-tab');
-    report.live_sch = { pid: st.pid, mode: st.mode, surface: { id: sch.id, title: sch.title, rect_px: sch.rect_px }, launch_to_first_frame_ms: Date.now() - t0, frame: { w: s.frameW, h: s.frameH }, helper_screenshot: helperShot, host_screenshot: hostShot };
+    const raise = await raiseAndVerify(schView, st.pid!, 'button');
+    console.log(`[e2e] raise (sch, button): KiCad foreground=${raise.kicad_foreground} in ${raise.ms} ms`);
+    report.live_sch = { pid: st.pid, mode: st.mode, surface: { id: sch.id, title: sch.title, rect_px: sch.rect_px }, launch_to_first_frame_ms: Date.now() - t0, frame: { w: s.frameW, h: s.frameH }, helper_screenshot: helperShot, host_screenshot: hostShot, raise };
+    assert.ok(raise.kicad_foreground, `Raise KiCad from the schematic tab did not bring eeschema to the front: ${JSON.stringify(raise.foreground_after)}`);
     const pid = st.pid!;
     await vscode.commands.executeCommand('kiwrap.closeLive');
     await waitFor('eeschema exited', () => !pidAlive(pid), 20000, 200);
     await waitFor('lock files removed', () => fs.readdirSync(PROJECT).filter((f) => f.startsWith('~') && f.endsWith('.lck')).length === 0, 10000, 200);
   });
 
-  it('9. hidden mode on the display-input build: cloaked KiCad, input from the tab, cursor untouched', async function () {
+  it('8b. the live view on the second stock install (10.0.x): pcbnew streams, Raise KiCad works', async function () {
     const env = api.session.env!;
-    const hiddenRoot = HIDDEN === 'skip' ? '' : HIDDEN || env.installs.find((i) => i.capabilities?.['gui.input_from_events'] === true)?.root || '';
+    const install = STOCK2 && STOCK2 !== 'skip' ? env.installs.find((i) => i.version.startsWith(STOCK2) || path.resolve(i.root).toLowerCase() === path.resolve(STOCK2).toLowerCase()) : undefined;
+    if (!install) {
+      report.live_pcb_stock2 = { skipped: `no ${STOCK2 || '(none)'} install` };
+      this.skip();
+      return;
+    }
+    // the ecc83 copy has been re-saved in the 10.99 format by the earlier steps (kw_pcb_place's file
+    // writer, the DRC refill), which a 10.0.x refuses: open the 10.0-format blinker board instead
+    const project = fs.existsSync(BLINKER_PCB) ? BLINKER_PROJECT : PROJECT;
+    const board = fs.existsSync(BLINKER_PCB) ? BLINKER_PCB : PCB;
+    const t0 = Date.now();
+    await vscode.commands.executeCommand('kiwrap.live.open', { project, editor: 'pcb', file: board, target_kicad: install.root });
+    const st = await waitFor('live session (stock 2)', () => (api.live.status().pid ? api.live.status() : null), 240000, 250);
+    const pid = st.pid!;
+    const owner = await vscode.commands.executeCommand<{ data: Record<string, unknown> }>('kiwrap.core.callTool', 'kw_live', { action: 'status', project }).then((r) => ({ mode_used: r?.data?.mode_used as string, cloaked: r?.data?.cloaked as boolean, foreground: { taken: r?.data?.foreground_taken as boolean, restored: r?.data?.foreground_restored as boolean | null }, ready_after_s: r?.data?.ready_after_s as number }));
+    assert.equal(st.mode, 'view');
+    assert.equal(owner.mode_used, 'view');
+    const pcb = await waitFor('pcb surface (stock 2)', () => api.live.sessions.surfaces.find('pcb'), 30000);
+    const view = await waitFor('kiwrap.live editor for the board', () => api.live.editors.viewFor(board), 30000);
+    view.panel.reveal(undefined, false);
+    // the predicate waits for a sized frame: the first frames of a starting editor can be 0x0
+    // (the window is still being laid out) and a surface re-bind resets the page's size
+    const s = await waitFor('sized frames (stock 2)', async () => {
+      const x = await snap(view);
+      return x.connected && x.stats.frames >= 1 && x.surface === pcb.id && x.frameW > 400 && x.frameH > 300 ? x : null;
+    }, 90000, 250);
+    const tFrame = Date.now() - t0;
+    const helperShot = await saveHelperShot(api, pcb.id, 'phase2-live-pcb-1000-helper');
+    await sleep(400);
+    const hostShot = captureHost('phase2-live-pcb-1000-tab');
+    const raise = await raiseAndVerify(view, pid, 'button');
+    console.log(`[e2e] stock 2 (${install.version}): first frame ${tFrame} ms, frame ${s.frameW}x${s.frameH}, raise foreground=${raise.kicad_foreground} in ${raise.ms} ms`);
+    const dialogs = api.live.sessions.surfaces.get(pcb.id)?.dialogs ?? [];
+    report.live_pcb_stock2 = { install: { version: install.version, root: install.root }, project, pid, mode: st.mode, supervisor: owner, launch_to_first_frame_ms: tFrame, frame: { w: s.frameW, h: s.frameH }, surface_title: pcb.title, dialogs: dialogs.map((d) => d.title), helper_screenshot: helperShot, host_screenshot: hostShot, raise };
+    await vscode.commands.executeCommand('kiwrap.closeLive');
+    await waitFor('KiCad (stock 2) exited', () => !pidAlive(pid), 20000, 200);
+    await waitFor('lock files removed', () => fs.readdirSync(project).filter((f) => f.startsWith('~') && f.endsWith('.lck')).length === 0, 10000, 200);
+    assert.ok(s.frameW > 400 && s.frameH > 300, `frame ${s.frameW}x${s.frameH}`);
+    assert.equal(dialogs.length, 0, `the ${install.version} editor opened the board without a dialog (got ${JSON.stringify(dialogs.map((d) => d.title))})`);
+    assert.ok(raise.kicad_foreground && !/error/i.test(raise.foreground_after.title), `Raise KiCad did not bring the ${install.version} PCB editor to the front: ${JSON.stringify(raise.foreground_after)}`);
+  });
+
+  it('9. [opt-in KIWRAP_E2E_HIDDEN] the experimental cloaked mode on a display-input build: input from the tab, cursor untouched, shield armed', async function () {
+    const env = api.session.env!;
+    const optIn = HIDDEN !== '' && HIDDEN !== 'skip' && HIDDEN !== '0';
+    const hiddenRoot = !optIn ? '' : HIDDEN === '1' || HIDDEN === 'true' ? env.installs.find((i) => i.capabilities?.['gui.input_from_events'] === true)?.root || '' : HIDDEN;
     if (!hiddenRoot) {
-      report.hidden = { skipped: 'no install with gui.input_from_events' };
+      report.hidden = { skipped: optIn ? 'no install with gui.input_from_events' : 'opt-in: set KIWRAP_E2E_HIDDEN=1 (experimental, parked under D20)' };
       this.skip();
       return;
     }
     const t0 = Date.now();
     const fg0 = probe();
-    await vscode.commands.executeCommand('kiwrap.live.open', { project: PRO, editor: 'pcb', file: PCB, mode: 'auto', target_kicad: hiddenRoot });
+    await vscode.commands.executeCommand('kiwrap.live.open', { project: PRO, editor: 'pcb', file: PCB, inputMode: 'events', target_kicad: hiddenRoot });
     const st = await waitFor('hidden session', () => (api.live.status().pid ? api.live.status() : null), 240000, 250);
     const pid = st.pid!;
     assert.equal(st.mode, 'hidden', `expected hidden, got ${st.mode}`);
+    assert.equal(api.live.sessions.inputActive, true, 'the events injector arms the shield');
     const owner = await ownerStatus();
     const fg1 = probe();
     console.log(`[e2e] hidden launch: foreground before ${JSON.stringify(fg0.foreground)} after ${JSON.stringify(fg1.foreground)} supervisor ${JSON.stringify(owner.foreground)} ready ${owner.ready_after_s}s`);

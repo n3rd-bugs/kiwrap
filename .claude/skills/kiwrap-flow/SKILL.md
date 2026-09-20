@@ -21,7 +21,10 @@ your decisions. Never guess a library id or a pin position; never edit `.kicad_*
 
 `kw_live` is for humans watching; the agent loop stays data-first. If the person asks to see
 KiCad while you work, `kw_live(action="launch", project=...)` opens a sandboxed KiCad GUI bound
-to the project (the extension shows it live; `kw_pcb_place` moves, `kw_pcb_zones` and
+to the project (a normal window on the desktop, never activated; the extension streams it live
+into the file's tab and the person edits by hand in the real window through `raise` / the tab's
+"Raise KiCad" - keep the default `mode="view"`; `hidden` is an experimental, parked path).
+`kw_pcb_place` moves, `kw_pcb_zones` and
 `kw_pcb_route` commit through it; a rotation, `kw_pcb_route_auto`, `kw_pcb_fix` and a saved
 refill write the file and the GUI reloads it - `data.live_view.reloaded` says so), `screenshot`
 answers "what does it look like", and `detach` closes it when they are done. A `pcbnew` session

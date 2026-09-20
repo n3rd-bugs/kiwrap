@@ -4,20 +4,23 @@
  *
  * Commands (all contributed in contributes.live.json):
  *   kiwrap.live.open        launch KiCad for the workspace project via kw_live, attach the helper,
- *                           open the file's custom editor (args: {project?, editor?, file?, mode?})
+ *                           open the file's custom editor (args: {project?, editor?, file?, inputMode?, target_kicad?})
  *   kiwrap.live.attach      attach the helper to a running KiCad pid (args: {pid, project?, inject?})
  *   kiwrap.live.openSurface pick a captured window (3D viewer, ...) and show it in a panel
  *   kiwrap.live.close       kill the helper and detach/kill the KiCad session
  *   kiwrap.live.status      show the session status
- *   kiwrap.live.raise       bring the real KiCad window to the front (view-only mode)
+ *   kiwrap.live.raise       bring the real KiCad window to the front: the way a person takes over
+ *                           from the live view (the tab's "Raise KiCad" button, a double-click)
  *   kiwrap.live.screenshot  PNG of a surface via the helper (returns base64; optional save)
- *   kiwrap.live.forwardKey  keybinding shield target (swallows the VS Code action)
+ *   kiwrap.live.forwardKey  keybinding shield target (swallows the VS Code action); the shield is
+ *                           armed only while an experimental input mode injects (context key
+ *                           kiwrap.live.input), never on the product path
  */
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { LiveSessionManager, type ModePreference } from './liveSession';
+import { LiveSessionManager, type InputModePreference } from './liveSession';
 import { LiveEditorProvider } from './liveEditor';
 import { LivePanels } from './livePanel';
 import { editorForFile, kindForFile, projectDirFor, tabShapeFor } from './surfaces';
@@ -33,7 +36,14 @@ export interface LiveDeps {
   mediaRoot?: vscode.Uri;
 }
 
-export interface LiveOpenArgs { project?: string; editor?: 'pcb' | 'sch' | 'project'; file?: string; mode?: ModePreference; target_kicad?: string }
+export interface LiveOpenArgs {
+  project?: string;
+  editor?: 'pcb' | 'sch' | 'project';
+  file?: string;
+  /** EXPERIMENTAL: an injecting input mode for this session (default: the kiwrap.live.inputMode setting, `none` = the live view). */
+  inputMode?: InputModePreference;
+  target_kicad?: string;
+}
 /** `allowAnyProcess`: attach to a pid that is not a KiCad editor (tests only; the helper refuses otherwise). */
 export interface LiveAttachArgs { pid: number; project?: string; inject?: InjectMode; allowAnyProcess?: boolean }
 
@@ -78,15 +88,20 @@ export function activateLive(context: vscode.ExtensionContext, deps: LiveDeps = 
   const views = (): LiveView[] => [...editors.views, ...panels.views];
   const activeView = (): LiveView | undefined => views().find((v) => v.panel.active);
 
-  // Context keys for the keybinding shield.
+  // Context keys for the keybinding shield. `input` is set only while the session's helper injects
+  // input (kiwrap.live.inputMode != none, an experimental mode): on the product path (the live
+  // view) it stays false and none of the shield's chords is bound, so VS Code's keyboard behaviour
+  // is untouched (D20).
   const applyContext = async (): Promise<void> => {
     await vscode.commands.executeCommand('setContext', LIVE_CONTEXT_KEYS.shield, cfg().get<boolean>('shieldKeys', true));
     await vscode.commands.executeCommand('setContext', LIVE_CONTEXT_KEYS.shieldPalette, !cfg().get<boolean>('keepCommandPalette', true));
+    await vscode.commands.executeCommand('setContext', LIVE_CONTEXT_KEYS.input, sessions.inputActive);
+    await vscode.commands.executeCommand('setContext', LIVE_CONTEXT_KEYS.active, !!sessions.current);
   };
   void applyContext();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration(LIVE_SETTINGS_SECTION)) { void applyContext(); } }),
-    sessions.onDidChange((s) => { void vscode.commands.executeCommand('setContext', LIVE_CONTEXT_KEYS.active, !!s); }),
+    sessions.onDidChange(() => { void applyContext(); }),
   );
 
   async function resolveProject(args: LiveOpenArgs): Promise<{ project: string; editor: 'pcb' | 'sch' | 'project'; file?: string }> {
@@ -117,7 +132,7 @@ export function activateLive(context: vscode.ExtensionContext, deps: LiveDeps = 
     async open(args = {}) {
       const { project, editor, file } = await resolveProject(args);
       try {
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Live KiCad: starting KiCad...' }, async () => { await sessions.open(project, editor, args.mode, args.target_kicad); });
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Live KiCad: starting KiCad...' }, async () => { await sessions.open(project, editor, args.inputMode, args.target_kicad); });
       } catch (e) {
         // the file's live tab still opens: its card explains the state (a kept session of the
         // other editor kind, a missing helper) and carries the Start button
@@ -136,8 +151,7 @@ export function activateLive(context: vscode.ExtensionContext, deps: LiveDeps = 
           throw new Error(`pid ${args.pid} is ${image || 'not a running process'}, not a KiCad editor (${KICAD_EDITOR_IMAGES.join(', ')}); only KiCad windows are streamed into VS Code`);
         }
       }
-      const pref = cfg().get<ModePreference>('mode', 'auto');
-      const inject: InjectMode = args.inject ?? (pref === 'mirror' ? 'hybrid' : pref === 'hidden' ? 'events' : 'none');
+      const inject: InjectMode = args.inject ?? sessions.inputModeSetting();
       await sessions.attach(args.pid, args.project ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd(), inject, { session: null, allowAnyProcess: !!args.allowAnyProcess });
       return sessions.status();
     },
@@ -162,7 +176,7 @@ export function activateLive(context: vscode.ExtensionContext, deps: LiveDeps = 
     wrap(LIVE_COMMANDS.close, () => api.close()),
     wrap(LIVE_COMMANDS.status, async () => {
       const s = api.status();
-      const text = s.pid ? `Live KiCad: pid ${s.pid}, mode ${s.mode}, helper v${s.helper?.version} on :${s.helper?.port} (restarts ${s.helper?.restarts}), surfaces: ${s.surfaces.map((x) => `${x.kind}${x.cloaked ? '(cloaked)' : ''}`).join(', ') || 'none'}` : 'Live KiCad: no session';
+      const text = s.pid ? `Live KiCad: pid ${s.pid}, ${s.mode === 'view' ? 'live view' : `input mode ${s.mode} (experimental)`}, helper v${s.helper?.version} on :${s.helper?.port} (restarts ${s.helper?.restarts}), surfaces: ${s.surfaces.map((x) => `${x.kind}${x.cloaked ? '(cloaked)' : ''}`).join(', ') || 'none'}` : 'Live KiCad: no session';
       out.appendLine(`[live] ${JSON.stringify(s)}`);
       void vscode.window.showInformationMessage(text);
       return s;

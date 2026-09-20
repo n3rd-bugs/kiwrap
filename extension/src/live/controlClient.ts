@@ -148,7 +148,7 @@ export class ControlClient {
 
   /**
    * WM_CLOSE the top owned dialog of a surface (kiwrap-live `close_dialog`): the way to dismiss a
-   * DIALOG_SHIM whose grid editor eats Esc in hidden mode (docs/research/display/win-input-patch.md 5).
+   * DIALOG_SHIM whose grid editor eats Esc in the experimental cloaked mode (docs/research/display/win-input-patch.md 5).
    */
   async closeDialog(surface: string): Promise<boolean> {
     const m = await this.request({ type: 'close_dialog', surface }, 5000);

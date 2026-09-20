@@ -247,10 +247,10 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
       'kw_live',
       {
         description: 'fake live',
-        inputSchema: { action: z.enum(['launch', 'attach', 'status', 'screenshot', 'detach', 'raise']), project: z.string().optional(), editor: z.enum(['pcb', 'sch', 'project']).optional(), mode: z.enum(['auto', 'hidden', 'mirror']).optional(), session_id: z.string().optional(), max_px: z.number().optional(), surface: z.string().optional() },
+        inputSchema: { action: z.enum(['launch', 'attach', 'status', 'screenshot', 'detach', 'raise']), project: z.string().optional(), editor: z.enum(['pcb', 'sch', 'project']).optional(), mode: z.enum(['view', 'hidden', 'auto', 'mirror']).optional(), session_id: z.string().optional(), max_px: z.number().optional(), surface: z.string().optional() },
       },
       async (args) => {
-        const session = { ok: true, session_id: 'live-1', pid: 4242, install: '10.99.0', api_socket: 'ipc://kicad-live-1', token: 'tok', editors: [args.editor ?? 'pcb'], alive: true, mode: args.mode === 'mirror' ? 'mirror' : 'hidden', project: args.project ?? null };
+        const session = { ok: true, session_id: 'live-1', pid: 4242, install: '10.99.0', api_socket: 'ipc://kicad-live-1', token: 'tok', editors: [args.editor ?? 'pcb'], alive: true, mode: args.mode ?? 'view', mode_used: args.mode === 'hidden' ? 'hidden' : 'view', cloaked: args.mode === 'hidden', project: args.project ?? null };
         if (args.action === 'screenshot') {
           return receipt('kw_live', { ok: true, width: 2, height: 2, bytes: 70 }, {}, PNG_2X2);
         }

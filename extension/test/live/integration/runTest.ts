@@ -44,7 +44,7 @@ async function main(): Promise<number> {
   fs.mkdirSync(path.join(udd, 'User'), { recursive: true }); fs.mkdirSync(extDir, { recursive: true }); fs.mkdirSync(shots, { recursive: true });
   const fakeHelper = path.join(EXT, 'test', 'live', 'fake_helper', 'fake_helper.mjs');
   fs.writeFileSync(path.join(udd, 'User', 'settings.json'), JSON.stringify({
-    'kiwrap.live.helperPath': fakeHelper, 'kiwrap.live.mode': 'auto', 'kiwrap.live.hiddenCloseDelayMs': 500, 'kiwrap.live.hud': true,
+    'kiwrap.live.helperPath': fakeHelper, 'kiwrap.live.inputMode': 'none', 'kiwrap.live.hiddenCloseDelayMs': 500, 'kiwrap.live.hud': true,
     'workbench.startupEditor': 'none', 'update.mode': 'none', 'telemetry.telemetryLevel': 'off', 'security.workspace.trust.enabled': false, 'window.zoomLevel': 0, 'extensions.autoUpdate': false,
   }, null, 2));
   const log = path.join(SCRATCH, 'fake-helper.jsonl');

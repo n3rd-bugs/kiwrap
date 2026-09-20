@@ -43,7 +43,7 @@ function escapeHtml(s: string): string { return s.replace(/[&<>"']/g, (c) => ({ 
 
 export function clientOptions(): WebviewClientOptions {
   const c = vscode.workspace.getConfiguration(LIVE_SETTINGS_SECTION);
-  return { pointerLock: c.get<boolean>('pointerLock', false), hud: c.get<boolean>('hud', true), fit: c.get<'fit' | 'native'>('fit', 'fit'), hiddenCloseDelayMs: c.get<number>('hiddenCloseDelayMs', 1500) };
+  return { pointerLock: c.get<boolean>('pointerLock', false), hud: c.get<boolean>('hud', true), fit: c.get<'fit' | 'native'>('fit', 'fit'), hiddenCloseDelayMs: c.get<number>('hiddenCloseDelayMs', 1500), raiseOnDoubleClick: c.get<boolean>('raiseOnDoubleClick', true) };
 }
 
 export class LiveView implements vscode.Disposable {

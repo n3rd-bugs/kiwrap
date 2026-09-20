@@ -73,6 +73,11 @@ installs (VS Code keeps the foreground; KiCad's own cursor warps and right-click
 xpra as the documented Linux/remote provider behind the same shell contract, informational under D18.
 The patch stays in the private fork with an upstream draft on hold (D19).
 
+> **Superseded by [DECISIONS.md](DECISIONS.md) D20 (§12.8):** only the capture-only live view of a
+> stock KiCad with native interaction (*Raise KiCad*) is the product; the events injector on a
+> cloaked patched build and the hybrid mirror are experimental settings (`kiwrap.live.inputMode`),
+> off by default, and `mr/display-input` stays parked in the fork.
+
 ---
 
 ## 2. What is physically possible
@@ -650,7 +655,12 @@ auto-pan `HasFocus()` path; another Windows virtual desktop as a placement; cloa
 from inside KiCad (`WH_CBT` / `EVENT_OBJECT_SHOW` hook); the guard against hardware keys reaching
 `wxEVT_CHAR_HOOK` twice while the mode is on; the 10.0 stable branch (the patch is on the 10.99 base).
 
-### 12.6 Updated recommendation for the Windows product
+### 12.6 Recommendation as of 2026-09-20 morning (superseded by D20, see §12.8)
+
+> **Superseded by [DECISIONS.md](DECISIONS.md) D20 (§12.8):** the product is shape **A** only;
+> B and C are experimental, off-by-default settings (`kiwrap.live.inputMode`) and
+> `mr/display-input` stays parked in the fork, not in the integration branch. The table and the
+> recommendation below are kept as the record of what was measured and proposed.
 
 Three shapes are now measured; they share the shell, the helper's capture and the surface model, and
 differ only in the injector and where the KiCad windows live:
@@ -687,15 +697,25 @@ without the patch the product is A plus, on consent, B.
 Recommended path A + C for patched builds (D0 + D1 + D2 + D6): **4-5 weeks**; B on stock adds
 **1-1.5 weeks**; the Linux provider is unchanged (2-3 weeks, deferred under D18).
 
-### 12.8 Decisions the owner must take now (supersedes the same-numbered rows of §9)
+### 12.8 Decisions (resolved 2026-09-20 by [DECISIONS.md](DECISIONS.md) D20; the measurements above stand)
 
-| # | Decision | Options (recommendation in bold) | What it changes |
+The owner chose **shape A** of §12.6 - the capture-only live view of a stock KiCad, with native
+interaction (the tab's *Raise KiCad* brings the real window to the front) - because the user sees
+the updates live and the complexity of running KiCad hidden is not wanted. Shapes B and C stay
+measured and in the code as an experimental, off-by-default setting (`kiwrap.live.inputMode`),
+not as product. Row by row:
+
+| # | Decision | Resolution (D20) | Consequence |
 |---|---|---|---|
-| 1 | What is "Live KiCad in VS Code" on Windows? | (a) capture-only view; (b) + hybrid mirror on stock (opt-in); (c) + hidden UI on patched builds; **(d) a + c, with b as the stock opt-in** (§12.6) | (a) 2-2.5 w; (b) +1-1.5 w; (c) +0.5 w and the fork build on the critical path; (d) is the §12.6 plan |
-| 3 | GPL VNC server vs MIT WGC helper | **helper**, settled by measurement (`-shareapp`: 9 fps, a core per idle client, black holes) | TightVNC leaves the product entirely, including the escape hatch |
-| 5 | Patch KiCad in the fork for hidden-window input? | was "defer"; **done as `mr/display-input`; carry it in `kiwrap/<sha>`, keep `cloak` fork-only, hold the MR under D19**, or (b) do not carry it (25 files on hot paths: `tool_dispatcher.cpp`, `wx_view_controls.cpp`, `pcb_selection_tool.cpp`; every base bump rebases it) | carrying it makes C available on every bench/dev build; not carrying it leaves A + B only |
-| 6 | Virtual display driver spike? | **drop** (cloak does the job with the patch; stock builds would still have the SendInput contest) | saves the time-boxed spike |
-| 11 (new) | Popup menus and drop-downs in hidden mode C | (a) helper captures the monitor region while a menu is open (winstream's monitor crop; the menu flashes on the desktop); (b) cloak them from inside KiCad with a `WH_CBT`/`EVENT_OBJECT_SHOW` hook (**untested**, menus are fragile under per-window capture); **(c) ship (a) first, spike (b) for 2-3 days** | (a) is a visible flash per menu; (b) keeps KiCad fully invisible |
-| 12 (new) | Tab model for a project session | **custom editor per `.kicad_pcb`/`.kicad_sch` + a 3D `WebviewPanel` + the manager left uncaptured** (measured shape) vs one project panel with in-page windows (untested) | the per-file shape is what the `.kicad_*` custom editors already give; the 3D viewer and manager need commands |
-| 13 (new) | Accept the hidden mode's remaining limits | tooltips absent (all Windows routes), one foreground grab at KiCad launch, dialogs may stick out of a covered area (moot when cloaked), eeschema/other editors **untested** | if any is a blocker, C waits for the KiCad-side follow-ups in §12.7 |
-| 14 (new) | Effort on the eeschema/editor matrix for the patch | **0.5 w before C ships** (same code paths, not run) | de-risks the `.kicad_sch` tab in hidden mode |
+| 1 | What is "Live KiCad in VS Code" on Windows? | **(a) capture-only view** + native interaction (`raise`). Not (b)/(c)/(d). | the live view is the only mode in the UI; nothing is injected; VS Code's keys stay VS Code's; verified 12/12 in `extension/test/e2e` on stock 10.99 and 10.0.6 (EXTENSION.md §9.1-9.2) |
+| 3 | GPL VNC server vs MIT WGC helper | **helper** (settled by measurement: `-shareapp` 9 fps, a core per idle client, black holes) | unchanged; TightVNC is out of the product |
+| 5 | Patch KiCad in the fork for hidden-window input? | **not pursued**: `mr/display-input` stays parked in the private fork (branch `kiwrap/6dd893f7d1+display`, build -7 unregistered), is NOT carried in `kiwrap/<sha>`, no MR draft is advanced | no fork build on the critical path; base bumps do not rebase the 25-file patch; `gui.input_from_events` is reported by no registered install |
+| 6 | Virtual display driver spike? | **dropped** (moot: nothing is hidden) | - |
+| 11 | Popup menus and drop-downs in hidden mode C | **not pursued** (menus open on the desktop, where the person works after a raise) | the monitor-crop path and the in-process cloaking spike are closed |
+| 12 | Tab model for a project session | **custom editor per `.kicad_pcb`/`.kicad_sch` + a 3D `WebviewPanel`** (as built) | unchanged |
+| 13 | Accept the hidden mode's remaining limits | **not pursued** (no hidden mode to accept limits for); the live view has none of them: tooltips, menus, dialogs are the real window's | - |
+| 14 | Effort on the eeschema/editor matrix for the patch | **not pursued** (0 w); the `.kicad_sch` tab is verified in the live view (eeschema streams, *Raise KiCad* verified) | - |
+
+The rows of §12.6 remain the measured record of what B and C would cost and give, should the
+decision ever be revisited (the experiment path: re-register build -7, set
+`kiwrap.live.inputMode: events`, run the e2e with `KIWRAP_E2E_HIDDEN=1`).

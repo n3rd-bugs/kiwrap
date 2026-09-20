@@ -4,7 +4,7 @@
  * as ext-core's Receipt (payload under `data`) or as the plain structured object; `unwrapToolResult`
  * normalises all of them.
  */
-import type { KiwrapClient, KwLiveArgs, KwLiveHelperArg, KwLiveSession } from '../shared/types';
+import type { KiwrapClient, KwLiveArgs, KwLiveHelperArg, KwLiveSession, LiveLaunchMode } from '../shared/types';
 
 export function unwrapToolResult(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object') { throw new Error(`kw_live returned ${typeof raw}`); }
@@ -33,7 +33,7 @@ export class KwLive {
     return unwrapToolResult(await this.client.callTool('kw_live', args as unknown as Record<string, unknown>));
   }
 
-  async launch(project: string, editor: 'pcb' | 'sch' | 'project', mode: 'auto' | 'hidden' | 'mirror', targetKicad?: string): Promise<KwLiveSession> {
+  async launch(project: string, editor: 'pcb' | 'sch' | 'project', mode: LiveLaunchMode, targetKicad?: string): Promise<KwLiveSession> {
     return asSession(await this.call(targetKicad ? { action: 'launch', project, editor, mode, target_kicad: targetKicad } : { action: 'launch', project, editor, mode }));
   }
   async status(project: string, sessionId?: string): Promise<KwLiveSession | null> {
@@ -64,15 +64,16 @@ export function asSession(o: Record<string, unknown>): KwLiveSession {
 }
 
 /**
- * True when the launched KiCad can be driven with posted messages (docs/DISPLAY.md 12.5): kiwrap's
- * kw_live resolved `mode_used: 'hidden'` (KICAD_INPUT_FROM_EVENTS=cloak exported, DWMWA_CLOAKED read
- * back), or the frame reports `cloaked`, or the install's capability gui.input_from_events is true.
- * A build that carries the patch but was launched in mirror mode is NOT events-capable: the variable
- * is only exported for hidden sessions.
+ * True when the launched KiCad can be driven with posted messages (docs/DISPLAY.md 12.5, the
+ * experimental `events` input mode): kiwrap's kw_live resolved `mode_used: 'hidden'`
+ * (KICAD_INPUT_FROM_EVENTS=cloak exported, DWMWA_CLOAKED read back) or the frame reports `cloaked`.
+ * A session kw_live resolved to `view` (or the older `mirror`) is never events-capable, whatever
+ * the build carries: the variable is only exported for hidden sessions. Without a resolved mode
+ * (older servers, tests) the launch request and the install's capability decide.
  */
 export function sessionSupportsEvents(s: KwLiveSession): boolean {
   if (s.mode_used === 'hidden' || s.cloaked === true) { return true; }
-  if (s.mode_used === 'mirror') { return false; }
+  if (s.mode_used === 'view' || s.mode_used === 'mirror') { return false; }
   if (s.mode === 'hidden') { return true; }
   if (s.install && typeof s.install === 'object' && s.install.capabilities) { return s.install.capabilities['gui.input_from_events'] === true; }
   return false;

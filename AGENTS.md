@@ -46,8 +46,11 @@ are secondary (human review, VS Code previews); a render never replaces `kw_*_ge
 
 **`kw_live` is for humans watching; the agent loop stays data-first.** When the person wants to
 see the board or schematic change as you work, `kw_live(action="launch", project=...)` starts a
-sandboxed KiCad GUI on the project (never activated, one per agent, killed on `detach` or when
-the server exits) and the VS Code extension shows it in the Live KiCad view. While it lives, the
+sandboxed KiCad GUI on the project (a normal window on the desktop, never activated, one per
+agent, killed on `detach` or when the server exits) and the VS Code extension streams it live
+into the file's tab; the person edits by hand in the real window (`raise`, or the tab's "Raise
+KiCad") - the default `mode="view"` is the product (D20); `mode="hidden"` is an experimental,
+parked path that needs a fork build and is not something to reach for. While it lives, the
 session is bound to the project: `kw_pcb_place` (moves, flips, locks), `kw_pcb_zones` and
 `kw_pcb_route` commit through that GUI's API and appear live. Writes that land on disk instead -
 a `kw_pcb_place` that changes a rotation (the G16 guard routes it to the file writer on every
@@ -242,7 +245,7 @@ engine) -> `cli` (kicad-cli exports). Read the receipt, not the version number:
 | `kw_pcb_render` | `project`, `view?`, `side?`, `layers?`, `max_px?` | PNG + summary (secondary) |
 | `kw_fab_bom` | `project`, `profile?`, `include_dnp?`, `fields?`, `write?` | `rows[]` (refs, qty, value, footprint, lcsc, dnp, mpn, cost/stock null), `missing_lcsc`, `dnp_refs` |
 | `kw_fab_export` | `project`, `targets?`, `profile?` generic\|jlcpcb, `include_dnp?`, `bom_fields?`, `out_dir?`, `clean?`, `force?`, `run_async?` | files per target (+ `bundle` zip), `positions.corrected[]`, `bom`, `dropped_options`, unsupported targets |
-| `kw_live` | `action` launch\|attach\|status\|screenshot\|detach\|raise, `project?`, `session_id?`, `editor?` pcb\|sch\|project, `mode?` auto\|hidden\|mirror, `target_kicad?`, `helper?` {port, token, version}, `surface?`, `max_px?` | `session_id`, `pid`, `install`, `api_socket`, `token`, `editors[]`, `mode_used`, `cloaked`; screenshot: PNG + summary (for humans; secondary) |
+| `kw_live` | `action` launch\|attach\|status\|screenshot\|detach\|raise, `project?`, `session_id?`, `editor?` pcb\|sch\|project, `mode?` view (default; hidden = experimental), `target_kicad?`, `helper?` {port, token, version}, `surface?`, `max_px?` | `session_id`, `pid`, `install`, `api_socket`, `token`, `editors[]`, `mode_used` (view), `cloaked`; screenshot: PNG + summary (for humans; secondary) |
 
 `kw_help(topic=<tool>)` has the long form of every row, including the item shapes. Library
 tools (`kw_lib_search` / `kw_lib_info`) appear in `tools/list` when the library index component

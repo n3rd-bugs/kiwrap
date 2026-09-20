@@ -24,12 +24,17 @@ export interface HelperHello {
 }
 
 /**
- * `--inject` argument of the helper: `none` = capture-only view (click raises the real window),
- * `events` = PostMessage-only for a cloaked KiCad carrying mr/display-input, `hybrid` = posted input with a
- * borrowed cursor on stock KiCad (DISPLAY.md 12.4, the recommended stock opt-in), `mirror` = SendInput
- * (kept for the contract; kiwrap.live.mirrorInjector picks which one the "mirror" preference uses).
+ * `--inject` argument of the helper: `none` = the live view (the product path, D20: the tab is a
+ * picture, "Raise KiCad" brings the real window to the front), `events` = PostMessage-only for a
+ * cloaked KiCad carrying mr/display-input, `hybrid` = posted input with a borrowed cursor on stock
+ * KiCad (DISPLAY.md 12.4), `mirror` = SendInput. Everything but `none` is EXPERIMENTAL, unsupported
+ * and off by default (setting kiwrap.live.inputMode).
  */
 export type InjectMode = 'none' | 'mirror' | 'events' | 'hybrid';
+
+/** The kiwrap.live.inputMode setting: the same values as the helper's --inject flag. */
+export type InputModePreference = InjectMode;
+export const INPUT_MODES: readonly InputModePreference[] = ['none', 'mirror', 'hybrid', 'events'];
 
 /** Kind of a captured KiCad top-level frame (root of an owner chain). */
 export type SurfaceKind = 'pcb' | 'sch' | '3d' | 'mgr' | 'fp' | 'sym' | 'other';
@@ -63,7 +68,7 @@ export interface Surface {
   rect_px: RectPx;
   /** Effective DPI of the frame's monitor (96 = 100 %). */
   dpi: number;
-  /** True when the window is DWM-cloaked (hidden mode on a build carrying mr/display-input). */
+  /** True when the window is DWM-cloaked (the experimental `events` input mode on a build carrying mr/display-input). */
   cloaked: boolean;
   dialogs: SurfaceDialog[];
   /** Optional helper extras: the editor frame's own rect, foreground / enabled state. */
@@ -159,7 +164,8 @@ export type StreamInputEvent =
 // ---------------------------------------------------------------------------------------------------
 
 export type LiveEditorKind = 'pcb' | 'sch' | 'project';
-export type LiveLaunchMode = 'auto' | 'hidden' | 'mirror';
+/** kw_live launch mode: `view` (the product path) or the experimental `hidden` (cloaked, needs mr/display-input). */
+export type LiveLaunchMode = 'view' | 'hidden';
 
 export interface KwLiveLaunchArgs {
   action: 'launch';
@@ -188,9 +194,9 @@ export interface KwLiveSession {
   api_socket: string;
   token: string;
   editors: string[];
-  /** Optional: the effective input mode the launcher applied (`hidden` => KICAD_INPUT_FROM_EVENTS=cloak). */
-  mode?: LiveLaunchMode | 'view';
-  /** kiwrap's kw_live: the mode it resolved (`hidden` = cloaked editor, events injection possible). */
+  /** Optional: the mode the launch was asked for (older servers may echo `auto` / `mirror`). */
+  mode?: LiveLaunchMode | 'auto' | 'mirror';
+  /** kiwrap's kw_live: the mode it resolved (`view` on the product path; `hidden` = cloaked editor, events injection possible). */
   mode_used?: string;
   /** kiwrap's kw_live: DWMWA_CLOAKED read back from the frame after readiness. */
   cloaked?: boolean;
@@ -230,10 +236,15 @@ export const LIVE_COMMANDS = {
   attach: 'kiwrap.live.attach',
 } as const;
 
-/** Context keys set by the module (used by the generated keybinding `when` clauses). */
+/**
+ * Context keys set by the module (used by the generated keybinding `when` clauses). `input` is true
+ * only while the session's helper injects input (kiwrap.live.inputMode != none): without it the
+ * shield never fires, so on the product path VS Code's keyboard behaviour is untouched.
+ */
 export const LIVE_CONTEXT_KEYS = {
   shield: 'kiwrap.live.shield',
   shieldPalette: 'kiwrap.live.shieldPalette',
+  input: 'kiwrap.live.input',
   active: 'kiwrap.live.active',
 } as const;
 
@@ -266,8 +277,10 @@ export interface WebviewClientOptions {
   pointerLock: boolean;
   hud: boolean;
   fit: 'fit' | 'native';
-  /** Milliseconds to wait before closing the stream when the tab is hidden. */
+  /** Milliseconds to wait before closing the stream when the tab is not visible. */
   hiddenCloseDelayMs: number;
+  /** Live view: a double-click on the picture raises the real KiCad window (kiwrap.live.raiseOnDoubleClick). */
+  raiseOnDoubleClick: boolean;
 }
 
 export type HostToWebview =

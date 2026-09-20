@@ -12,7 +12,7 @@ import { HelperProcess, helperArgs, parseHelloLine, resolveHelper, resolveHelper
 import { ControlClient, controlUrl, replyError, type WebSocketLike } from '../../../src/live/controlClient';
 import { SurfacesModel, editorForFile, kindForFile, normalizeSurface, projectDirFor, projectKey, surfaceKindFor, tabShapeFor } from '../../../src/live/surfaces';
 import { FOCUS_NEGATIVES, PALETTE_CHORDS, SHIELD_CHORDS, generateKeybindings, whenClause } from '../../../src/live/keybindings';
-import { resolveInject } from '../../../src/live/mode';
+import { inputModeOf, launchModeFor, resolveInject } from '../../../src/live/mode';
 import { asSession, sessionSupportsEvents, unwrapToolResult } from '../../../src/live/kwLive';
 import { LIVE_COMMANDS, LIVE_EDITOR_VIEW_TYPE, LIVE_PANEL_VIEW_TYPE, type Surface } from '../../../src/shared/types';
 
@@ -212,7 +212,7 @@ describe('surfaces', () => {
 });
 
 describe('keybinding shield', () => {
-  it('generates one forwardKey binding per chord, guarded by the context keys and the active view', () => {
+  it('generates one forwardKey binding per chord, guarded by the context keys (input mode armed) and the active view', () => {
     const kb = generateKeybindings();
     assert.strictEqual(kb.length, SHIELD_CHORDS.length + PALETTE_CHORDS.length);
     assert.strictEqual(new Set(kb.map((k) => k.key)).size, kb.length, 'no duplicate chords');
@@ -221,7 +221,9 @@ describe('keybinding shield', () => {
       assert.deepStrictEqual(k.args, { key: k.key });
       assert.ok(k.when.includes(`activeCustomEditorId == '${LIVE_EDITOR_VIEW_TYPE}'`));
       assert.ok(k.when.includes(`activeWebviewPanelId == '${LIVE_PANEL_VIEW_TYPE}'`));
-      assert.ok(k.when.startsWith('kiwrap.live.shield &&'));
+      // D20: every chord needs kiwrap.live.input, which is set only while an experimental input mode
+      // injects; on the product path (the live view) VS Code's keyboard behaviour is untouched
+      assert.ok(k.when.startsWith('kiwrap.live.shield && kiwrap.live.input &&'), k.when);
     }
     const palette = kb.filter((k) => k.when.includes('kiwrap.live.shieldPalette'));
     assert.deepStrictEqual(palette.map((k) => k.key).sort(), [...PALETTE_CHORDS].sort());
@@ -230,16 +232,27 @@ describe('keybinding shield', () => {
     // an input box; the shield must not fire there
     const focus = '!sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus';
     assert.deepStrictEqual([...FOCUS_NEGATIVES], ['sideBarFocus', 'auxiliaryBarFocus', 'panelFocus', 'terminalFocus', 'inputFocus', 'notificationFocus']);
-    assert.strictEqual(whenClause(false), `kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && ${focus}`);
-    assert.strictEqual(whenClause(true), `kiwrap.live.shield && kiwrap.live.shieldPalette && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && ${focus}`);
+    assert.strictEqual(whenClause(false), `kiwrap.live.shield && kiwrap.live.input && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && ${focus}`);
+    assert.strictEqual(whenClause(true), `kiwrap.live.shield && kiwrap.live.input && kiwrap.live.shieldPalette && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && ${focus}`);
     for (const k of kb) { for (const neg of FOCUS_NEGATIVES) { assert.ok(k.when.includes(`!${neg}`), `${k.key} guards ${neg}`); } }
   });
 
-  it('package.json carries the same shield (gen_contributes --merge)', () => {
+  it('package.json carries the same shield (gen_contributes --merge), conditional on kiwrap.live.input', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(EXT, 'package.json'), 'utf8'));
     const shield = (pkg.contributes.keybindings as Array<{ command: string; when: string }>).filter((k) => k.command === LIVE_COMMANDS.forwardKey);
     assert.strictEqual(shield.length, generateKeybindings().length);
-    for (const k of shield) { assert.ok(k.when.includes('!sideBarFocus') && k.when.includes('!terminalFocus'), k.when); }
+    for (const k of shield) { assert.ok(k.when.includes('!sideBarFocus') && k.when.includes('!terminalFocus'), k.when); assert.ok(k.when.includes('kiwrap.live.input &&'), k.when); }
+    // D20: the live view is the only mode in the UI; the injecting modes are one experimental setting, off by default
+    const confs = Array.isArray(pkg.contributes.configuration) ? pkg.contributes.configuration : [pkg.contributes.configuration];
+    const props: Record<string, { default?: unknown; enum?: string[]; description?: string }> = Object.assign({}, ...confs.map((c: { properties: Record<string, unknown> }) => c.properties));
+    assert.deepStrictEqual(props['kiwrap.live.inputMode'].enum, ['none', 'mirror', 'hybrid', 'events']);
+    assert.strictEqual(props['kiwrap.live.inputMode'].default, 'none');
+    assert.match(props['kiwrap.live.inputMode'].description ?? '', /EXPERIMENTAL/);
+    assert.strictEqual(props['kiwrap.live.raiseOnDoubleClick'].default, true);
+    assert.ok(!('kiwrap.live.mode' in props) && !('kiwrap.live.mirrorInjector' in props), 'the old mode settings are gone');
+    for (const c of pkg.contributes.commands as Array<{ command: string; title: string }>) {
+      if (c.command.startsWith('kiwrap.live') || c.command === 'kiwrap.openLive') { assert.ok(!/hidden|mirror|cloak/i.test(c.title), `${c.command}: ${c.title}`); }
+    }
     // finding 14: executable settings are machine-scoped
     for (const key of ['kiwrap.uvPath', 'kiwrap.serverProject', 'kiwrap.live.helperPath', 'kiwrap.live.nodePath']) {
       const confs = Array.isArray(pkg.contributes.configuration) ? pkg.contributes.configuration : [pkg.contributes.configuration];
@@ -256,26 +269,35 @@ describe('keybinding shield', () => {
     assert.strictEqual(frag.customEditors[0].viewType, LIVE_EDITOR_VIEW_TYPE);
     assert.strictEqual(frag.customEditors[0].priority, 'option');
     assert.ok('kiwrap.live.keepCommandPalette' in frag.configuration.properties);
+    assert.ok('kiwrap.live.inputMode' in frag.configuration.properties);
   });
 });
 
-describe('mode decision (DISPLAY.md 12.6)', () => {
-  const stock = asSession({ session_id: 's', pid: 1, install: { name: 'stock' } });
-  const patched = asSession({ session_id: 's', pid: 1, install: { name: 'fork', capabilities: { 'gui.input_from_events': true } } });
-  const hiddenApplied = asSession({ session_id: 's', pid: 1, install: 'x', mode: 'hidden' });
-  it('auto: events only on a patched build, else view-only (mirror never implied)', () => {
-    assert.deepStrictEqual(resolveInject('auto', stock), { inject: 'none' });
-    assert.deepStrictEqual(resolveInject('auto', patched), { inject: 'events' });
-    assert.deepStrictEqual(resolveInject('auto', hiddenApplied), { inject: 'events' });
-    assert.deepStrictEqual(resolveInject('auto', null), { inject: 'none' });
+describe('input-mode decision (D20: the live view is the product path)', () => {
+  const stock = asSession({ session_id: 's', pid: 1, install: { name: 'stock' }, mode_used: 'view' });
+  const patchedView = asSession({ session_id: 's', pid: 1, install: { name: 'fork', capabilities: { 'gui.input_from_events': true } }, mode_used: 'view', cloaked: false });
+  const hiddenApplied = asSession({ session_id: 's', pid: 1, install: 'x', mode_used: 'hidden', cloaked: true });
+  it('the default (none) never injects and launches kw_live in view mode, whatever the build', () => {
+    assert.deepStrictEqual(resolveInject('none', stock), { inject: 'none' });
+    assert.deepStrictEqual(resolveInject('none', patchedView), { inject: 'none' });
+    assert.deepStrictEqual(resolveInject('none', hiddenApplied), { inject: 'none' });
+    assert.deepStrictEqual(resolveInject('none', null), { inject: 'none' });
+    for (const pref of ['none', 'mirror', 'hybrid'] as const) { assert.strictEqual(launchModeFor(pref), 'view'); }
+    assert.strictEqual(launchModeFor('events'), 'hidden');
+    assert.strictEqual(inputModeOf(undefined), 'none'); assert.strictEqual(inputModeOf('auto'), 'none'); assert.strictEqual(inputModeOf('hidden'), 'none');
+    assert.strictEqual(inputModeOf('events'), 'events'); assert.strictEqual(inputModeOf('hybrid'), 'hybrid');
   });
-  it('explicit preferences', () => {
+  it('experimental preferences: mirror / hybrid as asked, events only when kw_live really cloaked the KiCad', () => {
     assert.deepStrictEqual(resolveInject('mirror', stock), { inject: 'mirror' });
-    assert.deepStrictEqual(resolveInject('view', patched), { inject: 'none' });
-    assert.deepStrictEqual(resolveInject('hidden', patched), { inject: 'events' });
-    const r = resolveInject('hidden', stock);
-    assert.strictEqual(r.inject, 'none'); assert.match(r.warning ?? '', /display-input/);
+    assert.deepStrictEqual(resolveInject('hybrid', stock), { inject: 'hybrid' });
+    assert.deepStrictEqual(resolveInject('events', hiddenApplied), { inject: 'events' });
+    for (const s of [stock, patchedView, null]) {
+      const r = resolveInject('events', s);
+      assert.strictEqual(r.inject, 'none'); assert.match(r.warning ?? '', /display-input/);
+    }
     assert.strictEqual(sessionSupportsEvents(stock), false);
+    assert.strictEqual(sessionSupportsEvents(patchedView), false, 'a view session on a patched build was not launched cloaked');
+    assert.strictEqual(sessionSupportsEvents(hiddenApplied), true);
   });
 });
 

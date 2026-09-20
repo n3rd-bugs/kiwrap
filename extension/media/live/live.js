@@ -1,6 +1,9 @@
 // Live KiCad webview client: one KiCad *surface* (pcb / sch / 3d / ...) per tab.
 // Frames arrive on ws://127.0.0.1:<port>/stream?surface=<id>&token=<t> as [u32 frame_id][u16 w][u16 h] + JPEG/WebP,
-// are decoded with createImageBitmap and painted onto a <canvas>; input goes back as JSON (see protocol.js and
+// are decoded with createImageBitmap and painted onto a <canvas>. In the live view (mode 'view', the product
+// path - docs/DECISIONS.md D20) nothing is sent back but the resize hint: the picture is live, editing by hand
+// happens in the real KiCad window ("Raise KiCad" button, double-click). Only the experimental input modes
+// ('mirror' / 'hidden' pages) forward mouse / wheel / keys as JSON (see protocol.js and
 // extension/src/shared/types.ts). The extension host configures the page through postMessage ({type:'config'}).
 import * as P from './protocol.js';
 
@@ -13,7 +16,7 @@ const state = {
   cfg: null,                    // last HostToWebview config
   surface: null,
   mode: 'view',
-  options: { pointerLock: false, hud: true, fit: 'fit', hiddenCloseDelayMs: 1500 },
+  options: { pointerLock: false, hud: true, fit: 'fit', hiddenCloseDelayMs: 1500, raiseOnDoubleClick: true },
   ws: null, connected: false, attempt: 0, wantOpen: false, reconnectTimer: null, hiddenTimer: null,
   frameW: 0, frameH: 0, dpiScale: 1, lastMeta: null,
   layout: { cssW: 0, cssH: 0, left: 0, top: 0, scale: 1 },
@@ -193,7 +196,8 @@ stage.addEventListener('pointermove', (e) => {
 stage.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   stage.focus({ preventScroll: true });
-  if (state.mode === 'view') { if (e.button === 0) { vscode.postMessage({ type: 'raise' }); } return; }
+  // live view: a click only focuses the tab; the primary action is "Raise KiCad" (button / double-click)
+  if (state.mode === 'view') { return; }
   if (!state.connected) { return; }
   if (state.options.pointerLock && !state.locked && e.pointerType === 'mouse') { try { canvas.requestPointerLock(); } catch { /* ignore */ } }
   try { stage.setPointerCapture(e.pointerId); state.capturedPointer = e.pointerId; } catch { /* ignore */ }
@@ -207,6 +211,10 @@ stage.addEventListener('pointerup', (e) => {
   send(P.mouseButton(surfacePoint(e), e.button, e.buttons, false, P.modifiersOf(e)));
   if (state.capturedPointer === e.pointerId && e.buttons === 0) { try { stage.releasePointerCapture(e.pointerId); } catch { /* ignore */ } state.capturedPointer = null; }
 }, opts);
+stage.addEventListener('dblclick', (e) => {
+  e.preventDefault();
+  if (state.mode === 'view' && state.options.raiseOnDoubleClick && e.button === 0) { raiseKicad('dblclick'); }
+});
 stage.addEventListener('pointercancel', () => releaseButtons());
 stage.addEventListener('contextmenu', (e) => e.preventDefault());
 stage.addEventListener('auxclick', (e) => e.preventDefault());
@@ -281,7 +289,8 @@ function readHostClipboard(timeoutMs) {
 }
 
 // ---------------------------------------------------------------------------------- HUD / status
-const modeLabel = { view: 'view-only', mirror: 'mirror', hidden: 'hidden KiCad' };
+// 'view' is the live view (the product path); the other two are the experimental input modes.
+const modeLabel = { view: 'live view', mirror: 'mirror input (experimental)', hidden: 'cloaked input (experimental)' };
 function setMode(mode) {
   state.mode = mode;
   hud.dataset.mode = mode;
@@ -289,9 +298,11 @@ function setMode(mode) {
   $('btn-raise').classList.toggle('hidden', mode !== 'view');
   $('btn-lock').classList.toggle('hidden', mode === 'view' || !state.options.pointerLock);
   stage.classList.toggle('view-only', mode === 'view');
+  stage.title = mode === 'view' ? 'Live view of the real KiCad editor. To edit by hand: Raise KiCad (button, or double-click).' : '';
 }
 function setStatus(s) { $('hud-conn').textContent = s; hud.dataset.conn = s; }
-$('btn-raise').addEventListener('click', () => vscode.postMessage({ type: 'raise' }));
+function raiseKicad(source) { state.raiseCount = (state.raiseCount ?? 0) + 1; state.lastRaise = source; vscode.postMessage({ type: 'raise' }); }
+$('btn-raise').addEventListener('click', () => raiseKicad('button'));
 $('btn-lock').addEventListener('click', () => { if (state.locked) { document.exitPointerLock(); } else { canvas.requestPointerLock(); } });
 $('btn-hud').addEventListener('click', () => hud.classList.toggle('collapsed'));
 $('btn-start').addEventListener('click', () => vscode.postMessage({ type: 'start' }));
@@ -344,10 +355,11 @@ function applySurface(surface) {
 
 // ---------------------------------------------------------------------------------- test hooks
 function testDispatch(spec) {
-  const target = spec.target === 'window' ? window : stage;
+  const target = spec.target === 'window' ? window : spec.target ? (document.getElementById(spec.target) ?? stage) : stage;
   const init = { bubbles: true, cancelable: true, ...spec.init };
   let ev;
   if (spec.kind === 'pointer') { ev = new PointerEvent(spec.name, { pointerId: 1, pointerType: 'mouse', isPrimary: true, ...init }); }
+  else if (spec.kind === 'mouse') { ev = new MouseEvent(spec.name, init); }
   else if (spec.kind === 'wheel') { ev = new WheelEvent(spec.name ?? 'wheel', init); }
   else if (spec.kind === 'key') { ev = new KeyboardEvent(spec.name, init); }
   else if (spec.kind === 'focus') { if (spec.name === 'focus') { stage.focus(); } else { stage.blur(); } return; }
@@ -360,7 +372,8 @@ function testSnapshot() {
     connected: state.connected, mode: state.mode, surface: state.surface?.id ?? null, frameW: state.frameW, frameH: state.frameH,
     canvasRect: { left: r.left, top: r.top, width: r.width, height: r.height }, layout: state.layout, dpr: devicePixelRatio,
     inputCount: state.inputCount, lastInput: state.lastInput, stats: state.stats.sample(), focused: state.focused,
-    cardVisible: !card.classList.contains('hidden'),
+    cardVisible: !card.classList.contains('hidden'), raiseCount: state.raiseCount ?? 0, lastRaise: state.lastRaise ?? null,
+    hudMode: $('hud-mode').textContent, raiseVisible: !$('btn-raise').classList.contains('hidden'),
   };
 }
 

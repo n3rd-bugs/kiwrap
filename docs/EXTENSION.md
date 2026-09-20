@@ -5,8 +5,10 @@ Status 2026-09-20: Phase 2, being built. This document is the contract between t
 `src/kiwrap/core/tools/`, the packaging in `scripts/build_extension.ps1`) and the reasoning behind
 it. The measured facts it relies on are in [DISPLAY.md](DISPLAY.md) (§7, §12) and
 [research/display/](research/display/); the decisions in [DECISIONS.md](DECISIONS.md) (D13 Claude
-Code inside VS Code, D17 data-first, D18 Windows + VS Code only, D19 private). User-facing
-instructions are in [../extension/README.md](../extension/README.md).
+Code inside VS Code, D17 data-first, D18 Windows + VS Code only, D19 private, **D20 live view
+without hidden KiCad**: the product is the live view of a stock KiCad with native interaction;
+the injecting modes are experimental and off). User-facing instructions are in
+[../extension/README.md](../extension/README.md).
 
 Where this document and `extension/package.json` disagree on a setting or command name, the
 `package.json` is authoritative and this file is stale.
@@ -14,8 +16,9 @@ Where this document and `extension/package.json` disagree on a setting or comman
 ## 1. What the extension is for
 
 One sentence: it makes VS Code the place where a person and a Claude Code agent work on a KiCad
-project together, with KiCad's real editors visible (and, on a patched build, driven) inside VS
-Code tabs, and with kiwrap's checks in the Problems panel.
+project together, with KiCad's real editors visible live inside VS Code tabs (an agent's edit
+appears in the tab within a second; to edit by hand the person raises the real KiCad window), and
+with kiwrap's checks in the Problems panel.
 
 It is deliberately thin. Every fact about a project — items, nets, ERC/DRC, renders, stage gates —
 comes from the `kw_*` tools of the kiwrap MCP server (ARCHITECTURE.md §9, §10); the extension is an
@@ -26,12 +29,12 @@ What it adds on top of the server:
 
 | surface | what it does | fed by |
 |---|---|---|
-| Live KiCad tabs | a `.kicad_pcb` / `.kicad_sch` opened "with KiCad (live)" shows the real editor window of a sandboxed KiCad, streamed by the helper; a 3D panel command; per-editor dialogs composited on their frame | `kw_live` + the helper |
+| Live KiCad tabs | a `.kicad_pcb` / `.kicad_sch` opened "with KiCad (live)" shows the real editor window of a sandboxed KiCad, streamed by the helper (the **live view**); "Raise KiCad" (button, double-click, command) brings the real window to the front for hand edits; a 3D panel command; per-editor dialogs composited on their frame | `kw_live` + the helper |
 | Previews | the same custom editor shows the `kw_pcb_render` / `kw_sch_render` SVG when no live session exists ("headless session, showing the kicad-cli preview") | `kw_*_render` |
 | Problems panel | ERC/DRC findings with corrected positions as `Diagnostic`s on the file, refreshed on save and on demand | `kw_sch_check`, `kw_pcb_drc` |
 | Status bar / picker | which KiCad install is the target (`kw_env` rows), which live session is bound, the stage the project is in | `kw_env`, `kw_project status`, `kw_live status` |
 | Configure Claude Code | writes the workspace `.mcp.json` entry for the kiwrap server, installs the `kiwrap-flow` skill into `.claude/skills/`, points `AGENTS.md` at it | files only |
-| Keybinding shield | while a Live KiCad tab has focus, VS Code chords go to KiCad instead of VS Code (§7) | `contributes.keybindings` |
+| Keybinding shield | only while an EXPERIMENTAL input mode injects into a focused Live KiCad tab (context key `kiwrap.live.input`); disarmed on the product path, where VS Code's keys stay VS Code's (§7) | `contributes.keybindings` |
 
 Out of scope (D18): other IDEs, Linux/macOS, Copilot-facing `languageModelTools` facades (the
 Phase-0 plan had them; Claude Code is the only certified agent client, D13).
@@ -46,8 +49,8 @@ VS Code window (one per workspace)
  │    │    ├─ api-server .... `kicad-cli api-server` headless IPC session (KiCad 11), per project, NOT started
  │    │    │                  while a live GUI session holds the project (contract 2)
  │    │    └─ KiCad GUI ..... kicad.exe / pcbnew.exe / eeschema.exe, sandboxed, API enabled, launched by kw_live
- │    └─ kiwrap-live.exe ... the helper: WGC capture of the GUI's windows + input injection, owned by the extension,
- │                           attached to the GUI by pid, one helper per live KiCad process
+ │    └─ kiwrap-live.exe ... the helper: WGC capture of the GUI's windows (+ the experimental input injectors), owned by
+ │                           the extension, attached to the GUI by pid, one helper per live KiCad process
  └─ Claude Code (terminal or its own extension) ... starts ITS OWN `uv run kiwrap serve` from .mcp.json (§6)
 ```
 
@@ -69,8 +72,9 @@ Ownership and lifetime:
   provider's endpoint for that project while the session lives, so an agent's `kw_pcb_place` lands
   in the window the user is looking at (DISPLAY.md §7.4: same process, two channels).
 - **Helper.** Launched by the extension when a live session exists and a Live KiCad tab needs
-  frames, as `kiwrap-live.exe --pid <kicad pid> --listen 127.0.0.1:0 [--inject
-  none|mirror|hybrid|events] [--cloak-expected] [--fit-to-view]`; it mints its own token (18
+  frames, as `kiwrap-live.exe --pid <kicad pid> --listen 127.0.0.1:0 --inject none` on the
+  product path (capture only; `--inject mirror|hybrid|events`, `--cloak-expected` and
+  `--fit-to-view` exist only for the experimental `kiwrap.live.inputMode`); it mints its own token (18
   random bytes; `--token <t>` is accepted for tests only - a token on the command line is readable
   by every local process), prints one JSON line `{port, token, version}` on stdout and then
   serves. It refuses a `--pid` whose image is not `kicad.exe` / `pcbnew.exe` / `eeschema.exe`
@@ -78,9 +82,9 @@ Ownership and lifetime:
   spawning it). It exits when the KiCad process it watches is gone, when its stdin is closed by
   the launcher (the orderly stop: captures and hooks are released first) and the extension
   terminates it after a grace period on `detach`, on the last tab closing and on `deactivate()`.
-  With `--fit-to-view` (passed in the injecting modes when `kiwrap.live.fitWindowToTab` is on) the
-  helper sizes the captured window to the tab's viewport on the client's `resize` event, so the
-  stream is 1:1 and KiCad's chrome stays legible. The exe ships inside the VSIX under
+  With `--fit-to-view` (passed only in the experimental injecting modes when
+  `kiwrap.live.fitWindowToTab` is on) the helper sizes the captured window to the tab's viewport
+  on the client's `resize` event; the live view never touches the desktop window. The exe ships inside the VSIX under
   `extension/bin/` (built by `scripts/build_extension.ps1`); a VSIX built with `-SkipHelper` still
   installs and does everything but the live view.
 - **The agent's server.** Claude Code starts its own `kiwrap serve` from the workspace `.mcp.json`.
@@ -95,7 +99,7 @@ Ownership and lifetime:
 | helper stream | webview ↔ helper, one socket per surface | `ws://127.0.0.1:<port>/stream?surface=<id>&token=<t>`, binary frames + JSON input | loopback bind, per-launch token, webview CSP `connect-src ws://127.0.0.1:* ws://localhost:*` (the port changes on a helper restart) |
 | KiCad IPC | kiwrap server (`ipc11` provider) ↔ KiCad GUI | named pipe under the sandbox's short temp dir, kicad-python client | KiCad's instance token (see §4), pipe ACL |
 | capture | helper → Windows | `Windows.Graphics.Capture` per HWND (surfaces keyed on HWND + owner chain, `SetWinEventHook` for create/destroy/title/rect) | — |
-| injection | helper → KiCad | `PostMessage` only (`events`) or the hybrid injector (`mirror`); never `SendInput`, never `SetForegroundWindow` on the user's behalf except the explicit `raise` | — |
+| injection (experimental modes only) | helper → KiCad | `PostMessage` only (`events`) or the hybrid injector (`hybrid` / `mirror`); on the product path nothing is injected; `SetForegroundWindow` only for the explicit `raise` | — |
 | webview ↔ extension host | `postMessage` | VS Code's channel | VS Code's origin isolation |
 
 ### 3.1 Helper protocol (contract 1)
@@ -105,7 +109,8 @@ Ownership and lifetime:
   create/destroy/title/rect change. `{type:'screenshot', surface, max_px}` → base64 PNG
   (`kw_live screenshot` uses this when a helper is attached). `{type:'raise', surface}` brings the
   real window to the front — the only foreground change the product ever makes, and only from a
-  user gesture in the tab.
+  user gesture in the tab (the "Raise KiCad" button, a double-click, the `kiwrap.live.raise`
+  command): this is how a person takes over from the live view to edit by hand.
 - `/stream?surface=<id>`: binary frames with an 8-byte header `[u32 frame_id][u16 w][u16 h]`
   followed by JPEG or WebP; a JSON text frame `{type:'meta', w, h, dpi_scale, dirty:[…]}` precedes
   every size change. The client sends `{type:'mouse'|'wheel'|'key'|'focus', x, y (surface px),
@@ -115,28 +120,29 @@ Ownership and lifetime:
   sends RSV1 frames) and a single writer per client, drop-to-latest.
 - Surfaces, not pids: a project session is one `kicad.exe` whose editor frames are unowned
   siblings; dialogs and the footprint chooser are owned windows composited onto their frame's
-  surface; menus and drop-downs are OS popups captured via the monitor-crop path (§5 hidden-mode
-  limits).
+  surface; menus and drop-downs are OS popups (visible on the desktop, where the person works
+  with them after a raise).
 
 ### 3.2 `kw_live` (contract 2)
 
 `kw_live(action, …)` with `launch | attach | status | screenshot | detach | raise`.
-`launch(project, editor: pcb|sch|project, mode: auto|hidden|mirror, target_kicad?)` returns
+`launch(project, editor: pcb|sch|project, mode: view (default) | hidden, target_kicad?)` returns
 `{session_id, pid, install, api_socket, token, editors:[…], mode_used, cloaked, hidden_available}`
-(`install` is the install key `<version>@<root>`; `mode_used` is what the supervisor resolved -
-`hidden` = `KICAD_INPUT_FROM_EVENTS=cloak` exported and the frame read back as `DWMWA_CLOAKED`,
-`mirror` = visible on the desktop, never activated - and the extension decides its injector from
-it: `events` for `hidden`, `none` otherwise); `attach(session_id, helper: {port, token, version,
-pid?})` registers the helper the extension started so `screenshot` from ANY kiwrap server goes
-through it; `status` returns the same plus liveness, the surfaces (`editors`: hwnd / rect_px /
-dpi / cloaked) and `remote` / `owner_pid` (which server launched it); `screenshot` returns a
-≤ 1024 px PNG through the helper when one is attached, else a `PrintWindow` capture of the frame
-(works on a cloaked window), else the `kw_*_render` fallback (`degraded: [live_view_unavailable]`).
-`mode` decides the env: `KICAD_INPUT_FROM_EVENTS=cloak` is set only when the install carries the
-`display-input` patch (capability `gui.input_from_events`, derived from the manifest's `builds[]`
-entry of the built commit) and `mode != mirror` (§5). `hidden` on a stock install is a teaching
-error (E_UNSUPPORTED with the fix "use mode='mirror' or target a bench build that carries the
-patch"). Implemented in `kiwrap.core.tools.live` over `kiwrap.backends.ipc.gui_sessions`.
+(`install` is the install key `<version>@<root>`; `mode_used` is what the supervisor resolved:
+**`view`** on the product path - a normal visible window started with `SW_SHOWNOACTIVATE`, the
+foreground handed back to the previous window if KiCad took it (`foreground_taken` /
+`foreground_restored` in `status`), never cloaked; `hidden` only when asked for explicitly on a
+build carrying the `display-input` patch = `KICAD_INPUT_FROM_EVENTS=cloak` exported and the
+frame read back as `DWMWA_CLOAKED`); `attach(session_id, helper: {port, token, version, pid?})`
+registers the helper the extension started so `screenshot` from ANY kiwrap server goes through
+it; `status` returns the same plus liveness, the surfaces (`editors`: hwnd / rect_px / dpi /
+cloaked) and `remote` / `owner_pid` (which server launched it); `screenshot` returns a ≤ 1024 px
+PNG through the helper when one is attached, else a `PrintWindow` capture of the frame, else the
+`kw_*_render` fallback (`degraded: [live_view_unavailable]`); `raise` brings the frame to the
+front. `mode` decides the env: `KICAD_INPUT_FROM_EVENTS` is never set for `view` (whatever the
+build carries); `hidden` on a build without the patch is a teaching error (E_UNSUPPORTED, fix
+"use mode='view'"); the older spellings `auto` / `mirror` resolve to `view`. Implemented in
+`kiwrap.core.tools.live` over `kiwrap.backends.ipc.gui_sessions`.
 
 ### 3.3 Extension ↔ kiwrap (contract 3)
 
@@ -172,9 +178,10 @@ never re-derives a position from a file.
   the helper is restarted with a new port when it exits; the token in the URL is what binds the
   page to the right helper. No remote content, no `localResourceRoots` outside `extension/media`.
 - **Attach targets.** `kiwrap.live.attach` (and the helper itself) attach only to `kicad.exe`,
-  `pcbnew.exe` and `eeschema.exe`; the mirror (`SendInput`) injector drops events whose
-  coordinates fall outside the surface and presses whose target window is not the surface's own
-  after the raise attempt, so no input escapes the attached KiCad (reviewer findings 3, 15).
+  `pcbnew.exe` and `eeschema.exe`; the experimental mirror (`SendInput`) injector drops events
+  whose coordinates fall outside the surface and presses whose target window is not the
+  surface's own after the raise attempt, so no input escapes the attached KiCad (reviewer
+  findings 3, 15). On the product path nothing is injected at all.
 - **Settings scope.** `kiwrap.uvPath`, `kiwrap.serverProject`, `kiwrap.live.helperPath` and
   `kiwrap.live.nodePath` are machine-scoped: a repository's `.vscode/settings.json` cannot point
   the auto-started server or the helper at its own binaries (reviewer finding 14).
@@ -187,30 +194,33 @@ never re-derives a position from a file.
 - **Unsigned binaries.** `kiwrap-live.exe` is not code-signed. SmartScreen may prompt on the first
   launch of an exe extracted from a downloaded VSIX; the README says what to click.
 
-## 5. Live KiCad modes
+## 5. The live view, and the experimental input modes
 
-| mode | KiCad build | env | injector | user experience | limits (measured, DISPLAY.md §12.5–12.6) |
-|---|---|---|---|---|---|
-| **view** (`auto` on stock) | any registered install | sandbox env only | `none` | live picture of every editor in its tab, dialogs composited, 0 cost idle; a click raises the real window (`raise`); keys are not forwarded | it is a picture; editing happens in the real KiCad window on the desktop |
-| **hidden** (`auto` on a patched build) | a fork build carrying `mr/display-input` (`gui.input_from_events` true) | `KICAD_INPUT_FROM_EVENTS=cloak`, launched without activation | `events` (`PostMessage` only), `--cloak-expected` | KiCad's windows are cloaked (invisible on the desktop, still captured); the tab is the UI: select, move, rotate, wheel zoom centred on the tab's pointer, dialogs, chooser, context menus | popup menus and combobox drop-downs pop on the desktop at the pointer (OS windows, DISPLAY.md §12.8 decision 11); tooltips absent; one foreground grab at launch; only pcbnew measured, eeschema/other editors untested; the helper verifies the frame is `DWMWA_CLOAKED` and falls back to `view` (with a warning) when it is not |
-| **mirror** (explicit only) | stock | sandbox env only | `mirror` (hybrid: posted moves, borrowed cursor for clicks/wheel, posted keys, `Esc` as `WM_CLOSE` on owned dialogs) | edit from the tab with the KiCad window still on the desktop (a second monitor is the honest setup) | KiCad's own cursor warps (`Home`, `center_on_zoom`) move the real mouse; one foreground flip per right-click; tooltips absent; dialogs/menus visible on the desktop; consent prompt on first use |
+**The product (D20) is one mode: the live view.** `kw_live launch` starts a stock KiCad
+(10.0.x or 10.99/11, any registered install) as a normal window on the desktop, sandboxed, API
+on, `SW_SHOWNOACTIVATE`, the foreground handed back if KiCad took it; the helper captures it with
+`--inject none`; the tab shows the real editor live (dialogs composited, 0 cost idle); an agent's
+edit through the bound session repaints the tab within a second (§9.1: 431-474 ms after the call
+started). The person interacts with KiCad **natively**: the tab's **Raise KiCad** button, a
+double-click on the picture (`kiwrap.live.raiseOnDoubleClick`, default on) or the
+`kiwrap.live.raise` command bring the real window to the front (`GetForegroundWindow` verified in
+the e2e); keys and mouse in the tab are never forwarded, so VS Code's keyboard behaviour is
+untouched (the shield is disarmed, §7). Honest wording for the UI and the docs: *the user sees the
+updates live; to edit by hand they raise KiCad.*
 
-`auto` picks `hidden` when the target install's capability record lists `gui.input_from_events`
-(the manifest's `builds[]` entry of the built commit lists `display-input`; the supervisor then
-reads `DWMWA_CLOAKED` back from the frame and reports `mode_used`, and the extension runs the
-helper with `--inject events --cloak-expected`), else `view`. `mirror` is never picked
-automatically. The order in which the modes were built is the D0–D2 plan of DISPLAY.md §7.2:
-capture-only first, hidden on builds carrying the patch, mirror as the opt-in.
-
-What "a build carrying `mr/display-input`" means today (2026-09-20): the stock 10.0.6 and 10.99
-installers do not have it; the registered bench build **`C:\kiwrap-builds\6dd893f7d1-7`**
-(branch `kiwrap/6dd893f7d1+display` = `kiwrap/6dd893f7d1` + merge of `mr/display-input`, commit
-`918923a346`, private origin only, D19) does, and `kiwrap_patches.json` lists it, so `kw_env`
-shows `gui.input_from_events: true` and `kiwrap.patches: [..., display-input]` for it and
-`auto` resolves to `hidden` there. The recipe for the next base bump is in `extension/README.md`
-§"Hidden mode prerequisites" (merge `mr/display-input` onto a `kiwrap/<sha>+display` branch,
-rebuild with the `msvc-win64-release` preset, `scripts/dev/install_kicad_build.ps1 -Register`,
-add the `builds[]` entry to the manifest).
+The injecting modes measured in DISPLAY.md §12.4-12.5 stay in the code behind ONE experimental
+setting, `kiwrap.live.inputMode` (`none` default): `mirror` (SendInput) and `hybrid` (posted input
+with a borrowed cursor) drive the visible KiCad from the tab; `events` asks kw_live for a `hidden`
+(cloaked) KiCad and needs a fork build carrying `mr/display-input` (none is registered any more;
+the supervisor falls back to `view` with a warning when the frame is not `DWMWA_CLOAKED`). They
+are unsupported research paths: no UI text offers them, the walkthrough and README do not
+mention them beyond this note, and their known limits (cursor warps, foreground flips, popup
+menus on the desktop, tooltips absent, eeschema untested) are recorded in DISPLAY.md §12.8 as
+"not pursued". `mr/display-input` stays parked in the private fork (not merged into
+`kiwrap/6dd893f7d1`); bench build `6dd893f7d1-7` is unregistered (directory kept) and its
+manifest entry no longer lists `display-input`, so no `kw_env` row reports
+`gui.input_from_events`. The e2e keeps the cloaked scenario as an opt-in step
+(`KIWRAP_E2E_HIDDEN=1`).
 
 ## 6. One kiwrap server or two?
 
@@ -246,13 +256,22 @@ Verified end to end by `extension/test/e2e` (the extension's server launches, `t
 
 Measured in `research/display/vscode-shell-keys.md`: with the Live KiCad tab focused, stock VS Code
 acts on 54 chords (`Ctrl+W` disposes the tab, `Ctrl+P` opens Quick Open, `Ctrl+B`/`Ctrl+J` toggle
-views, `F5` debugs, …) while the page still receives every key. The policy:
+views, `F5` debugs, …) while the page still receives every key. That only matters when keys are
+forwarded to KiCad, which the product path never does. The policy:
 
-- **Shield on by default** (`kiwrap.live.shieldKeys`): a generated `contributes.keybindings` block
-  (from the prototype's `tools/gen_keybindings.js` list) binds every such chord to
-  `kiwrap.live.forwardKey` with `when: kiwrap.live.shieldKeys && (activeWebviewPanelId ==
-  'kiwrap.live' || activeCustomEditorId == 'kiwrap.liveEditor')`. Both context keys are needed: one
-  for the 3D panel, one for the custom editors.
+- **Disarmed on the product path (D20).** Every generated binding carries the context key
+  `kiwrap.live.input`, which the extension sets only while the session's helper injects input
+  (`kiwrap.live.inputMode` != `none`, an experimental mode). In the live view the key is false,
+  none of the 178 chords is bound, and `Ctrl+N` / `Ctrl+W` / `F5` in a focused live tab do what
+  they do in any VS Code tab (e2e step 5b measures it: `Ctrl+N` opens an untitled editor with the
+  live tab focused).
+- **Shield with an input mode** (`kiwrap.live.shieldKeys`, default on): a generated
+  `contributes.keybindings` block (from the prototype's `tools/gen_keybindings.js` list) binds
+  every such chord to `kiwrap.live.forwardKey` with `when: kiwrap.live.shield &&
+  kiwrap.live.input && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId ==
+  'kiwrap.live.panel') && !sideBarFocus && …`. Both view keys are needed: one for the 3D panel,
+  one for the custom editors; the focus negatives keep the shield out of the sidebar, panel,
+  terminal and input boxes (reviewer finding 6).
 - **Reserved for VS Code**, never shielded: `Ctrl+Shift+P` / `F1` (command palette — the way out),
   `Ctrl+0` (focus the side bar, the way to leave the tab by keyboard) and `Ctrl+Alt+K`
   (`kiwrap.live.releaseKeyboard`, toggles the shield for the tab). KiCad binds none of the three.
@@ -281,12 +300,13 @@ parentheses.
 | `kiwrap.storageHome` (see §6) | passed as `--storage-home` to the server and exported to the helper; the contract says "unset = kiwrap's own default" so that the agent's server and the extension's share one home |
 | `kiwrap.kicadInstall` (newest) | the KiCad to target, a version spec `kw_env` lists ("Select KiCad" writes it) |
 | `kiwrap.checkOnSave` (`true`) | re-run ERC / DRC when a `.kicad_sch` / `.kicad_pcb` is saved |
-| `kiwrap.live.mode` (`auto`) | `auto` / `hidden` / `mirror` / `view` (§5) |
-| `kiwrap.live.shieldKeys` (`true`) | the keybinding shield (§7); `kiwrap.live.keepCommandPalette` (`true`) leaves `Ctrl+Shift+P` / `F1` to VS Code |
+| `kiwrap.live.raiseOnDoubleClick` (`true`) | a double-click on the live picture raises the real KiCad window (the same as the tab's "Raise KiCad" button); a single click only focuses the tab |
+| `kiwrap.live.inputMode` (`none`) | EXPERIMENTAL, unsupported: `none` (the live view) / `mirror` / `hybrid` / `events` (§5); the only thing that arms the keybinding shield |
+| `kiwrap.live.shieldKeys` (`true`) | the keybinding shield (§7), effective only with an input mode; `kiwrap.live.keepCommandPalette` (`true`) leaves `Ctrl+Shift+P` / `F1` to VS Code |
 | `kiwrap.live.helperPath` (bundled) | override `kiwrap-live.exe` (developer builds: `helper/target/release` is tried automatically); a configured path that is not a file is reported and the bundled helper used |
-| `kiwrap.live.fit` (`fit`), `kiwrap.live.fitWindowToTab` (`true`) | `fit` scales the frame into the tab, `native` shows it 1:1 and scrolls; `fitWindowToTab` sizes the KiCad window to the tab in the injecting modes (hidden / mirror) so the stream is 1:1 and legible |
-| `kiwrap.live.hud` (`false`), `kiwrap.live.pointerLock` (`false`) | webview diagnostics overlay (fps, RTT, frame age); pointer lock for infinite drags |
-| `kiwrap.live.hiddenCloseDelayMs` | grace period before a hidden-mode session is torn down after its last tab closes |
+| `kiwrap.live.fit` (`fit`), `kiwrap.live.fitWindowToTab` (`true`) | `fit` scales the frame into the tab, `native` shows it 1:1 and scrolls; `fitWindowToTab` sizes the KiCad window to the tab only in an experimental input mode (the live view never touches the desktop window) |
+| `kiwrap.live.hud` (`true`), `kiwrap.live.pointerLock` (`false`) | the HUD (surface, "live view", fps, latency, the Raise KiCad button); pointer lock for infinite drags (experimental modes) |
+| `kiwrap.live.hiddenCloseDelayMs` (`1500`) | grace period before a tab that is no longer visible closes its stream (it reconnects and resyncs when shown again) |
 
 Commands contributed by `package.json` (2026-09-20): `kiwrap.configureClaude` (Configure Claude
 Code; `commands/configurePlan.ts` computes the edits: `.mcp.json`, a managed block in
@@ -297,9 +317,11 @@ install), `kiwrap.pickProject`, `kiwrap.runErc` / `kiwrap.runDrc` / `kiwrap.runC
 `kiwrap.showOutput`, `kiwrap.showProblems`; the view `kiwrap.status` ("KiCad (kiwrap)": tracked
 project, install, stage, session). The live module adds (`src/shared/types.ts`; merged into
 `package.json` from `contributes.live.json`): the `kiwrap.live` custom editor and `kiwrap.live.panel`
-webview, `kiwrap.live.open` / `openSurface` / `close` / `status` / `raise` / `screenshot`, the
-internal `kiwrap.live.forwardKey` and `kiwrap.core.callTool`, and the context keys
-`kiwrap.live.shield`, `kiwrap.live.shieldPalette`, `kiwrap.live.active`.
+webview, `kiwrap.live.open` / `openSurface` / `close` / `status` / `raise` ("Raise KiCad") /
+`screenshot`, the internal `kiwrap.live.forwardKey` and `kiwrap.core.callTool`, and the context
+keys `kiwrap.live.shield`, `kiwrap.live.shieldPalette`, `kiwrap.live.input` (an input mode
+injects), `kiwrap.live.active`. No command title, setting label or walkthrough text names the
+hidden / mirror modes.
 
 ## 9. Repo layout and build
 
@@ -316,16 +338,20 @@ Tests, from cheap to real: `npm run test:unit` (mocha, a fake stdio MCP server),
 test/live/run.mjs unit` (the live module without VS Code), `npm run test:integration`
 (`@vscode/test-electron`: the real `uv run kiwrap serve` and kicad-cli, no GUI), `node
 test/live/run.mjs integration` (a dev host with a fake helper: frames, DPI-exact input, clipboard,
-panels), `helper/tests/live_smoke.py` (the Rust helper on a real sandboxed pcbnew, stock and
-patched) and **`npm run test:e2e`** (`extension/test/e2e`: the whole product in a dev host - the
-real server, the real helper, sandboxed stock and patched KiCad GUIs, and `test/e2e/agent.py`,
-a second `kiwrap serve` playing the agent). The GUI-launching ones are owner-present runs on
-this machine (one KiCad at a time, killed by pid, `%APPDATA%\kicad` hashed before and after),
-never CI; the helper's tests are `cargo test`.
+panels; the experimental input pipeline is exercised with an explicit `inputMode: 'events'`),
+`helper/tests/live_smoke.py` (the Rust helper on a real sandboxed pcbnew) and **`npm run
+test:e2e`** (`extension/test/e2e`: the whole product in a dev host - the real server, the real
+helper, sandboxed stock KiCad GUIs (10.99 and 10.0.x) in the live view, and `test/e2e/agent.py`,
+a second `kiwrap serve` playing the agent; the cloaked scenario only with `KIWRAP_E2E_HIDDEN=1`).
+The GUI-launching ones are owner-present runs on this machine (one KiCad at a time, killed by
+pid, `%APPDATA%\kicad` hashed before and after), never CI; the helper's tests are `cargo test`.
 
-## 9.1 Verified end to end (2026-09-20, `npm run test:e2e`, 10/10)
+## 9.1 Verified end to end (2026-09-20, `npm run test:e2e`, 10/10; before D20)
 
-Extension Development Host of VS Code 1.138, `kiwrap-live.exe` 0.1.0, scratch workspace = the
+Historical record of the run that preceded D20: `mode_used mirror` was the name the supervisor
+then gave the visible, never-activated window that is now `view`, and the hidden-mode rows are
+the experimental path that D20 parked (kept as measurements). §9.2 is the run of the product path
+as shipped. Extension Development Host of VS Code 1.138, `kiwrap-live.exe` 0.1.0, scratch workspace = the
 ecc83 demo copy + the Phase 1b blinker board, kiwrap's default storage home shared by both servers.
 Evidence: `docs/research/display/img/phase2-*.png` (helper screenshots and PrintWindow captures of
 the dev host, quantised to stay < 300 KB); numbers from `<scratch>/out/e2e-report.json`.
@@ -360,18 +386,47 @@ foreground back to the previous window (the ALT-tap route) and reports `foregrou
 `foreground_restored` in `kw_live status`. Popup menus of a cloaked KiCad still appear on the
 desktop (§12.8 decision 11); tooltips are absent in every mode.
 
+The hidden-mode rows above are the record of the experimental path; since D20 that step runs
+only with `KIWRAP_E2E_HIDDEN=1` and the build it needs is unregistered.
+
+## 9.2 Verified end to end after D20 (2026-09-20, `npm run test:e2e`, 12/12 + 1 opt-in pending, 3 runs)
+
+The product path as shipped in `dist/kiwrap-0.1.0.vsix`: `kiwrap.live.inputMode` at its default
+(`none`), stock installs only. Extension Development Host of VS Code 1.138, `kiwrap-live.exe`
+0.1.0, the same scratch workspace (ecc83 copy + the Phase 1b blinker board), kiwrap's default
+storage home shared by both servers, `%APPDATA%\kicad` hash identical before and after
+(`7b5280a1…`), `Get-Process kicad,pcbnew,eeschema,kiwrap-live` empty at the end. Evidence:
+`docs/research/display/img/phase2-live-pcb-tab.png` (the HUD reads *live view* with the *Raise
+KiCad* button), `phase2-live-sch-tab.png`, `phase2-live-pcb-1000-{tab,helper}.png`,
+`phase2-place-*.png`, `phase2-problems.png`; numbers from `<scratch>/out/e2e-report.json` (ranges
+over the three runs).
+
+| step | what happened | measured |
+|---|---|---|
+| open live, stock 10.99 | `kw_live launch` → `mode_used: view`, `cloaked: false`; `SW_SHOWNOACTIVATE` + the foreground handed back (`foreground_taken: true, foreground_restored: true`; `GetForegroundWindow` is the dev host right after the launch); helper `--inject none` (no `--cloak-expected`, no `--fit-to-view`); the `.kicad_pcb` tab streams the 3840x2088 frame | session 4.4-4.6 s, first sized frame 5.1-5.3 s, API ready 3.7-3.9 s |
+| **Raise KiCad** | the HUD button, then a double-click on the picture: `GetForegroundWindow` = the `*ecc83-pp - PCB Editor` window of the launched pid; the page counted the raise (`raiseCount`, `lastRaise`); the dev host is brought back afterwards | 921-950 ms to the foreground (both gestures) |
+| agent edit (second MCP client) | `kw_pcb_place C1 +5 mm` through `test/e2e/agent.py` on its own `kiwrap serve`: `provider_used ipc11:10.99.0` (the bound GUI); the tab repainted before the tool returned | `kw_pcb_place` 896-1009 ms; tab frame **454-471 ms** after the call started |
+| shield disarmed | `kiwrap.live.sessions.inputActive === false`; real `Ctrl+N` (SendKeys) opens 1 untitled editor with the Explorer focused **and 1 with the live tab focused**: none of the 178 chords is bound in the live view | 1 / 1 |
+| ERC / DRC while live | `kw_sch_check` 0/0, `kw_pcb_drc` 0 must_fix / 2 review / 80 cosmetic → 82 diagnostics with lines; the session survives | |
+| close, checkOnSave guard | helper + pcbnew gone, `~*.lck` removed; one "Run DRC" = one DRC, 0 automatic follow-ups | < 0.4 s; DRC 1.5 s |
+| `.kicad_sch` tab | eeschema (a second session) streams into the schematic's tab, `mode view`; *Raise KiCad* from that tab → `GetForegroundWindow` = `ecc83-pp - Schematic Editor` | first frame 6.4-6.6 s; raise 921-1055 ms |
+| open live, stock **10.0.6** | the blinker board (10.0 format; the ecc83 copy is re-saved in the 10.99 format by then and a 10.0.x refuses it with an error dialog - the first run measured exactly that, composited on the tab) in `C:\Program Files\KiCad\10.0`'s pcbnew: `mode_used view`, no dialog, the tab streams; *Raise KiCad* → `blinky - PCB Editor` in the foreground | first frame 4.4-5.2 s, API ready 3.9-4.6 s; raise 934-936 ms |
+| hidden mode | pending (opt-in `KIWRAP_E2E_HIDDEN=1`; D20) | - |
+| leftovers | no KiCad / helper processes, no `~*.lck`, user config hash unchanged | |
+
 Licensing: extension and helper MIT; no GPL code copied (the Python prototypes under
 `prototypes/display/` were rewritten, not vendored; TightVNC/x11vnc are out of the product).
 
 ## 10. Open items
 
-- The eeschema/other-editor matrix for hidden mode (DISPLAY.md §12.7 D5: 0.5 w) has not been run;
-  `hidden` on a `.kicad_sch` tab is offered but flagged "untested" in the tab until it has.
-- Menu/drop-down capture in hidden mode ships as the monitor-crop path (flash on the desktop);
-  in-process cloaking of popups is a 2–3 day spike on the KiCad side (§12.8 decision 11).
-- The `display-input` patch lives on the `kiwrap/6dd893f7d1+display` branch (build -7), not on
-  the integration branch `kiwrap/6dd893f7d1` itself; every base bump merges it again (25 files on
-  hot paths, DISPLAY.md §12.8 decision 5).
+- Closed by D20 (not pursued): the eeschema matrix for the cloaked mode, in-process cloaking of
+  popup menus, and carrying `mr/display-input` across base bumps. The branch stays parked in the
+  private fork (`kiwrap/6dd893f7d1+display`, build -7 unregistered); an experiment re-registers
+  the build and sets `kiwrap.live.inputMode: events`.
+- `C:\src\kicad` is checked out on `kiwrap/6dd893f7d1` (the integration branch); its
+  `build/msvc-win64-release` tree was last built from the `+display` branch (-7). The next
+  `scripts/dev/install_kicad_build.ps1` run on the integration branch rebuilds it incrementally;
+  nothing in the repo needs the tree to match the registered `-6` install.
 - On KiCad 10.0.x the planner's `ipc11` predicate is `ipc.headless`, so a bound GUI session is not
   used by the tools there (reads fall to the file engine, writes through the file writer while the
   GUI holds the file - the GUI does not reload them); the live view on 10.0.x is a picture. The

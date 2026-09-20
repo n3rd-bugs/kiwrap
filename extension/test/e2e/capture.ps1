@@ -6,10 +6,11 @@
 #   -Mode probe   : JSON on stdout: GetCursorPos, GetForegroundWindow (+ pid, title) and, with -Rect,
 #                   WindowFromPoint at the rect centre and four inner points (+ owning pids)
 #   -Mode keys    : bring the Extension Development Host (matched by -Udd) to the foreground and send
-#                   -Keys through SendKeys (the ONLY mode that activates a window; used by the keybinding
-#                   shield check). Prints JSON {sent, foreground_pid, host_pid}; sends nothing when the
-#                   host could not be made foreground.
-# Apart from -Mode keys nothing here activates, moves or clicks any window.
+#                   -Keys through SendKeys (used by the keybinding shield check). Prints JSON
+#                   {sent, foreground_pid, host_pid}; sends nothing when the host could not be made foreground.
+#   -Mode activate: bring the Extension Development Host back to the foreground (after "Raise KiCad"
+#                   handed it to KiCad), no keys. Prints JSON {activated, foreground_pid, host_pid}.
+# Apart from -Mode keys / activate nothing here activates, moves or clicks any window.
 param(
   [string]$Mode = 'window',
   [string]$Out = '',
@@ -116,6 +117,21 @@ if ($Mode -eq 'keys') {
   $sent = $false
   if ($fg -eq $h) { [System.Windows.Forms.SendKeys]::SendWait($Keys); $sent = $true; Start-Sleep -Milliseconds 300 }
   @{ sent = $sent; foreground_pid = [KwE2E]::Pid($fg); host_pid = $p.Id; keys = $Keys } | ConvertTo-Json -Compress
+  exit 0
+}
+
+if ($Mode -eq 'activate') {
+  $p = Find-Host
+  if ($null -eq $p) { @{ activated = $false; reason = 'no dev host window' } | ConvertTo-Json -Compress; exit 0 }
+  $h = $p.MainWindowHandle
+  [void][KwE2E]::SetForegroundWindow($h)
+  if ([KwE2E]::GetForegroundWindow() -ne $h) {
+    [KwE2E]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [KwE2E]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+    [void][KwE2E]::SetForegroundWindow($h); [void][KwE2E]::BringWindowToTop($h)
+  }
+  Start-Sleep -Milliseconds 250
+  $fg = [KwE2E]::GetForegroundWindow()
+  @{ activated = ($fg -eq $h); foreground_pid = [KwE2E]::Pid($fg); host_pid = $p.Id } | ConvertTo-Json -Compress
   exit 0
 }
 

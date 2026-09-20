@@ -18,11 +18,11 @@ import * as vscode from 'vscode';
 import { HelperProcess, resolveHelper } from './helperProcess';
 import { ControlClient, controlUrl } from './controlClient';
 import { KwLive, resolveClient } from './kiwrapClient';
-import { resolveInject, type ModePreference } from './mode';
+import { inputModeOf, launchModeFor, resolveInject, type InputModePreference } from './mode';
 import { SurfacesModel, normalizeSurface, projectKey, surfaceKindFor, type LiveEditorKind } from './surfaces';
 import { LIVE_SETTINGS_SECTION, viewModeForInject, type InjectMode, type KiwrapClient, type KwLiveSession, type LiveStatus, type ViewMode } from '../shared/types';
 
-export type { ModePreference } from './mode';
+export type { InputModePreference } from './mode';
 export { projectKey, surfaceKindFor, type LiveEditorKind } from './surfaces';
 
 export interface LiveSessionState {
@@ -65,6 +65,10 @@ export class LiveSessionManager implements vscode.Disposable {
 
   get current(): LiveSessionState | null { return this.state; }
   get mode(): ViewMode { return this.state ? viewModeForInject(this.state.inject) : 'view'; }
+  /** True while the helper injects input into KiCad (an experimental input mode): the only time the keybinding shield is wanted. */
+  get inputActive(): boolean { return !!this.state && this.state.inject !== 'none'; }
+  /** The kiwrap.live.inputMode setting, coerced (`none` = the live view, the product path). */
+  inputModeSetting(): InputModePreference { return inputModeOf(this.cfg<string>('inputMode', 'none')); }
 
   private cfg<T>(key: string, dflt: T): T { return vscode.workspace.getConfiguration(LIVE_SETTINGS_SECTION).get<T>(key, dflt); }
   private log(msg: string): void { this.out.appendLine(`[live] ${new Date().toISOString()} ${msg}`); }
@@ -119,11 +123,13 @@ export class LiveSessionManager implements vscode.Disposable {
 
   /**
    * Launch KiCad for a project through kw_live and attach the helper. `targetKicad` is the install
-   * to launch (the kiwrap.kicadInstall setting); the project's target KiCad otherwise. A "view"
-   * preference launches in mirror mode (visible, never activated) and injects nothing.
+   * to launch (the kiwrap.kicadInstall setting); the project's target KiCad otherwise. The product
+   * path (`pref` / kiwrap.live.inputMode = `none`) launches `view`: a visible KiCad window, never
+   * activated, streamed into the tab, nothing injected. Only the experimental `events` mode asks
+   * kw_live for a `hidden` (cloaked) KiCad.
    */
-  async open(project: string, editor: LiveEditorKind, pref?: ModePreference, targetKicad?: string): Promise<LiveSessionState> {
-    const preference = pref ?? this.cfg<ModePreference>('mode', 'auto');
+  async open(project: string, editor: LiveEditorKind, pref?: InputModePreference, targetKicad?: string): Promise<LiveSessionState> {
+    const preference = pref ? inputModeOf(pref) : this.inputModeSetting();
     if (this.reusable(project, editor)) { return this.state as LiveSessionState; }
     if (this.state && pidAlive(this.state.pid)) {
       const s = this.state;
@@ -142,13 +148,13 @@ export class LiveSessionManager implements vscode.Disposable {
     }
     const helperPath = this.helperPath();
     const kw = await this.ensureClient();
-    const launchMode = preference === 'view' ? 'mirror' : preference;
-    this.log(`kw_live launch project=${project} editor=${editor} mode=${launchMode}${targetKicad ? ` target_kicad=${targetKicad}` : ''}`);
+    const launchMode = launchModeFor(preference);
+    this.log(`kw_live launch project=${project} editor=${editor} mode=${launchMode}${preference !== 'none' ? ` inputMode=${preference} (experimental)` : ''}${targetKicad ? ` target_kicad=${targetKicad}` : ''}`);
     const session = await kw.launch(project, editor, launchMode, targetKicad);
     this.log(`kw_live launched session=${session.session_id} pid=${session.pid} install=${typeof session.install === 'string' ? session.install : JSON.stringify(session.install)} mode_used=${session.mode_used ?? '?'} cloaked=${String(session.cloaked)}`);
     const resolved = resolveInject(preference, session);
-    const inject = this.mirrorInjector(resolved.inject);
-    if (resolved.warning) { void vscode.window.showWarningMessage(`Live KiCad: ${resolved.warning}`); }
+    const inject = resolved.inject;
+    if (resolved.warning) { this.log(resolved.warning); void vscode.window.showWarningMessage(`Live KiCad: ${resolved.warning}`); }
     try {
       return await this.attach(session.pid, project, inject, { session, editor, helperPath });
     } catch (e) {
@@ -166,21 +172,16 @@ export class LiveSessionManager implements vscode.Disposable {
     } catch (e) { this.log(`kw_live attach failed (screenshots fall back to PrintWindow): ${String(e)}`); }
   }
 
-  /** The "mirror" preference runs the hybrid injector unless kiwrap.live.mirrorInjector says SendInput. */
-  private mirrorInjector(inject: InjectMode): InjectMode {
-    if (inject !== 'mirror' && inject !== 'hybrid') { return inject; }
-    return this.cfg<'hybrid' | 'mirror'>('mirrorInjector', 'hybrid') === 'mirror' ? 'mirror' : 'hybrid';
-  }
-
   /**
    * Attach the helper to an already running KiCad (no kw_live involvement when `opts.session` is
    * null). The helper mints the session token and reports it in its hello line; nothing secret is
-   * on its command line. The captured frame is sized to the tab (`--fit-to-view`) whenever the tab
-   * is the primary UI (an injecting mode) and kiwrap.live.fitWindowToTab is on.
+   * on its command line. On the product path (`inject: 'none'`) the helper only captures: no
+   * `--cloak-expected`, no `--fit-to-view`, the desktop window is left alone. The captured frame
+   * is sized to the tab (`--fit-to-view`) only in an experimental input mode (the tab is then the
+   * UI) when kiwrap.live.fitWindowToTab is on; `--cloak-expected` only with `events`.
    */
   async attach(pid: number, project: string, inject: InjectMode, opts: AttachOptions & { helperPath?: string } = {}): Promise<LiveSessionState> {
     if (this.state) { await this.close(); }
-    inject = this.mirrorInjector(inject);
     const helperPath = opts.helperPath ?? this.helperPath();
     const fitToView = inject !== 'none' && this.cfg<boolean>('fitWindowToTab', true);
     const helper = new HelperProcess({ helperPath, pid, inject, cloakExpected: inject === 'events', fitToView, allowAnyProcess: !!opts.allowAnyProcess, nodePath: this.cfg<string>('nodePath', '') || undefined }, {
@@ -259,7 +260,7 @@ export class LiveSessionManager implements vscode.Disposable {
     else if (s.session) { await this.kwLive.raise(s.project, s.session.session_id); }
   }
 
-  /** Close the top owned dialog of a surface through the helper (hidden mode: Esc may not reach it). */
+  /** Close the top owned dialog of a surface through the helper (experimental cloaked mode: Esc may not reach it). */
   async closeDialog(surfaceId: string): Promise<boolean> {
     const s = this.state; if (!s) { throw new Error('no live session'); }
     return s.control.closeDialog(surfaceId);

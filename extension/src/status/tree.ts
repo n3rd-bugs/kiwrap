@@ -64,9 +64,6 @@ function capBadges(row: InstallRow): string {
   if (caps['ipc.headless']) {
     b.push('ipc11');
   }
-  if (caps['gui.input_from_events']) {
-    b.push('hidden'); // the build carries mr/display-input: decides hidden mode (docs/DISPLAY.md 12.5)
-  }
   if (caps['cli.has_drc']) {
     b.push('drc');
   }

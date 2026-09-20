@@ -198,7 +198,8 @@ export interface RenderData {
 
 export type LiveAction = 'launch' | 'attach' | 'status' | 'screenshot' | 'detach' | 'raise';
 export type LiveEditor = 'pcb' | 'sch' | 'project';
-export type LiveMode = 'auto' | 'hidden' | 'mirror';
+/** kw_live launch mode: `view` (the product path: a visible, never activated KiCad streamed into the tab) or the experimental `hidden`. */
+export type LiveMode = 'view' | 'hidden';
 
 export interface LiveArgs {
   action: LiveAction;

@@ -2,9 +2,11 @@
 
 The "Live KiCad" tabs of the kiwrap VS Code extension: a `*.kicad_pcb` / `*.kicad_sch` opened with the
 custom editor `kiwrap.live` shows the matching KiCad editor window streamed by the `kiwrap-live.exe`
-helper (docs/DISPLAY.md 7 and 12.6: capture-only view first, hidden KiCad on builds carrying
-`mr/display-input`, mirror as opt-in). Other KiCad windows (3D viewer, footprint / symbol editors) open
-as `kiwrap.live.panel` WebviewPanels.
+helper. This is the live view of a stock KiCad (docs/DECISIONS.md D20; docs/DISPLAY.md 7 and 12.8):
+the real window stays on the desktop, the tab shows it live and *Raise KiCad* brings it to the front.
+The injecting modes (`mirror` / `hybrid` / `events`, DISPLAY.md 12.4-12.5) stay experimental behind
+`kiwrap.live.inputMode` and are not the product. Other KiCad windows (3D viewer, footprint / symbol
+editors) open as `kiwrap.live.panel` WebviewPanels.
 
 ## Pieces
 
@@ -49,11 +51,14 @@ Stream: `ws://127.0.0.1:<port>/stream?surface=<id>&token=<t>`; binary frames `[u
 JPEG/WebP (sniffed) decoded with `createImageBitmap`, drop-to-latest while decoding; `meta` text frames set the
 size (dirty rects accepted as `[x,y,w,h]` or objects). Layout keeps 1 surface px = 1 device px when it fits
 (`kiwrap.live.fit`), otherwise scales down; pointer coordinates go through the canvas bounding rect, so VS Code
-zoom and OS scaling cancel out exactly. Input (mirror / hidden modes only): pointer move/down/up with capture
+zoom and OS scaling cancel out exactly. Input (the EXPERIMENTAL injecting modes only, `kiwrap.live.inputMode`
+!= none): pointer move/down/up with capture
 (middle-drag pans), wheel with the Windows sign, key down/up with `code`/`key`/`{ctrl,shift,alt,meta}`, focus,
 release-all on blur, optional pointer lock (`kiwrap.live.pointerLock`), a `resize` hint and `clipboard` text
 (Ctrl+V hands the VS Code clipboard to the helper first; `meta.clipboard` from the helper lands in
-`vscode.env.clipboard`). In view-only mode a click asks the helper to raise the real window. A hidden tab closes
+`vscode.env.clipboard`). In the live view (the product path, D20) nothing is forwarded: a click focuses the tab, the
+"Raise KiCad" button or a double-click (`kiwrap.live.raiseOnDoubleClick`) asks the helper to raise the real window,
+and the keybinding shield stays disarmed (context key `kiwrap.live.input` false). A tab that is no longer visible closes
 its stream after `hiddenCloseDelayMs` and reconnects on reveal (a quick switch keeps the socket and sends
 `keyframe`). HUD: surface, mode, connection, size/scale, fps, kbit/s, input-to-frame latency, Raise / pointer
 lock / collapse buttons.
@@ -63,8 +68,8 @@ lock / collapse buttons.
 - `modifiers` is sent as `{ctrl, shift, alt, meta}` (the helper also accepts a bitmask ctrl=1 shift=2 alt=4 meta=8).
 - Extra stream events beyond the contract: `keyframe` (supported by kiwrap-live), `resize` (hint; may be ignored),
   `clipboard` (text; a same-machine helper can ignore it because the OS clipboard is shared).
-- The "mirror" preference runs the helper's `hybrid` injector by default (`kiwrap.live.mirrorInjector`), because
-  DISPLAY.md 12.6 retires SendInput as a product mode; `--inject mirror` remains selectable.
-- The session's input mode is decided from `kw_live`'s result: `mode: 'hidden'` or
-  `install.capabilities['gui.input_from_events'] === true` => `--inject events --cloak-expected`.
-- kw_live is called as `{action, project, editor, mode}` / `{action, project, session_id}`.
+- `kiwrap.live.inputMode` maps 1:1 to the helper's `--inject` flag (`none` default = the live view; `mirror` /
+  `hybrid` / `events` are experimental and unsupported). Only `events` asks kw_live for `mode: 'hidden'`, and it is
+  applied only when kw_live reports `mode_used: 'hidden'` / `cloaked: true` (then `--inject events
+  --cloak-expected`); otherwise the session falls back to the live view with a warning.
+- kw_live is called as `{action, project, editor, mode: 'view' | 'hidden'}` / `{action, project, session_id}`.
