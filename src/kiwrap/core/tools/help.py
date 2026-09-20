@@ -49,7 +49,8 @@ ERROR_PAGES: dict[str, str] = {
         "headless api-servers - live ones and the locks of servers a killed kiwrap process left behind - "
         "before this check, so a lock without any KiCad running is a GUI's; retry once it is closed) or "
         "another kiwrap call holds `<project>/.kiwrap/lock` (wait for it; delete the file only if no kiwrap "
-        "process is running)."
+        "process is running). A live `kw_live` session holds the project too: on a KiCad without a headless "
+        "IPC provider the mutating tools are refused while it runs - `kw_live(action='detach')` first."
     ),
     "E_BUSY": (
         "A kiwrap read (kw_pcb_get / kw_sch_get / kw_pcb_check over the headless IPC session) is still in "
@@ -407,6 +408,29 @@ TOOL_PAGES: dict[str, str] = {
         "Args: `sheet` (file name; default the root schematic), `page` (1-based; hierarchical designs export one "
         "page per sheet - an out-of-range page is E_BAD_ARGS with the valid range), `max_px`. Without the "
         "`render` extra the receipt carries the PDF path and `degraded: ['render_unavailable']`."
+    ),
+    "kw_live": (
+        "FOR HUMANS WATCHING, not for the agent's feedback loop (data-first, D17: keep reading `kw_pcb_get` / "
+        "`kw_pcb_check` / `kw_sch_get`). `action=launch` starts a sandboxed KiCad GUI (`editor`: pcb = pcbnew, "
+        "sch = eeschema, project = the manager) on the project's target KiCad (or `target_kicad`) with its API "
+        "server on its own pipe, never activated, tracked by PID + Job Object, ONE per agent; the session is "
+        "BOUND to the project while it lives: the ipc11 provider of the tools for ITS document kind commits "
+        "through that GUI (the edit appears in the VS Code Live KiCad view) and no headless api-server is "
+        "started for the project; a write that lands on disk instead (a rotating kw_pcb_place - G16 guard -, "
+        "kw_pcb_route_auto / kw_pcb_fix, a saved refill) makes the GUI reload the file (RevertDocument; the "
+        "receipt says `live_view.reloaded`), and the other document kind (the schematic of a pcbnew session) "
+        "is answered by the file engine with `degraded: [ipc11_unavailable]`. "
+        "`mode`: hidden = the editor runs cloaked (`KICAD_INPUT_FROM_EVENTS=cloak`, only on a build carrying the "
+        "`display-input` patch; the helper drives it), mirror = visible on the desktop, auto = hidden when "
+        "available. Returns `{session_id, pid, install, api_socket, token, editors[], mode_used, cloaked}`. "
+        "`attach` registers the extension's display helper (`helper={port, token, version}`); `status` reports "
+        "liveness + surfaces (hwnd, rect_px, dpi, cloaked); `screenshot` returns a PNG <= 1024 px (helper, else "
+        "a PrintWindow capture of the frame, else a render of the SAVED file with `degraded: "
+        "[live_view_unavailable]`); `raise` brings the frame to the front (no-op when cloaked); `detach` closes "
+        "the documents, kills the GUI, removes its lock files and unbinds the project. On a KiCad without "
+        "`ipc.headless` the planner has no ipc11 provider, so while the GUI holds the project the mutating tools "
+        "answer E_FILE_LOCKED: detach first. Every action but launch finds the session by `session_id`, by "
+        "`project`, or - when exactly one is live - by nothing."
     ),
     "kw_pcb_render": (
         "SECONDARY - prefer kw_pcb_get / kw_pcb_check for feedback; renders are for human review. "

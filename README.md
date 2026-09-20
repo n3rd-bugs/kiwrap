@@ -18,7 +18,24 @@ ERC 0 / parity 0 / DRC 0 on the 10.99 nightly (ipc11) and 10.0.6 (file)
 from `kw_intent` to a JLCPCB bundle with the grader green — ERC 0, intent diff empty, unrouted
 0, must_fix 0 — on both (tests/test_e2e_reference_board.py; numbers below). A source-build
 bench of the fork carries the CLI/IPC additions listed in [docs/UPSTREAM.md](docs/UPSTREAM.md).
-The VS Code extension is next.
+
+**Phase 2 (integrated and verified end to end, 2026-09-20): the VS Code extension.** `extension/`
+(TypeScript, MIT, a private `.vsix` built by `scripts/build_extension.ps1` into `dist/`) is an MCP
+client of its own `kiwrap serve`; it shows **Live KiCad** — the real, sandboxed KiCad editors
+streamed into `.kicad_pcb` / `.kicad_sch` tabs by the Rust helper `helper/kiwrap-live.exe`
+(Windows.Graphics.Capture, loopback + token) — in three modes: capture-only view on any KiCad,
+**hidden** (KiCad cloaked, invisible on the desktop, the tab is the UI: posted input, dialogs
+composited) on a build carrying the fork's `mr/display-input` patch (the registered bench build
+`6dd893f7d1-7`), and an opt-in mirror on stock; plus ERC/DRC in the Problems panel, a KiCad picker
+and a one-command Claude Code setup. The server side is the `kw_live` tool (a sandboxed GUI session
+whose API socket the `ipc11` provider binds to) and the two-server model: the agent's own `kiwrap
+serve` finds the extension's session through its record and writes into the same window — measured
+in `extension/test/e2e` (10/10): an agent's `kw_pcb_place` over a second MCP client repainted the
+live tab 431-474 ms after the call started (`kw_pcb_place` 870-979 ms via ipc11), hidden-mode input
+91-138 ms per event, 15/15 footprints rotated by posted keys and read back over IPC. Details and the
+numbers: [docs/EXTENSION.md](docs/EXTENSION.md) (§9.1), user guide
+[extension/README.md](extension/README.md), the measured display investigation
+[docs/DISPLAY.md](docs/DISPLAY.md), screenshots `docs/research/display/img/phase2-*.png`.
 
 kiwrap lets an AI agent (Claude Code inside VS Code; Windows only — decision D18)
 do end-to-end electronics development on KiCad — spec → schematic → ERC → board → placement →
@@ -33,9 +50,13 @@ git clone git@github.com:n3rd-bugs/kiwrap.git; cd kiwrap
 uv run kiwrap env                # discovered KiCad installs + capability records
 uv run pytest -q                 # ~5 min with four KiCads installed; ~1 min without KiCad
 uv run kiwrap serve              # MCP server over stdio (Claude Code picks it up from .mcp.json)
+.\scripts\build_extension.ps1     # VS Code extension + helper -> dist\kiwrap-<ver>.vsix (needs Node 24 + Rust stable-msvc)
+code --install-extension .\dist\kiwrap-0.1.0.vsix   # then "kiwrap: Select KiCad", "kiwrap: Configure Claude Code"
 ```
 
-Tools (32): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
+Tools (33): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
+`kw_live` (launch / attach / status / screenshot / detach / raise a sandboxed GUI KiCad the
+extension displays and the `ipc11` provider writes into),
 `kw_intent` (declare nets / rails / interfaces; diffed against KiCad's netlist by `kw_sch_check`),
 `kw_lib_search` / `kw_lib_info` (FTS index over the sym-/fp-lib-tables), the schematic authoring
 tools `kw_sch_add_symbol` (absolute pin endpoints back), `kw_sch_connect`, `kw_sch_add_item`
@@ -87,6 +108,9 @@ routing, the F.Cu pour after (docs/ARCHITECTURE.md §8).
 6. [docs/dev/](docs/dev/) — the KiCad source-build bench (executed), crash symbolication, upstream workflow;
    [docs/LINUX.md](docs/LINUX.md) — what the Linux CI job proves; [docs/UPSTREAM.md](docs/UPSTREAM.md) — gap cards
    and the fork/patch workflow for the KiCad CLI/IPC additions.
+7. [docs/EXTENSION.md](docs/EXTENSION.md) — the VS Code extension: processes, channels, security, the
+   two-server model, live modes, keybinding policy; [docs/DISPLAY.md](docs/DISPLAY.md) — the measured
+   display investigation behind it; [extension/README.md](extension/README.md) — the user guide.
 
 ## Layout
 
@@ -102,15 +126,19 @@ src/kiwrap/            single MIT distribution (src layout)
   core/                MCP server, kw_* tools, receipts/teaching errors, stage machine + gates, locks, snapshots, jobs
 conformance/           T1 CST round-trip, T2 file models vs KiCad, T4 kicad-cli help drift, T5 IPC handler snapshot, T6 quirks, T7 IPC writes + Specctra codec vs KiCad's DSN/SES, T8 writers vs KiCad + corpus
 tests/                 unit + live tests (auto-skip without KiCad)
-scripts/               bootstrap.ps1 / bootstrap.sh, engines.json (pinned JRE/Freerouting), seed_config_root.py, ci/
+extension/             the VS Code extension (TypeScript, MIT): MCP client of `kiwrap serve`, Live KiCad tabs, Problems panel, Configure Claude Code
+helper/                Rust workspace (MIT): kiwrap-live.exe, the Windows.Graphics.Capture + input helper the extension bundles
+scripts/               bootstrap.ps1 / bootstrap.sh, build_extension.ps1 (-> dist/*.vsix), engines.json (pinned JRE/Freerouting), seed_config_root.py, ci/, dev/
 ```
 
 ## Shape of the design (one paragraph)
 
 One Python MCP server (`kiwrap-core`, `kw_*` tools) is the only agent contract; a thin
-TypeScript VS Code extension will register it, preview `.kicad_*` files and feed ERC/DRC into the
-Problems panel; a thin PCM-packaged KiCad plugin (`KiWrap Connect`) hands a running KiCad's API
-token/PID to the server. On KiCad 11 the primary backend is the headless IPC API (`kicad-cli
+TypeScript VS Code extension is a client of it (its own instance; the agent runs another, both
+sharing the storage home and the per-project lock), shows the sandboxed KiCad GUI that `kw_live`
+launched inside VS Code tabs through a Rust capture helper, and feeds ERC/DRC into the Problems
+panel; the `KiWrap Connect` KiCad plugin of the Phase-0 plan is not needed while `kw_live` owns
+the GUI it displays. On KiCad 11 the primary backend is the headless IPC API (`kicad-cli
 api-server`, driven through kicad-python): structured reads of every board and schematic item,
 connectivity, netlist and hierarchy, and writes as undoable commits. Underneath sits an in-house
 lossless s-expression engine that models boards and schematics on every version 7–11 (pin
@@ -125,7 +153,8 @@ structured surface (ratsnest export, DRC/ERC over the API, headless jobs) the fo
 ## Local environment this was verified on
 
 Windows 11; KiCad 7.0.6, 8.0.9, 9.0.9, 10.0.6 and the 10.99 nightly (10.99.0-4083, KiCad 11
-preview) side by side under `C:\Program Files\KiCad`; Python 3.11 + uv; Node 24 LTS; Java 17 on
-PATH (Freerouting 2.4.1 needs 25 → managed JRE); VS 2022 17.14 (MSVC 14.44) + vcpkg for the
-KiCad source bench; `cdb` from the Windows 10 SDK. Linux code paths exist behind the platform seam
+preview) side by side under `C:\Program Files\KiCad`, plus the registered source builds under
+`C:\kiwrap-builds`; Python 3.11 + uv; Node 24 LTS and Rust 1.95 stable-msvc (the extension build);
+VS Code 1.138; Java 17 on PATH (Freerouting 2.4.1 needs 25 → managed JRE); VS 2022 17.14 (MSVC
+14.44) + vcpkg for the KiCad source bench; `cdb` from the Windows 10 SDK. Linux code paths exist behind the platform seam
 but are out of scope (D18).

@@ -1,0 +1,1924 @@
+{
+  "name": "kiwrap",
+  "displayName": "KiCad (kiwrap)",
+  "description": "kiwrap inside VS Code: the kiwrap MCP server as a client, ERC/DRC in the Problems panel, read-only previews of .kicad_sch/.kicad_pcb, Claude Code configuration and the Live KiCad hand-off.",
+  "version": "0.1.0",
+  "publisher": "kiwrap-private",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/*.kicad_pro",
+    "onView:kiwrap.status",
+    "onCustomEditor:kiwrap.live",
+    "onWebviewPanel:kiwrap.live.panel",
+    "onCommand:kiwrap.live.open",
+    "onCommand:kiwrap.live.openSurface",
+    "onCommand:kiwrap.live.close",
+    "onCommand:kiwrap.live.status",
+    "onCommand:kiwrap.live.raise",
+    "onCommand:kiwrap.live.forwardKey",
+    "onCommand:kiwrap.live.screenshot",
+    "onCommand:kiwrap.live.attach"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kiwrap",
+          "title": "KiCad (kiwrap)",
+          "icon": "$(circuit-board)"
+        }
+      ]
+    },
+    "views": {
+      "kiwrap": [
+        {
+          "id": "kiwrap.status",
+          "name": "KiCad (kiwrap)",
+          "icon": "$(circuit-board)",
+          "contextualTitle": "KiCad (kiwrap)"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "kiwrap.status",
+        "contents": "kiwrap connects VS Code and Claude Code to the KiCad binaries on this machine.\n[Configure Claude Code](command:kiwrap.configureClaude)\n[Restart server](command:kiwrap.restartServer)",
+        "when": "false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "kiwrap.configureClaude",
+        "title": "Configure Claude Code",
+        "category": "kiwrap",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "kiwrap.runErc",
+        "title": "Run ERC",
+        "category": "kiwrap",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "kiwrap.runDrc",
+        "title": "Run DRC",
+        "category": "kiwrap",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "kiwrap.runChecks",
+        "title": "Run ERC + DRC",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.openLive",
+        "title": "Open Live KiCad",
+        "category": "kiwrap",
+        "icon": "$(play)"
+      },
+      {
+        "command": "kiwrap.closeLive",
+        "title": "Close Live KiCad",
+        "category": "kiwrap",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "kiwrap.selectInstall",
+        "title": "Select KiCad install",
+        "category": "kiwrap",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "kiwrap.restartServer",
+        "title": "Restart server",
+        "category": "kiwrap",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "kiwrap.refresh",
+        "title": "Refresh",
+        "category": "kiwrap",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "kiwrap.showOutput",
+        "title": "Show server output",
+        "category": "kiwrap",
+        "icon": "$(output)"
+      },
+      {
+        "command": "kiwrap.showProblems",
+        "title": "Show ERC / DRC problems",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.openPreview",
+        "title": "Open preview (kiwrap)",
+        "category": "kiwrap",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "kiwrap.pickProject",
+        "title": "Pick project to track",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.open",
+        "title": "Live KiCad: Open session (project / editor / mode)",
+        "category": "kiwrap",
+        "icon": "$(circuit-board)"
+      },
+      {
+        "command": "kiwrap.live.attach",
+        "title": "Live KiCad: Attach to running KiCad (pid)",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.openSurface",
+        "title": "Live KiCad: Show KiCad window in a tab (3D viewer, ...)",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.close",
+        "title": "Live KiCad: Close session",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.status",
+        "title": "Live KiCad: Status",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.raise",
+        "title": "Live KiCad: Raise KiCad window",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.screenshot",
+        "title": "Live KiCad: Screenshot surface",
+        "category": "kiwrap"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "title": "Live KiCad: Forward key (internal)",
+        "category": "kiwrap"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "kiwrap.refresh",
+          "when": "view == kiwrap.status",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kiwrap.runErc",
+          "when": "view == kiwrap.status",
+          "group": "navigation@2"
+        },
+        {
+          "command": "kiwrap.runDrc",
+          "when": "view == kiwrap.status",
+          "group": "navigation@3"
+        },
+        {
+          "command": "kiwrap.openLive",
+          "when": "view == kiwrap.status",
+          "group": "navigation@4"
+        },
+        {
+          "command": "kiwrap.configureClaude",
+          "when": "view == kiwrap.status",
+          "group": "1_config@1"
+        },
+        {
+          "command": "kiwrap.selectInstall",
+          "when": "view == kiwrap.status",
+          "group": "1_config@2"
+        },
+        {
+          "command": "kiwrap.pickProject",
+          "when": "view == kiwrap.status",
+          "group": "1_config@3"
+        },
+        {
+          "command": "kiwrap.restartServer",
+          "when": "view == kiwrap.status",
+          "group": "2_server@1"
+        },
+        {
+          "command": "kiwrap.showOutput",
+          "when": "view == kiwrap.status",
+          "group": "2_server@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "kiwrap.selectInstall",
+          "when": "view == kiwrap.status && viewItem == install",
+          "group": "inline"
+        },
+        {
+          "command": "kiwrap.runErc",
+          "when": "view == kiwrap.status && viewItem == erc",
+          "group": "inline"
+        },
+        {
+          "command": "kiwrap.runDrc",
+          "when": "view == kiwrap.status && viewItem == drc",
+          "group": "inline"
+        },
+        {
+          "command": "kiwrap.closeLive",
+          "when": "view == kiwrap.status && viewItem == live",
+          "group": "inline"
+        },
+        {
+          "command": "kiwrap.restartServer",
+          "when": "view == kiwrap.status && viewItem == server",
+          "group": "inline"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "kiwrap.openPreview",
+          "when": "resourceExtname == .kicad_sch || resourceExtname == .kicad_pcb",
+          "group": "navigation"
+        },
+        {
+          "command": "kiwrap.live.openSurface",
+          "when": "activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel'",
+          "group": "navigation@9"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "kiwrap.openPreview",
+          "when": "resourceExtname == .kicad_sch || resourceExtname == .kicad_pcb",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kiwrap.openLive",
+          "when": "resourceExtname == .kicad_sch || resourceExtname == .kicad_pcb || resourceExtname == .kicad_pro",
+          "group": "navigation@2"
+        },
+        {
+          "command": "kiwrap.runErc",
+          "when": "resourceExtname == .kicad_sch || resourceExtname == .kicad_pro",
+          "group": "navigation@3"
+        },
+        {
+          "command": "kiwrap.runDrc",
+          "when": "resourceExtname == .kicad_pcb || resourceExtname == .kicad_pro",
+          "group": "navigation@4"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "kiwrap.closeLive",
+          "when": "false"
+        },
+        {
+          "command": "kiwrap.live.forwardKey",
+          "when": "false"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "kiwrap.preview",
+        "displayName": "KiCad preview (kiwrap)",
+        "selector": [
+          {
+            "filenamePattern": "*.kicad_sch"
+          },
+          {
+            "filenamePattern": "*.kicad_pcb"
+          }
+        ],
+        "priority": "option"
+      },
+      {
+        "viewType": "kiwrap.live",
+        "displayName": "Live KiCad",
+        "selector": [
+          {
+            "filenamePattern": "*.kicad_pcb"
+          },
+          {
+            "filenamePattern": "*.kicad_sch"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "KiCad (kiwrap)",
+        "properties": {
+          "kiwrap.uvPath": {
+            "type": "string",
+            "default": "uv",
+            "scope": "machine",
+            "description": "The uv executable used to start the kiwrap MCP server (uv run kiwrap serve). Machine scope: user settings only, so a repository's .vscode/settings.json cannot point it at its own binary."
+          },
+          "kiwrap.serverProject": {
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "description": "The kiwrap checkout (uv project with pyproject.toml and src/kiwrap) that provides `kiwrap serve`. Empty: a workspace folder that is the kiwrap checkout, else the KIWRAP_REPO environment variable. Machine scope: user settings only (the server runs whatever project this names)."
+          },
+          "kiwrap.storageHome": {
+            "type": "string",
+            "default": "",
+            "description": "kiwrap's state directory (--storage-home: installs registry, sandbox config roots, jobs, live session records). Empty: kiwrap's own default (KIWRAP_HOME or %LOCALAPPDATA%\\kiwrap), shared with the agent's server started from .mcp.json."
+          },
+          "kiwrap.kicadInstall": {
+            "type": "string",
+            "default": "",
+            "description": "The KiCad install to target: a version spec kw_env lists (10, 10.0, 10.0.6) or an install root. Empty: the newest installed."
+          },
+          "kiwrap.checkOnSave": {
+            "type": "boolean",
+            "default": true,
+            "description": "Re-run ERC / DRC into the Problems panel when a .kicad_sch / .kicad_pcb of the tracked project changes on disk."
+          }
+        }
+      },
+      {
+        "title": "kiwrap Live KiCad",
+        "properties": {
+          "kiwrap.live.helperPath": {
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "description": "Path of kiwrap-live.exe. Empty = <extension>/bin/kiwrap-live.exe, then helper/target/{release,debug}/kiwrap-live.exe next to the extension folder (dev). A .js/.mjs path is run with node (tests). Machine scope: user settings only."
+          },
+          "kiwrap.live.nodePath": {
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "description": "Node executable used for a .js helper (tests). Empty = the extension host itself (ELECTRON_RUN_AS_NODE). Machine scope: user settings only."
+          },
+          "kiwrap.live.mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "hidden",
+              "mirror",
+              "view"
+            ],
+            "default": "auto",
+            "enumDescriptions": [
+              "hidden when the launched install carries mr/display-input, otherwise view-only",
+              "hidden KiCad (cloaked, input by window messages); needs a build with mr/display-input",
+              "KiCad visible on the desktop, mirrored and driven from the tab (stock KiCad, opt-in)",
+              "capture only; a click raises the real window"
+            ],
+            "description": "How the Live KiCad tab treats input (docs/DISPLAY.md 12.6)."
+          },
+          "kiwrap.live.mirrorInjector": {
+            "type": "string",
+            "enum": [
+              "hybrid",
+              "mirror"
+            ],
+            "default": "hybrid",
+            "enumDescriptions": [
+              "posted input with a borrowed cursor (VS Code keeps the foreground; docs/DISPLAY.md 12.4)",
+              "SendInput (KiCad must be visible and foreground; the first spike's injector)"
+            ],
+            "description": "Which helper injector the \"mirror\" mode uses on stock KiCad."
+          },
+          "kiwrap.live.shieldKeys": {
+            "type": "boolean",
+            "default": true,
+            "description": "While a Live KiCad tab is active, swallow the VS Code keybindings a KiCad user would press (Ctrl+W, Ctrl+P, F5, ...)."
+          },
+          "kiwrap.live.keepCommandPalette": {
+            "type": "boolean",
+            "default": true,
+            "description": "Keep Ctrl+Shift+P / F1 for VS Code even while the shield is on."
+          },
+          "kiwrap.live.pointerLock": {
+            "type": "boolean",
+            "default": false,
+            "description": "Lock the pointer on click (mirror / hidden modes) so drags never leave the tab. Esc releases it."
+          },
+          "kiwrap.live.hud": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the fps / latency / mode HUD in the tab."
+          },
+          "kiwrap.live.fit": {
+            "type": "string",
+            "enum": [
+              "fit",
+              "native"
+            ],
+            "default": "fit",
+            "description": "fit = scale the KiCad frame down to the tab; native = 1 surface px per device px, the tab scrolls when the frame is larger."
+          },
+          "kiwrap.live.fitWindowToTab": {
+            "type": "boolean",
+            "default": true,
+            "description": "In hidden and mirror modes, size the captured KiCad window to the tab (physical pixels) so the stream is 1:1 and the menus, toolbars and panels stay legible. View-only sessions leave the desktop window alone."
+          },
+          "kiwrap.live.hiddenCloseDelayMs": {
+            "type": "number",
+            "default": 1500,
+            "description": "Grace period before a hidden tab closes its stream (it reconnects and resyncs when shown again)."
+          },
+          "kiwrap.live.autoOpen3d": {
+            "type": "boolean",
+            "default": false,
+            "description": "Open a tab automatically when KiCad shows a 3D viewer."
+          },
+          "kiwrap.live.retainContextWhenHidden": {
+            "type": "boolean",
+            "default": true,
+            "description": "Keep Live KiCad webviews alive while hidden (faster tab switches, more memory)."
+          }
+        }
+      }
+    ],
+    "languages": [
+      {
+        "id": "kicad-sexpr",
+        "aliases": [
+          "KiCad s-expression"
+        ],
+        "extensions": [
+          ".kicad_sch",
+          ".kicad_pcb",
+          ".kicad_pro",
+          ".kicad_sym",
+          ".kicad_mod",
+          ".kicad_dru",
+          ".kicad_wks"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+w",
+        "args": {
+          "key": "ctrl+w"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f4",
+        "args": {
+          "key": "ctrl+f4"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+w",
+        "args": {
+          "key": "ctrl+shift+w"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+w",
+        "args": {
+          "key": "ctrl+k ctrl+w"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k w",
+        "args": {
+          "key": "ctrl+k w"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+t",
+        "args": {
+          "key": "ctrl+shift+t"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+n",
+        "args": {
+          "key": "ctrl+n"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+n",
+        "args": {
+          "key": "ctrl+shift+n"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+o",
+        "args": {
+          "key": "ctrl+o"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+o",
+        "args": {
+          "key": "ctrl+k ctrl+o"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+r",
+        "args": {
+          "key": "ctrl+r"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+r",
+        "args": {
+          "key": "ctrl+shift+r"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+tab",
+        "args": {
+          "key": "ctrl+tab"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+tab",
+        "args": {
+          "key": "ctrl+shift+tab"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+pageup",
+        "args": {
+          "key": "ctrl+pageup"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+pagedown",
+        "args": {
+          "key": "ctrl+pagedown"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+1",
+        "args": {
+          "key": "ctrl+1"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+2",
+        "args": {
+          "key": "ctrl+2"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+3",
+        "args": {
+          "key": "ctrl+3"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+4",
+        "args": {
+          "key": "ctrl+4"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+5",
+        "args": {
+          "key": "ctrl+5"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+6",
+        "args": {
+          "key": "ctrl+6"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+7",
+        "args": {
+          "key": "ctrl+7"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+8",
+        "args": {
+          "key": "ctrl+8"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+9",
+        "args": {
+          "key": "ctrl+9"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+0",
+        "args": {
+          "key": "ctrl+0"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+\\",
+        "args": {
+          "key": "ctrl+\\"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+\\",
+        "args": {
+          "key": "ctrl+k ctrl+\\"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k left",
+        "args": {
+          "key": "ctrl+k left"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k right",
+        "args": {
+          "key": "ctrl+k right"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k up",
+        "args": {
+          "key": "ctrl+k up"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k down",
+        "args": {
+          "key": "ctrl+k down"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k enter",
+        "args": {
+          "key": "ctrl+k enter"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+right",
+        "args": {
+          "key": "ctrl+alt+right"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+left",
+        "args": {
+          "key": "ctrl+alt+left"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+up",
+        "args": {
+          "key": "ctrl+alt+up"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+down",
+        "args": {
+          "key": "ctrl+alt+down"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+alt+0",
+        "args": {
+          "key": "shift+alt+0"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+alt+1",
+        "args": {
+          "key": "shift+alt+1"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k m",
+        "args": {
+          "key": "ctrl+k m"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k z",
+        "args": {
+          "key": "ctrl+k z"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+t",
+        "args": {
+          "key": "ctrl+k ctrl+t"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+s",
+        "args": {
+          "key": "ctrl+k ctrl+s"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+x",
+        "args": {
+          "key": "ctrl+k ctrl+x"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+q",
+        "args": {
+          "key": "ctrl+k ctrl+q"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+f",
+        "args": {
+          "key": "ctrl+k ctrl+f"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+c",
+        "args": {
+          "key": "ctrl+k ctrl+c"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+u",
+        "args": {
+          "key": "ctrl+k ctrl+u"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+i",
+        "args": {
+          "key": "ctrl+k ctrl+i"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+r",
+        "args": {
+          "key": "ctrl+k ctrl+r"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+p",
+        "args": {
+          "key": "ctrl+k ctrl+p"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+d",
+        "args": {
+          "key": "ctrl+k ctrl+d"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+h",
+        "args": {
+          "key": "ctrl+k ctrl+h"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+m",
+        "args": {
+          "key": "ctrl+k ctrl+m"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+b",
+        "args": {
+          "key": "ctrl+k ctrl+b"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+k",
+        "args": {
+          "key": "ctrl+k ctrl+k"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+l",
+        "args": {
+          "key": "ctrl+k ctrl+l"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+n",
+        "args": {
+          "key": "ctrl+k ctrl+n"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+e",
+        "args": {
+          "key": "ctrl+k ctrl+e"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+a",
+        "args": {
+          "key": "ctrl+k ctrl+a"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+y",
+        "args": {
+          "key": "ctrl+k ctrl+y"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+z",
+        "args": {
+          "key": "ctrl+k ctrl+z"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+g",
+        "args": {
+          "key": "ctrl+k ctrl+g"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+j",
+        "args": {
+          "key": "ctrl+k ctrl+j"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+v",
+        "args": {
+          "key": "ctrl+k ctrl+v"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+0",
+        "args": {
+          "key": "ctrl+k ctrl+0"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+1",
+        "args": {
+          "key": "ctrl+k ctrl+1"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+2",
+        "args": {
+          "key": "ctrl+k ctrl+2"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+3",
+        "args": {
+          "key": "ctrl+k ctrl+3"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+4",
+        "args": {
+          "key": "ctrl+k ctrl+4"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+5",
+        "args": {
+          "key": "ctrl+k ctrl+5"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+6",
+        "args": {
+          "key": "ctrl+k ctrl+6"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+7",
+        "args": {
+          "key": "ctrl+k ctrl+7"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+8",
+        "args": {
+          "key": "ctrl+k ctrl+8"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+9",
+        "args": {
+          "key": "ctrl+k ctrl+9"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+s",
+        "args": {
+          "key": "ctrl+k ctrl+shift+s"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+w",
+        "args": {
+          "key": "ctrl+k ctrl+shift+w"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+o",
+        "args": {
+          "key": "ctrl+k ctrl+shift+o"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+n",
+        "args": {
+          "key": "ctrl+k ctrl+shift+n"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+i",
+        "args": {
+          "key": "ctrl+k ctrl+shift+i"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+f",
+        "args": {
+          "key": "ctrl+k ctrl+shift+f"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+e",
+        "args": {
+          "key": "ctrl+k ctrl+shift+e"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+c",
+        "args": {
+          "key": "ctrl+k ctrl+shift+c"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+u",
+        "args": {
+          "key": "ctrl+k ctrl+shift+u"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+q",
+        "args": {
+          "key": "ctrl+k ctrl+shift+q"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+m",
+        "args": {
+          "key": "ctrl+k ctrl+shift+m"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+k ctrl+shift+r",
+        "args": {
+          "key": "ctrl+k ctrl+shift+r"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+p",
+        "args": {
+          "key": "ctrl+p"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+e",
+        "args": {
+          "key": "ctrl+e"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+q",
+        "args": {
+          "key": "ctrl+q"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+b",
+        "args": {
+          "key": "ctrl+b"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+j",
+        "args": {
+          "key": "ctrl+j"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+e",
+        "args": {
+          "key": "ctrl+shift+e"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+f",
+        "args": {
+          "key": "ctrl+shift+f"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+g",
+        "args": {
+          "key": "ctrl+shift+g"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+x",
+        "args": {
+          "key": "ctrl+shift+x"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+m",
+        "args": {
+          "key": "ctrl+shift+m"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+d",
+        "args": {
+          "key": "ctrl+shift+d"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+h",
+        "args": {
+          "key": "ctrl+shift+h"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+a",
+        "args": {
+          "key": "ctrl+shift+a"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+u",
+        "args": {
+          "key": "ctrl+shift+u"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+y",
+        "args": {
+          "key": "ctrl+shift+y"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+b",
+        "args": {
+          "key": "ctrl+shift+b"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+o",
+        "args": {
+          "key": "ctrl+shift+o"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+k",
+        "args": {
+          "key": "ctrl+shift+k"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+l",
+        "args": {
+          "key": "ctrl+shift+l"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+s",
+        "args": {
+          "key": "ctrl+shift+s"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+i",
+        "args": {
+          "key": "ctrl+shift+i"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+c",
+        "args": {
+          "key": "ctrl+shift+c"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+v",
+        "args": {
+          "key": "ctrl+shift+v"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+z",
+        "args": {
+          "key": "ctrl+shift+z"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+[",
+        "args": {
+          "key": "ctrl+shift+["
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+]",
+        "args": {
+          "key": "ctrl+shift+]"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+`",
+        "args": {
+          "key": "ctrl+`"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+`",
+        "args": {
+          "key": "ctrl+shift+`"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+,",
+        "args": {
+          "key": "ctrl+,"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+g",
+        "args": {
+          "key": "ctrl+g"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+d",
+        "args": {
+          "key": "ctrl+d"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+u",
+        "args": {
+          "key": "ctrl+u"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+l",
+        "args": {
+          "key": "ctrl+l"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+m",
+        "args": {
+          "key": "ctrl+m"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+h",
+        "args": {
+          "key": "ctrl+h"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+t",
+        "args": {
+          "key": "ctrl+t"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+i",
+        "args": {
+          "key": "ctrl+i"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+[",
+        "args": {
+          "key": "ctrl+["
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+]",
+        "args": {
+          "key": "ctrl+]"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+space",
+        "args": {
+          "key": "ctrl+space"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+space",
+        "args": {
+          "key": "ctrl+shift+space"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+i",
+        "args": {
+          "key": "ctrl+alt+i"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+b",
+        "args": {
+          "key": "ctrl+alt+b"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+alt+p",
+        "args": {
+          "key": "ctrl+alt+p"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+alt+p",
+        "args": {
+          "key": "ctrl+shift+alt+p"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+=",
+        "args": {
+          "key": "ctrl+="
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+-",
+        "args": {
+          "key": "ctrl+-"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+=",
+        "args": {
+          "key": "ctrl+shift+="
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+-",
+        "args": {
+          "key": "ctrl+shift+-"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+numpad_add",
+        "args": {
+          "key": "ctrl+numpad_add"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+numpad_subtract",
+        "args": {
+          "key": "ctrl+numpad_subtract"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+numpad0",
+        "args": {
+          "key": "ctrl+numpad0"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f11",
+        "args": {
+          "key": "f11"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f2",
+        "args": {
+          "key": "f2"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f3",
+        "args": {
+          "key": "f3"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f4",
+        "args": {
+          "key": "f4"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f5",
+        "args": {
+          "key": "f5"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f6",
+        "args": {
+          "key": "f6"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f7",
+        "args": {
+          "key": "f7"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f8",
+        "args": {
+          "key": "f8"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f9",
+        "args": {
+          "key": "f9"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f10",
+        "args": {
+          "key": "f10"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f12",
+        "args": {
+          "key": "f12"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f5",
+        "args": {
+          "key": "ctrl+f5"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f5",
+        "args": {
+          "key": "shift+f5"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+f5",
+        "args": {
+          "key": "ctrl+shift+f5"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f11",
+        "args": {
+          "key": "shift+f11"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f11",
+        "args": {
+          "key": "ctrl+f11"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f12",
+        "args": {
+          "key": "shift+f12"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f12",
+        "args": {
+          "key": "ctrl+f12"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+f12",
+        "args": {
+          "key": "ctrl+shift+f12"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f2",
+        "args": {
+          "key": "ctrl+f2"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f2",
+        "args": {
+          "key": "shift+f2"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f3",
+        "args": {
+          "key": "ctrl+f3"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f3",
+        "args": {
+          "key": "shift+f3"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f8",
+        "args": {
+          "key": "ctrl+f8"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f8",
+        "args": {
+          "key": "shift+f8"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+f8",
+        "args": {
+          "key": "ctrl+shift+f8"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f9",
+        "args": {
+          "key": "ctrl+f9"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f10",
+        "args": {
+          "key": "ctrl+f10"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+f10",
+        "args": {
+          "key": "ctrl+shift+f10"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f10",
+        "args": {
+          "key": "shift+f10"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f7",
+        "args": {
+          "key": "ctrl+f7"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f7",
+        "args": {
+          "key": "shift+f7"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f6",
+        "args": {
+          "key": "ctrl+f6"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f6",
+        "args": {
+          "key": "shift+f6"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+f1",
+        "args": {
+          "key": "ctrl+f1"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "shift+f1",
+        "args": {
+          "key": "shift+f1"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+f1",
+        "args": {
+          "key": "ctrl+shift+f1"
+        },
+        "when": "kiwrap.live.shield && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "ctrl+shift+p",
+        "args": {
+          "key": "ctrl+shift+p"
+        },
+        "when": "kiwrap.live.shield && kiwrap.live.shieldPalette && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      },
+      {
+        "command": "kiwrap.live.forwardKey",
+        "key": "f1",
+        "args": {
+          "key": "f1"
+        },
+        "when": "kiwrap.live.shield && kiwrap.live.shieldPalette && (activeCustomEditorId == 'kiwrap.live' || activeWebviewPanelId == 'kiwrap.live.panel') && !sideBarFocus && !auxiliaryBarFocus && !panelFocus && !terminalFocus && !inputFocus && !notificationFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "compile-tests": "tsc -p tsconfig.test.json",
+    "test:unit": "npm run compile-tests && mocha out/test/unit/**/*.test.js",
+    "test:integration": "npm run compile-tests && npm run build && node out/test/integration/runTest.js",
+    "test": "npm run test:unit",
+    "package": "npm run build && vsce package --no-dependencies --out kiwrap.vsix",
+    "vscode:prepublish": "npm run build",
+    "test:e2e": "npm run compile-tests && npm run build && node out/test/e2e/runTest.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.101.0",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.25.0",
+    "mocha": "^11.0.0",
+    "typescript": "^5.6.0"
+  }
+}

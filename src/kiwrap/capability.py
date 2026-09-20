@@ -102,6 +102,10 @@ Extra keys this implementation adds (same conventions):
     seed.version / seed.exact / seed.note   which matrix entry seeded the record and how well it fits
     swig.module / swig.python              paths found by the probe ("" when absent)
     probe.ok                bool   whether the `--help` tree probe succeeded (else the seed's cli.* stand)
+    gui.input_from_events   bool   the GUI honours KICAD_INPUT_FROM_EVENTS (fork patch `display-input`,
+                                   docs/DISPLAY.md 12.5): the manifest's builds[] entry of the BUILT commit
+                                   lists the patch (no probe-able surface; stock installs: false). kw_live's
+                                   hidden mode and the extension's --inject events depend on it.
     kiwrap.patches          list[str]  ids from `kiwrap/data/kiwrap_patches.json` whose EVERY detection key
                                    is truthy in this record (docs/UPSTREAM.md §3.3). Informational only:
                                    `kw_env` shows it, receipts cite it, T9 refuses to certify a non-empty
@@ -389,6 +393,18 @@ def load_patch_manifest() -> dict[str, Any]:
     raw.setdefault("patches", [])
     raw.setdefault("builds", [])
     return raw
+
+
+def build_carries_patch(install: KiCadInstallation, patch_id: str) -> bool:
+    """Whether the manifest's `builds[]` entry of the install's BUILT commit lists `patch_id`
+    (the presence signal for a patch without a probe-able surface; False for stock installs)."""
+    commit = install.extra.get("commit", "")
+    if not commit:
+        return False
+    for build in load_patch_manifest().get("builds", []):
+        if build.get("commit") == commit:
+            return patch_id in (build.get("patches") or [])
+    return False
 
 
 def patch_keys(values: Mapping[str, Any], install: KiCadInstallation) -> dict[str, Any]:
@@ -754,6 +770,11 @@ def capabilities_for(
     # (backends.ipc.presence) and Capabilities.refine records the live answer.
     if values.get("ipc.headless") and values.get("cli.has_ratsnest_export"):
         values["ipc.has_get_ratsnest"] = True
+    # The display-input patch (docs/DISPLAY.md 12.5, manifest id `display-input`) has no CLI / IPC
+    # surface to probe: `KICAD_INPUT_FROM_EVENTS` is read by the GUI alone. A build counts only by
+    # its commit (the same rule as kiwrap.patched_build): the manifest's builds[] entry of the
+    # BUILT commit must list the patch. Stock installs never get the key.
+    values["gui.input_from_events"] = build_carries_patch(install, "display-input")
     values["kiwrap.ipc_probed"] = []
     values.update(patch_keys(values, install))
 

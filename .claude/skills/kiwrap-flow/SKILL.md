@@ -19,6 +19,18 @@ refs + mm, repeat.** Schematic: `kw_sch_stats` then `kw_sch_get`. Board: `kw_pcb
 `kw_pcb_get`. Renders (`kw_sch_render`, `kw_pcb_render`) are secondary - for the human, not for
 your decisions. Never guess a library id or a pin position; never edit `.kicad_*` files by hand.
 
+`kw_live` is for humans watching; the agent loop stays data-first. If the person asks to see
+KiCad while you work, `kw_live(action="launch", project=...)` opens a sandboxed KiCad GUI bound
+to the project (the extension shows it live; `kw_pcb_place` moves, `kw_pcb_zones` and
+`kw_pcb_route` commit through it; a rotation, `kw_pcb_route_auto`, `kw_pcb_fix` and a saved
+refill write the file and the GUI reloads it - `data.live_view.reloaded` says so), `screenshot`
+answers "what does it look like", and `detach` closes it when they are done. A `pcbnew` session
+serves the board only: schematic reads and writes come from the file engine meanwhile
+(`degraded: [ipc11_unavailable]`), never an error. The extension may have started the session
+from its own server: `kw_live(action="status", project=...)` finds it (`remote: true`), your
+writes go through it, and `launch` on that project answers E_BUSY while it lives. It changes
+nothing about how you verify: `kw_pcb_check` / `kw_pcb_get` remain the feedback loop.
+
 ## 1. `kw_env(refresh?)` and `kw_project(action="create", dir, name, target_kicad?, board_size_mm?)`
 
 Installed KiCads (newest first) with capability summaries. **KiCad 11 first**: prefer the newest
@@ -226,6 +238,7 @@ which version is installed.
 | `E_BAD_ARGS` | schema/semantic error: unknown pin (candidates = the pins), unknown ref (candidates = the refs), a net or layer the board lacks, a `?` reference, `force` without a reason | follow `fix` / `example` / `candidates` |
 | `E_KICAD_FAILED` | kicad-cli / api-server exited non-zero | read `data.stderr`; check epochs vs target |
 | `E_FILE_LOCKED` | KiCad has the file open, or another kiwrap call runs | close KiCad / wait |
+| `E_BUSY` | a live `kw_live` session already holds the project (one KiCad per project), or a read is in flight over IPC | use that session or `kw_live detach`; retry after the read |
 | `E_GATE` | `kw_pcb_sync` needs `erc_clean`; `kw_fab_export` needs `drc_clean` | run the validator named in `fix`; `force={"reason"}` only when the user accepts the risk |
 | `E_EXTERNAL_EDIT` | `if_match` no longer matches the sheet / a file changed under an operation | re-read (`kw_sch_get`, `data.sheets`) and retry; re-run validators |
 | `E_TIMEOUT` | KiCad exceeded its time budget | `run_async=true` + `kw_job`; narrow reads with filters |

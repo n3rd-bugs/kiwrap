@@ -35,6 +35,7 @@ SUMMARY_KEYS = (
     "rules.default_min_track_width_mm",
     "cli.has_specctra_export",
     "cli.has_specctra_import",
+    "gui.input_from_events",
     "kiwrap.patches",
 )
 

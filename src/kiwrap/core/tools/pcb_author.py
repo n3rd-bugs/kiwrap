@@ -345,7 +345,7 @@ def pcb_setup(ctx: ToolContext, args: PcbSetupArgs) -> Receipt:
             return applied
 
         outcome = run_write("board.setup", caps, install, ipc=None, file=via_file, prefer=None)
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         if args.netclasses is not None and project.pro_path.name not in m.receipt.changed["updated"]:
             m.receipt.changed["updated"].append(project.pro_path.name)
         if args.custom_rules is not None:
@@ -547,7 +547,7 @@ def pcb_sync(ctx: ToolContext, args: PcbSyncArgs) -> Receipt:
             r for r in report["updated"] if r not in m.receipt.changed["updated"]
         )
         m.receipt.changed["removed"].extend(report["removed"])
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         ok = not report["unresolved"]
         m.receipt.data.update(
             {
@@ -711,7 +711,7 @@ def pcb_place(ctx: ToolContext, args: PcbPlaceArgs) -> Receipt:
             skip_ipc_reason=g16_guard(caps, rotates=rotates),
         )
         m.receipt.changed["updated"].extend(refs)
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         rehash_board_stages(project, m.state, "synced")
         after = placement_summary(ctx, install, caps, config, project, refs=refs)
         for name in ("courtyard_overlap", "off_board_copper", "off_board", "unrouted"):
@@ -875,7 +875,7 @@ def pcb_zones(ctx: ToolContext, args: PcbZonesArgs) -> Receipt:
         outcome = run_write("board.zones", caps, install, ipc=via_ipc, file=via_file, prefer=prefer)
         result = outcome.value
         m.receipt.changed["added"].extend(result["uuids"])
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         rehash_board_stages(project, m.state, "placed")
         drc = None
         if args.drc or (args.fill and not result["filled"]):
@@ -1111,7 +1111,7 @@ def pcb_route(ctx: ToolContext, args: PcbRouteArgs) -> Receipt:
         for a in applied:
             key = "removed" if a["op"] == "delete" else "added"
             m.receipt.changed[key].extend(a["uuids"])
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         rehash_board_stages(project, m.state, "placed")
         drc = (
             drc_validator(ctx, m, install, caps, config, project, touched_nets=touched, refill_if_zones=True)

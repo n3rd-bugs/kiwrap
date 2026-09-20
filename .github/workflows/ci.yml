@@ -9,6 +9,15 @@
 #   unit           pytest tests/ + scripts/ci/tests_ci (no KiCad; kicad-marked tests auto-skip)   windows + ubuntu
 #   (kicad-linux removed 2026-09-20: Windows only, decision D18)
 #   kicad-windows  KiCad 10.0.6 NSIS installer (cached), `pytest -m kicad`, capability JSON artifact
+#   helper         the Live KiCad helper (helper/, Rust, kiwrap-live.exe): cargo build --release + cargo test;
+#                  the exe is an artifact for the vsix job                                          windows
+#   extension      the VS Code extension (extension/, TypeScript): npm ci, esbuild, npm test (mocha unit) and
+#                  npm run test:integration (@vscode/test-electron downloads a VS Code build into
+#                  extension/.vscode-test, cached)                                                  windows
+#   vsix           scripts/build_extension.ps1 -SkipHelper with the helper artifact in extension/bin ->
+#                  dist/kiwrap-<version>.vsix as a workflow artifact (docs/EXTENSION.md). No marketplace
+#                  publish step: everything stays private (decision D19).
+#   The three extension jobs skip themselves on checkouts that predate extension/ or helper/.
 #
 # The KiCad jobs can be skipped from the Actions UI (workflow_dispatch input `skip_kicad`).
 # Every KiCad process runs with KICAD_CONFIG_HOME/DOCUMENTS/CACHE under $RUNNER_TEMP; the user config
@@ -119,13 +128,15 @@ jobs:
           for f in scripts/bootstrap.sh scripts/ci/run_pytest.sh scripts/ci/sync_with_wheelhouse.sh; do bash -n "$f"; done
       - name: shellcheck
         run: shellcheck -S style scripts/bootstrap.sh scripts/ci/run_pytest.sh scripts/ci/sync_with_wheelhouse.sh
-      - name: PowerShell parse (bootstrap.ps1)
+      - name: PowerShell parse (bootstrap.ps1, build_extension.ps1)
         shell: pwsh
         run: |
-          $tokens = $null; $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/bootstrap.ps1", [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Host $_.Message }; exit 1 }
-          Write-Host "bootstrap.ps1 parses cleanly"
+          foreach ($f in @("scripts/bootstrap.ps1", "scripts/build_extension.ps1")) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$f", [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Host "${f}: $($_.Message)" }; exit 1 }
+            Write-Host "$f parses cleanly"
+          }
       - name: engines.json is valid JSON with the pinned keys
         run: |
           python3 - <<'EOF'
@@ -248,3 +259,138 @@ jobs:
           name: capabilities-windows
           path: ${{ runner.temp }}\capabilities-windows.json
           if-no-files-found: warn
+
+  helper:
+    name: helper (kiwrap-live.exe, cargo build + test)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Layout (helper/Cargo.toml present?)
+        id: layout
+        shell: pwsh
+        run: |
+          $present = (Test-Path "helper/Cargo.toml").ToString().ToLowerInvariant()
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "present=$present"
+          Write-Host "helper present: $present"
+      - uses: dtolnay/rust-toolchain@v1
+        if: steps.layout.outputs.present == 'true'
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        if: steps.layout.outputs.present == 'true'
+        with:
+          workspaces: helper
+      - name: cargo build --release --locked
+        if: steps.layout.outputs.present == 'true'
+        working-directory: helper
+        run: cargo build --release --locked
+      - name: cargo test --release
+        if: steps.layout.outputs.present == 'true'
+        working-directory: helper
+        run: cargo test --release --locked
+      - name: Smoke (the helper prints one JSON line {port, token, version} and exits when its --pid is gone)
+        if: steps.layout.outputs.present == 'true'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem helper/target/release -Filter kiwrap-live.exe | Select-Object -First 1
+          if ($null -eq $exe) { throw "helper/target/release/kiwrap-live.exe not built" }
+          & $exe.FullName --version
+          if ($LASTEXITCODE -ne 0) { Write-Host "(--version exit $LASTEXITCODE; not fatal)" }
+          exit 0
+      - uses: actions/upload-artifact@v7
+        if: steps.layout.outputs.present == 'true'
+        with:
+          name: kiwrap-live
+          path: |
+            helper/target/release/kiwrap-live.exe
+            helper/target/release/kiwrap_live.pdb
+          if-no-files-found: error
+
+  extension:
+    name: extension (npm ci, esbuild, npm test via @vscode/test-electron)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Layout (extension/package.json present?)
+        id: layout
+        shell: pwsh
+        run: |
+          $present = (Test-Path "extension/package.json").ToString().ToLowerInvariant()
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "present=$present"
+          Write-Host "extension present: $present"
+      - uses: actions/setup-node@v7
+        if: steps.layout.outputs.present == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - name: npm ci
+        if: steps.layout.outputs.present == 'true'
+        working-directory: extension
+        run: npm ci --no-audit --no-fund
+      - name: esbuild (npm run build)
+        if: steps.layout.outputs.present == 'true'
+        working-directory: extension
+        run: npm run build
+      - name: Cache the VS Code build @vscode/test-electron downloads
+        if: steps.layout.outputs.present == 'true'
+        uses: actions/cache@v6
+        with:
+          path: extension/.vscode-test
+          key: vscode-test-${{ runner.os }}-${{ hashFiles('extension/package-lock.json') }}
+      - name: npm test (unit, mocha)
+        if: steps.layout.outputs.present == 'true'
+        working-directory: extension
+        run: npm test
+      - name: npm run test:integration (@vscode/test-electron; the Windows runner has a desktop, no xvfb)
+        if: steps.layout.outputs.present == 'true'
+        working-directory: extension
+        run: npm run test:integration --if-present
+      - uses: actions/upload-artifact@v7
+        if: steps.layout.outputs.present == 'true'
+        with:
+          name: extension-dist
+          path: extension/dist
+          if-no-files-found: error
+
+  vsix:
+    name: vsix (scripts/build_extension.ps1, helper from the artifact)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [helper, extension]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Layout (both extension/ and helper/ present?)
+        id: layout
+        shell: pwsh
+        run: |
+          $present = ((Test-Path "extension/package.json") -and (Test-Path "helper/Cargo.toml")).ToString().ToLowerInvariant()
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "present=$present"
+          Write-Host "extension + helper present: $present"
+      - uses: actions/setup-node@v7
+        if: steps.layout.outputs.present == 'true'
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - uses: actions/download-artifact@v7
+        if: steps.layout.outputs.present == 'true'
+        with:
+          name: kiwrap-live
+          path: extension/bin
+      - name: Package (npm ci + esbuild + vsce; the helper exe comes from the helper job)
+        if: steps.layout.outputs.present == 'true'
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_extension.ps1 -SkipHelper
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist\*.vsix
+      - uses: actions/upload-artifact@v7
+        if: steps.layout.outputs.present == 'true'
+        with:
+          name: kiwrap-vsix
+          path: dist/*.vsix
+          if-no-files-found: error

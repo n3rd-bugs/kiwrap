@@ -140,6 +140,7 @@ def test_catalog_is_deterministic_and_annotated():
         "kw_pcb_render",
         "kw_fab_bom",
         "kw_fab_export",
+        "kw_live",
     )
     for spec in ALL_TOOLS:
         assert spec.name.startswith("kw_") and spec.description

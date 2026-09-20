@@ -158,6 +158,30 @@ def to_kiwrap_error(exc: BaseException) -> KiwrapError:
             fix="read data.stderr; kw_help(topic='E_KICAD_FAILED') lists the exit codes",
             data=_cli_data(exc),
         )
+    if "ApiError" in names:
+        # kipy: KiCad's API answered with an error status. AS_UNHANDLED ("no handler available
+        # for request of type ...": the document kind this KiCad process does not hold - a
+        # standalone pcbnew asked for a schematic, reviewer finding 9) is a capability gap the
+        # planner falls through (E_UNSUPPORTED -> the file engine); anything else is the
+        # server failing the request (E_KICAD_FAILED, also a planner fall-through for ipc11).
+        text = str(exc)
+        unhandled = "no handler available" in text.lower() or "not available in headless" in text.lower()
+        return KiwrapError(
+            "E_UNSUPPORTED" if unhandled else "E_KICAD_FAILED",
+            f"KiCad API: {text}",
+            why=(
+                "this KiCad process holds no document of that kind (its API server has no handler for it)"
+                if unhandled
+                else "KiCad's API server refused or failed the request"
+            ),
+            fix=(
+                "the file engine answers this read (degraded: ipc11_unavailable); a live kw_live session of "
+                "the other editor kind does not serve this document - kw_live detach releases the project"
+                if unhandled
+                else "retry; kw_live status / kw_env show the KiCad the request went to"
+            ),
+            data={"api_status": getattr(exc, "code", None), "raw": getattr(exc, "raw_message", None)},
+        )
     if "LibError" in names:
         # kiwrap.formats.libs teaching errors (E_LIB_NOT_FOUND / E_LIB_UNSUPPORTED / E_LIB) keep
         # their code, why, fix and candidates
@@ -340,6 +364,10 @@ class Mutation:
     pre_snapshot: str | None = None  # sha of the state-before-this-call snapshot, when one was needed
     baseline: str | None = None  # the snapshot holding the files as they were when this call began
     failure_code: str | None = None  # error code when the handler raised (marks the snapshot message)
+    #: the live GUI session `kw_live` bound to this project (`release_project()['bound']`: session_id,
+    #: pid, socket, locks, files), else None - the tool then writes through that KiCad and must not
+    #: rewrite its files on disk behind it
+    bound: dict[str, Any] | None = None
 
     @property
     def degraded(self) -> list[str]:
@@ -358,19 +386,20 @@ class Mutation:
         return delta
 
 
-def release_own_sessions(ctx: ToolContext, project: Project) -> None:
+def release_own_sessions(ctx: ToolContext, project: Project) -> dict[str, Any]:
     """Before the editor-lock check: close kiwrap's own pooled api-servers on this project (a
     headless server holds KiCad's `~<name>.kicad_pro.lck` for its whole lifetime, so a read that
     stayed pooled would otherwise be refused as "KiCad has the file open" - reviewer finding 19),
-    and refuse with E_BUSY while a non-pooled read is still in flight in another thread."""
+    and refuse with E_BUSY while a non-pooled read is still in flight in another thread. Returns
+    the pool's report (`bound`: the live GUI session kept on the project, with its lock files)."""
     release = getattr(ctx.services, "ipc_release_project", None)
     if not callable(release):
-        return
+        return {}
     try:
         info = release(project.dir)
     except KiwrapError as exc:
         if exc.code == "E_UNSUPPORTED":  # no IPC backend in this build: nothing to release
-            return
+            return {}
         raise
     busy = list((info or {}).get("busy") or [])
     if busy:
@@ -381,6 +410,7 @@ def release_own_sessions(ctx: ToolContext, project: Project) -> None:
             fix="retry in a moment; the read (kw_pcb_get / kw_sch_get / kw_pcb_check) releases the project when done",
             candidates=[Path(b).name for b in busy],
         )
+    return dict(info or {})
 
 
 @contextmanager
@@ -393,12 +423,21 @@ def mutation(
     on the way out (also on failure, so a half-applied change is committed as its own snapshot
     and remains undoable; the message then carries `FAILED <code>`)."""
     parsed = Force.parse(force)
-    release_own_sessions(ctx, project)
-    with project_mutation(project):
+    info = release_own_sessions(ctx, project)
+    bound = info.get("bound") if isinstance(info.get("bound"), dict) else None
+    # the lock files of the GUI session kw_live bound to this project are kiwrap's own when the
+    # write lands in that KiCad (its API server, `ipc11`); on a KiCad without the headless IPC
+    # provider the GUI merely holds the files and the refusal stands (kw_live detach first)
+    exempt = (
+        [str(x) for x in (bound or {}).get("locks", []) or []] if (bound or {}).get("ipc11", True) else []
+    )
+    with project_mutation(project, exempt=exempt):
         state = project.load_state()
         external = check_external_edit(project, state)
         forced = check_gate(tool, state.stage, parsed) if gate else None
-        m = Mutation(project=project, state=state, tool=tool, external=external, forced_reason=forced)
+        m = Mutation(
+            project=project, state=state, tool=tool, external=external, forced_reason=forced, bound=bound
+        )
         _snapshot_before(m)
         try:
             yield m

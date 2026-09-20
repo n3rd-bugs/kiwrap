@@ -55,6 +55,21 @@ Shape of the implementation:
   when the file changes on disk (mtime/size), on `release_project()` (the mutating tools call it
   before touching the project - the pooled server holds KiCad's project lock, finding 19) and at
   interpreter exit. Calls on one pooled server are serialised by a lock.
+- Bound GUI sessions (Phase 2, `kiwrap.backends.ipc.gui_sessions`): while a sandboxed KiCad GUI
+  launched by `kw_live` is alive for a project, it holds that project's files and its API server
+  is the ONLY KiCad allowed on them ("one KiCad per project", docs/DISPLAY.md §7.4). The GUI
+  registers itself with `bind_gui_session(project_dir, session)`; `pooled_session()` for a file
+  under that directory then hands out a `_BoundHandle` on the GUI session instead of starting a
+  headless server (a commit made through it repaints in the live view), `release_project()`
+  leaves it alone and reports it under `bound` (the mutation prologue must then exempt the
+  `~*.lck` files the GUI holds - they are listed there), and `close_all()` never closes it (the
+  GUI's own supervisor does, on `kw_live detach` or at interpreter exit). Two rules keep the
+  GUI's document and the disk in step (reviewer findings 2 and 9, 2026-09-20): the handle is
+  only handed out for the document kind the session holds (`bound_serves_kind`; the other kind
+  raises `BoundElsewhere`, an `Unsupported` the planner turns into "ipc11 unavailable", so the
+  file engine answers), and a file written on disk behind the editor (the G16-guarded file
+  writer, a SES import, a saved refill) is reloaded into it first (`resync_bound_session`:
+  the disk stamp recorded at bind / after every handle differs -> `RevertDocument`).
 """
 
 from __future__ import annotations
@@ -84,7 +99,15 @@ from kiwrap.sandbox import ConfigRoot, ensure
 
 __all__ = [
     "MAX_SOCKET_PATH",
+    "BoundElsewhere",
+    "BoundStale",
     "HeadlessSession",
+    "bind_gui_session",
+    "bound_serves_kind",
+    "bound_session_for",
+    "bound_sessions",
+    "resync_bound_session",
+    "unbind_gui_session",
     "IpcError",
     "SessionError",
     "SessionPool",
@@ -115,6 +138,9 @@ CLIENT_NAME_PREFIX = "kiwrap"
 
 _REGISTRY: dict[int, HeadlessSession] = {}
 _REGISTRY_LOCK = threading.Lock()
+#: project directory (resolved) -> the live GUI session bound to it (module docstring)
+_BOUND: dict[Path, Any] = {}
+_BOUND_LOCK = threading.Lock()
 
 
 class IpcError(RuntimeError):
@@ -304,14 +330,21 @@ def _pid_alive(pid: int) -> bool:
 
 
 def _command_line(pid: int) -> str:
-    """The process's command line, to confirm a recorded pid still is OUR api-server before it is
-    killed (pids are recycled): `/proc/<pid>/cmdline` on Linux, `Win32_Process.CommandLine` via
-    PowerShell on Windows (only reached for a recorded pid whose parent is gone: rare)."""
+    """The process's command line, to confirm a recorded pid still is OUR api-server / GUI before
+    it is killed or bound (pids are recycled): `/proc/<pid>/cmdline` on Linux; on Windows the
+    PEB's `ProcessParameters.CommandLine` read in-process (`NtQueryInformationProcess` +
+    `ReadProcessMemory`, ~1 ms; reviewer finding 12/23, 2026-09-20: the PowerShell + WMI spawn
+    cost 0.7-0.8 s per record on every discovery pass), falling back to
+    `Win32_Process.CommandLine` via PowerShell when the process cannot be opened (an elevated
+    KiCad, another user's process)."""
     if not sys.platform.startswith("win"):
         try:
             return Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
         except OSError:
             return ""
+    native = _command_line_native(pid)
+    if native is not None:
+        return native
     try:
         out = subprocess.run(
             [
@@ -328,6 +361,89 @@ def _command_line(pid: int) -> str:
         return out.stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return ""
+
+
+class _ProcessBasicInformation(ctypes.Structure):  # pragma: no cover - Windows only
+    _fields_ = [
+        ("ExitStatus", ctypes.c_void_p),
+        ("PebBaseAddress", ctypes.c_void_p),
+        ("AffinityMask", ctypes.c_void_p),
+        ("BasePriority", ctypes.c_void_p),
+        ("UniqueProcessId", ctypes.c_void_p),
+        ("InheritedFromUniqueProcessId", ctypes.c_void_p),
+    ]
+
+
+def _command_line_native(pid: int) -> str | None:  # pragma: no cover - Windows only
+    """`PEB.ProcessParameters.CommandLine` of a 64-bit process read from a 64-bit Python (KiCad
+    and kiwrap's interpreter are both x64 here, D18). None when anything fails (no access, a
+    32-bit target, an exited process, a 32-bit interpreter): the caller falls back to WMI."""
+    if not sys.platform.startswith("win") or ctypes.sizeof(ctypes.c_void_p) != 8:
+        return None
+    try:
+        kernel32 = getattr(ctypes, "windll").kernel32  # noqa: B009
+        ntdll = getattr(ctypes, "windll").ntdll  # noqa: B009
+    except AttributeError:
+        return None
+    kernel32.OpenProcess.restype = ctypes.c_void_p
+    kernel32.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+    kernel32.ReadProcessMemory.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    ntdll.NtQueryInformationProcess.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint32),
+    ]
+    handle = kernel32.OpenProcess(0x0400 | 0x0010, False, int(pid))  # QUERY_INFORMATION | VM_READ
+    if not handle:
+        return None
+    try:
+        pbi = _ProcessBasicInformation()
+        got = ctypes.c_uint32()
+        status = ntdll.NtQueryInformationProcess(
+            handle, 0, ctypes.byref(pbi), ctypes.sizeof(pbi), ctypes.byref(got)
+        )
+        if status != 0 or not pbi.PebBaseAddress:
+            return None
+
+        def read(address: int, size: int) -> bytes | None:
+            buf = ctypes.create_string_buffer(size)
+            n = ctypes.c_size_t()
+            if not kernel32.ReadProcessMemory(handle, ctypes.c_void_p(address), buf, size, ctypes.byref(n)):
+                return None
+            return buf.raw[: n.value]
+
+        # PEB64.ProcessParameters at 0x20; RTL_USER_PROCESS_PARAMETERS64.CommandLine (a
+        # UNICODE_STRING: USHORT Length, USHORT MaximumLength, 4 pad, PWSTR Buffer) at 0x70
+        raw = read(int(pbi.PebBaseAddress) + 0x20, 8)
+        if raw is None or len(raw) < 8:
+            return None
+        params = int.from_bytes(raw, "little")
+        if not params:
+            return None
+        ustr = read(params + 0x70, 16)
+        if ustr is None or len(ustr) < 16:
+            return None
+        length = int.from_bytes(ustr[0:2], "little")
+        buffer = int.from_bytes(ustr[8:16], "little")
+        if not buffer or length == 0:
+            return ""
+        data = read(buffer, min(length, 32 * 1024))
+        if data is None:
+            return None
+        return data.decode("utf-16-le", "replace")
+    except Exception:  # noqa: BLE001 - any failure means "take the slow path"
+        return None
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def _write_record(
@@ -901,6 +1017,286 @@ def close_all() -> int:
     return len(sessions)
 
 
+# --- bound GUI sessions ---------------------------------------------------------------------------
+
+
+def _bound_key(directory: str | Path) -> Path:
+    return Path(directory).resolve()
+
+
+def _bound_writes_through(session: Any) -> bool:
+    """True when the mutating tools reach this GUI over IPC (its KiCad has the headless IPC
+    provider, capability `ipc.headless` - the planner's ipc11 predicate); a session without a
+    capability record (test fakes) counts as reachable."""
+    caps = getattr(session, "capabilities", None)
+    if caps is None or not hasattr(caps, "has"):
+        return True
+    try:
+        return bool(caps.has("ipc.headless"))
+    except Exception:  # noqa: BLE001 - a broken record never blocks the prologue
+        return True
+
+
+def bind_gui_session(directory: str | Path, session: Any) -> None:
+    """Register `session` (a `gui_sessions.GuiSession`: `running`, `file`, `pid`, `socket_url`,
+    `kicad()`, `board()`, `schematic()`, `capabilities`, `install`, `locks_taken`, `serves()`) as
+    THE KiCad for every file under `directory`. Replaces a dead binding; a live one for another
+    session raises `SessionError`. The disk stamp of the GUI's files is recorded now (the editor
+    just loaded them): see `resync_bound_session`."""
+    key = _bound_key(directory)
+    with _BOUND_LOCK:
+        existing = _BOUND.get(key)
+        if existing is not None and existing is not session and getattr(existing, "running", False):
+            raise SessionError(
+                f"a GUI session is already bound to {key}",
+                why="one KiCad per project: its API server owns the project's files",
+                fix="detach the existing session first (kw_live detach)",
+            )
+        _BOUND[key] = session
+        _BOUND_STAMPS[key] = _session_stamp(session)
+    # the pooled headless servers on that project would hold KiCad's lock next to the GUI's
+    SESSION_POOL.close_project(key)
+
+
+def unbind_gui_session(directory: str | Path, session: Any | None = None) -> None:
+    key = _bound_key(directory)
+    with _BOUND_LOCK:
+        if session is None or _BOUND.get(key) is session:
+            _BOUND.pop(key, None)
+            _BOUND_STAMPS.pop(key, None)
+
+
+# --- the bound GUI's document vs the file on disk ------------------------------------------------
+
+
+#: per bound project directory: the disk stamp of the GUI's files as of its last known save /
+#: load / revert (what its in-memory document corresponds to)
+_BOUND_STAMPS: dict[Path, tuple[Any, ...]] = {}
+
+
+def _session_files(session: Any) -> list[Path]:
+    files = [Path(f) for f in (getattr(session, "files", None) or [])]
+    if not files:
+        one = getattr(session, "file", None)
+        if one is not None:
+            files = [Path(one)]
+    return files
+
+
+def _session_stamp(session: Any) -> tuple[Any, ...]:
+    """(name, mtime_ns, size, [sheet tree]) of every file the GUI holds (`_file_stamp` per file)."""
+    return tuple((p.name, _file_stamp(p)) for p in _session_files(session))
+
+
+def _stamp_bound(session: Any) -> None:
+    key = _bound_key(getattr(session, "project_dir", "") or ".")
+    with _BOUND_LOCK:
+        _BOUND_STAMPS[key] = _session_stamp(session)
+
+
+class BoundStale(Unsupported):
+    """The live GUI's document could not be brought back in line with the file on disk (a
+    `RevertDocument` the editor refused - a commit still open - or the API not answering): the
+    planner takes it as "ipc11 unavailable" and the file engine, which reads and writes the
+    truth on disk, answers instead."""
+
+    def __init__(self, session: Any, reason: str):
+        install = getattr(session, "install", None)
+        self.capability, self.install = "ipc.bound_document_in_sync", install
+        self.oldest_kicad_with_it, self.fallback = None, "file"
+        self.fix = (
+            "the file engine answers this call from the file on disk; the live view catches up on the "
+            "next successful call, or kw_live(action='detach') releases the GUI"
+        )
+        RuntimeError.__init__(
+            self,
+            f"the live KiCad session (kw_live, pid {getattr(session, 'pid', '?')}) holds a document that is "
+            f"older than the file on disk and could not revert it: {reason}",
+        )
+
+
+class BoundElsewhere(Unsupported):
+    """A GUI session is bound to the project but holds a document of ANOTHER kind (a pcbnew
+    session and a `.kicad_sch` request, or the reverse): its API server has no handler for that
+    kind (verified 10.99: `GetOpenDocuments` answers "no handler available"), and a headless
+    server next to it would fight it for the project lock. The planner takes this as "ipc11
+    unavailable" and the file engine answers (reviewer finding 9, 2026-09-20)."""
+
+    def __init__(self, session: Any, kind: str, editor: str):
+        install = getattr(session, "install", None)
+        self.capability, self.install = f"ipc.bound_{editor}_session_serves_{kind}", install
+        self.oldest_kicad_with_it, self.fallback = None, "file"
+        names = {"pcb": "board", "sch": "schematic"}
+        self.fix = (
+            f"{names.get(kind, kind)} reads and writes come from the file engine while the live "
+            f"{names.get(editor, editor)} session lives (degraded: ipc11_unavailable); "
+            "kw_live(action='detach') releases the project"
+        )
+        RuntimeError.__init__(
+            self,
+            f"a live KiCad {names.get(editor, editor)} session (kw_live, pid {getattr(session, 'pid', '?')}) is "
+            f"bound to this project and holds no {names.get(kind, kind)} document",
+        )
+
+
+def _document_kind(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    suffix = path.suffix.lower()
+    if suffix == ".kicad_pcb":
+        return "pcb"
+    if suffix == ".kicad_sch":
+        return "sch"
+    return None
+
+
+def bound_serves_kind(session: Any, kind: str | None) -> bool:
+    """Whether the bound GUI can answer requests for a document of `kind` (pcb | sch | None =
+    anything): a pcbnew session serves boards only, an eeschema one schematics only; a project
+    manager session (or one without an editor attribute, a test fake) counts as serving both."""
+    editor = getattr(session, "editor", None)
+    if kind is None or editor in (None, "", "project"):
+        return True
+    return str(editor) == kind
+
+
+def _revert_bound_document(session: Any) -> list[str]:
+    """`RevertDocument` (kipy `Board.revert()` / `Schematic.revert()`, handled by
+    `API_HANDLER_PCB::handleRevertDocument` on 10.99, refused only while a commit is open) for
+    the documents the session's editor holds. Returns the kinds reverted."""
+    editor = str(getattr(session, "editor", "") or "pcb")
+    kinds = {"pcb": ("board",), "sch": ("schematic",), "project": ("board", "schematic")}.get(
+        editor, ("board",)
+    )
+    reverted: list[str] = []
+    errors: list[str] = []
+    for kind in kinds:
+        try:
+            getattr(session, kind)().revert()
+            reverted.append(kind)
+        except Exception as exc:  # noqa: BLE001 - a manager without that editor open is fine
+            errors.append(f"{kind}: {type(exc).__name__}: {exc}")
+    if not reverted and errors:
+        raise SessionError("; ".join(errors))
+    return reverted
+
+
+def resync_bound_session(path: str | Path | None, *, session: Any | None = None) -> dict[str, Any] | None:
+    """Bring the bound GUI's in-memory document back in line with the files on disk when
+    something wrote them behind the editor (reviewer finding 2, 2026-09-20: a rotating
+    `kw_pcb_place` through the G16-guarded file writer, `kw_pcb_route_auto` / `kw_pcb_fix`
+    importing a SES on disk, a `--save-board` refill; pcbnew never reloads a board on its own -
+    its wxFileSystemWatcher watches the footprint library only - and its next `SaveDocument`
+    would silently overwrite those edits while every ipc11 read answered from the stale board).
+
+    Compares the disk stamp of the session's files with the one recorded at its last known
+    load / save / revert (`_BOUND_STAMPS`); on a difference sends `RevertDocument` and re-stamps.
+    Returns None without a bound session, else `{"changed": bool, "reverted": [kinds]}`; raises
+    `BoundStale` (an `Unsupported`: the planner falls through to the file engine) when the
+    revert failed."""
+    if session is None:
+        session = bound_session_for(path)
+    if session is None:
+        return None
+    key = _bound_key(getattr(session, "project_dir", None) or Path(path or ".").parent)
+    now = _session_stamp(session)
+    with _BOUND_LOCK:
+        last = _BOUND_STAMPS.get(key)
+    if last is None or last == now:
+        with _BOUND_LOCK:
+            _BOUND_STAMPS[key] = now
+        return {"changed": False, "reverted": []}
+    try:
+        reverted = _revert_bound_document(session)
+    except Exception as exc:  # noqa: BLE001 - classified for the planner
+        raise BoundStale(session, str(exc)) from exc
+    log.info(
+        "live GUI session pid %s reverted %s: %s changed on disk behind the editor",
+        getattr(session, "pid", "?"),
+        ", ".join(reverted),
+        ", ".join(p.name for p in _session_files(session)),
+    )
+    with _BOUND_LOCK:
+        _BOUND_STAMPS[key] = _session_stamp(session)
+    SESSION_POOL.bound_reverts += 1
+    return {"changed": True, "reverted": reverted}
+
+
+def bound_session_for(path: str | Path | None) -> Any | None:
+    """The live GUI session bound to the project directory containing `path` (or to `path`
+    itself when it is a directory), else None. Dead bindings are dropped on the way.
+
+    A GUI another kiwrap process launched (the VS Code extension's server, while this is the
+    agent's - docs/EXTENSION.md §6) counts too: its record under the shared temp dir is found by
+    `gui_sessions.discover_remote_session()` and bound here as a `RemoteGuiSession`, so this
+    process's ipc11 provider writes into the window the user is watching."""
+    if path is None:
+        return None
+    target = Path(path).resolve()
+    with _BOUND_LOCK:
+        for key, session in list(_BOUND.items()):
+            if not getattr(session, "running", False):
+                _BOUND.pop(key, None)
+                continue
+            if target == key or _is_under(target, key):
+                return session
+    remote = _discover_remote(target)
+    if remote is None:
+        return None
+    key = _bound_key(remote.project_dir)
+    with _BOUND_LOCK:
+        existing = _BOUND.get(key)
+        if existing is not None and getattr(existing, "running", False):
+            return existing
+        _BOUND[key] = remote
+        # this process has no history of that GUI's saves: the disk is taken as its state now
+        _BOUND_STAMPS[key] = _session_stamp(remote)
+    SESSION_POOL.close_project(key)  # a pooled headless server on that project would fight the GUI
+    return remote
+
+
+def _discover_remote(target: Path) -> Any | None:
+    """`gui_sessions.discover_remote_session(target)` (lazy: gui_sessions imports this module),
+    swallowing every failure - discovery is a convenience on top of the in-process binding."""
+    try:
+        from kiwrap.backends.ipc.gui_sessions import discover_remote_session
+    except ImportError:  # pragma: no cover - the component is part of the same distribution
+        return None
+    try:
+        return discover_remote_session(target)
+    except Exception as exc:  # noqa: BLE001 - never break a tool call over a stale record
+        log.debug("remote GUI session discovery failed for %s: %s", target, exc)
+        return None
+
+
+def bound_sessions() -> list[Any]:
+    with _BOUND_LOCK:
+        return [s for s in _BOUND.values() if getattr(s, "running", False)]
+
+
+class _BoundHandle:
+    """What `pooled_session()` returns for a file a GUI session is bound to: the same protocol
+    as `_PooledHandle`, over the GUI's API server; `close()` / `__exit__` never stop the GUI.
+    On the way out the disk stamp is re-recorded: whatever the GUI saved through the handle
+    (`ipc_pcb_save` / `ipc_sch_save`) is now what its document corresponds to."""
+
+    def __init__(self, session: Any):
+        self._session = session
+        self.bound = True
+
+    def __enter__(self) -> Any:
+        return self._session
+
+    def __exit__(self, *exc: object) -> None:
+        _stamp_bound(self._session)
+
+    def close(self) -> None:
+        _stamp_bound(self._session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._session, name)
+
+
 # --- pool ------------------------------------------------------------------------------------------
 
 
@@ -977,6 +1373,8 @@ class SessionPool:
         self._entries: dict[tuple[str, str], _PoolEntry] = {}
         self._lock = threading.Lock()
         self.reused = 0  # statistics for tests / kw_env
+        self.bound_hits = 0  # requests answered by a bound GUI session instead of a headless server
+        self.bound_reverts = 0  # times a bound GUI had to reload a file written behind it
 
     @staticmethod
     def _key(install: KiCadInstallation, file: str | Path | None) -> tuple[str, str]:
@@ -987,6 +1385,20 @@ class SessionPool:
         (unchanged on disk) is already open. Blocks while another call uses that session."""
         key = self._key(install, file)
         path = Path(file).resolve() if file is not None else None
+        bound = bound_session_for(path)
+        if bound is not None:
+            # the live GUI is THE KiCad for this project: no headless server next to it - and
+            # only for the document kind it holds (a pcbnew session has no schematic handlers;
+            # a headless server beside it would fight it for the project lock): the other kind
+            # is "ipc11 unavailable" for the planner, so the file engine answers
+            kind = _document_kind(path)
+            if not bound_serves_kind(bound, kind):
+                raise BoundElsewhere(bound, kind or "", str(getattr(bound, "editor", "")))
+            self.bound_hits += 1
+            # a file written on disk behind the editor (file writer, SES import) is reloaded
+            # into the GUI first so neither a read nor the next save answers from a stale board
+            resync_bound_session(path, session=bound)
+            return _BoundHandle(bound)  # type: ignore[return-value]
         stamp = _file_stamp(path)
         with self._lock:
             entry = self._entries.get(key)
@@ -1090,6 +1502,12 @@ class SessionPool:
                     for e in self._entries.values()
                 ],
                 "reused": self.reused,
+                "bound_hits": self.bound_hits,
+                "bound_reverts": self.bound_reverts,
+                "bound": [
+                    {"project": str(getattr(s, "project_dir", "")), "pid": getattr(s, "pid", None)}
+                    for s in bound_sessions()
+                ],
                 "idle_timeout_s": self.idle_timeout_s,
             }
 
@@ -1121,13 +1539,39 @@ def release_project(directory: str | Path, *, timeout_s: float = 60.0) -> dict[s
     # stayed: sweep the recorded dead servers first so the prologue's refuse_if_editor_open()
     # does not refuse the project with E_FILE_LOCKED for a lock only a human could delete.
     sweep_orphans()
+    # Same for the GUI sessions of a kiwrap server that died hard (reviewer finding 10,
+    # 2026-09-20: the extension host killed -> the Job Object took pcbnew, its ~*.lck stayed
+    # and every mutation of the agent was refused E_FILE_LOCKED until someone launched again).
+    try:
+        from kiwrap.backends.ipc.gui_sessions import sweep_orphans as gui_sweep_orphans
+
+        gui_sweep_orphans()
+    except Exception as exc:  # noqa: BLE001 - housekeeping never breaks the prologue
+        log.debug("gui orphan sweep failed: %s", exc)
     closed = SESSION_POOL.close_project(directory, timeout_s=timeout_s)
     busy = [
         str(s.file)
         for s in live_sessions()
         if s.file is not None and s.running and _is_under(s.file, directory)
     ]
-    return {"closed": [str(p) for p in closed], "busy": busy}
+    info: dict[str, Any] = {"closed": [str(p) for p in closed], "busy": busy}
+    bound = bound_session_for(directory)
+    if bound is not None:
+        # The GUI stays: the tools' IPC twins commit through it (pooled_session hands it out) and
+        # the `~*.lck` files it holds are ITS, not a foreign editor's - the editor-lock refusal
+        # must skip exactly these (listed by name for the prologue).
+        info["bound"] = {
+            "session_id": getattr(bound, "session_id", None),
+            "pid": getattr(bound, "pid", None),
+            "socket": getattr(bound, "socket_url", None),
+            "locks": [str(p) for p in getattr(bound, "locks_taken", [])],
+            "files": [str(p) for p in getattr(bound, "files", [])],
+            # whether the tools' ipc11 provider is eligible on this KiCad (planner predicate
+            # `ipc.headless`): only then do the mutating tools write THROUGH the GUI and may treat
+            # its lock files as their own; on a 10.0.x the GUI holds the files and they stay refused
+            "ipc11": _bound_writes_through(bound),
+        }
+    return info
 
 
 _ATEXIT_REGISTERED = False

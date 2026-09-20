@@ -44,6 +44,29 @@ act on refs and millimetre coordinates:
 **Never reason from an image when a structured query exists.** `kw_sch_render` / `kw_pcb_render`
 are secondary (human review, VS Code previews); a render never replaces `kw_*_get` / `kw_*_check`.
 
+**`kw_live` is for humans watching; the agent loop stays data-first.** When the person wants to
+see the board or schematic change as you work, `kw_live(action="launch", project=...)` starts a
+sandboxed KiCad GUI on the project (never activated, one per agent, killed on `detach` or when
+the server exits) and the VS Code extension shows it in the Live KiCad view. While it lives, the
+session is bound to the project: `kw_pcb_place` (moves, flips, locks), `kw_pcb_zones` and
+`kw_pcb_route` commit through that GUI's API and appear live. Writes that land on disk instead -
+a `kw_pcb_place` that changes a rotation (the G16 guard routes it to the file writer on every
+10.99 build), `kw_pcb_route_auto` and `kw_pcb_fix` (they import the router's session into the
+file), a `kw_pcb_drc(refill_zones=true, save_board=true)` - make the GUI reload the file
+(`RevertDocument`, receipt `data.live_view.reloaded` + a warning), so the view catches up and the
+editor's next save cannot undo them; a person's unsaved edit in that GUI is lost by that reload,
+which is why they watch and you write. While a session is bound the DRC validators inside the
+authoring tools never write the refill back (`refill_saved: false`). A session serves ONE
+document kind: with a `pcbnew` session bound the schematic tools (`kw_sch_get`, `kw_sch_stats`,
+`kw_sch_*` writes) are answered by the file engine (`degraded: [ipc11_unavailable]`, a warning
+names the session), and the reverse for an `eeschema` session; nothing errors. Keep verifying
+with `kw_pcb_check` / `kw_pcb_get`; `kw_live(action="screenshot")` answers "what does it look
+like", not "is it right". The session may have been started by the VS Code extension (its own
+kiwrap server): `kw_live(action="status", project=...)` finds it all the same (`remote: true`),
+your writes go through it, and `launch` on that project is refused with E_BUSY while it lives -
+use it, or `detach` it. `detach` when the person is done: on a KiCad without a headless IPC
+provider the GUI holds the files and the mutating tools are refused until then.
+
 Filters and paging: `kw_pcb_get` takes `refs` / `nets` / `layers` / `bbox_mm`, `detail`
 (summary | normal | full) and `cursor` / `limit`; `kw_sch_get` takes `refs` / `nets` / `sheets` /
 `bbox_mm`, `detail` and `cursor` / `limit`; `kw_pcb_check` takes `refs` / `nets` (unrouted items
@@ -219,6 +242,7 @@ engine) -> `cli` (kicad-cli exports). Read the receipt, not the version number:
 | `kw_pcb_render` | `project`, `view?`, `side?`, `layers?`, `max_px?` | PNG + summary (secondary) |
 | `kw_fab_bom` | `project`, `profile?`, `include_dnp?`, `fields?`, `write?` | `rows[]` (refs, qty, value, footprint, lcsc, dnp, mpn, cost/stock null), `missing_lcsc`, `dnp_refs` |
 | `kw_fab_export` | `project`, `targets?`, `profile?` generic\|jlcpcb, `include_dnp?`, `bom_fields?`, `out_dir?`, `clean?`, `force?`, `run_async?` | files per target (+ `bundle` zip), `positions.corrected[]`, `bom`, `dropped_options`, unsupported targets |
+| `kw_live` | `action` launch\|attach\|status\|screenshot\|detach\|raise, `project?`, `session_id?`, `editor?` pcb\|sch\|project, `mode?` auto\|hidden\|mirror, `target_kicad?`, `helper?` {port, token, version}, `surface?`, `max_px?` | `session_id`, `pid`, `install`, `api_socket`, `token`, `editors[]`, `mode_used`, `cloaked`; screenshot: PNG + summary (for humans; secondary) |
 
 `kw_help(topic=<tool>)` has the long form of every row, including the item shapes. Library
 tools (`kw_lib_search` / `kw_lib_info`) appear in `tools/list` when the library index component
@@ -248,7 +272,8 @@ is present; use them before every `lib_id` / `fpid`.
 | `E_PROJECT_NOT_FOUND` | bad `project` path or a missing design file | pass the dir or `.kicad_pro`; create with `kw_project` |
 | `E_BAD_ARGS` | schema/semantic argument error (unknown pin, unknown ref, a net or layer the board lacks, 3-number `bbox_mm`) | follow `fix` / `example` / `candidates` |
 | `E_KICAD_FAILED` | kicad-cli or the api-server exited non-zero | read `data.stderr`; check epochs vs target |
-| `E_FILE_LOCKED` | KiCad has the file open, or another kiwrap call runs (kiwrap's own headless servers, live or dead, are released first) | close KiCad / wait |
+| `E_FILE_LOCKED` | KiCad has the file open, or another kiwrap call runs (kiwrap's own headless servers and dead `kw_live` sessions, theirs or another server's, are released first) | close KiCad / wait |
+| `E_BUSY` | one KiCad per project: a live `kw_live` session (yours or the extension's) already holds it, or a read is still in flight over IPC | use the session (`kw_live status` finds it) or `kw_live detach`; retry after the read |
 | `E_GATE` | stage gate not met (`kw_pcb_sync` needs `erc_clean`, `kw_fab_export` needs `drc_clean`) | run the validator named in `fix`; `force={"reason"}` only when the user accepts the risk |
 | `E_EXTERNAL_EDIT` | `if_match` no longer matches the sheet, or a file changed under a running operation | re-read (`kw_sch_get`, `data.sheets`) and retry; re-run validators |
 | `E_CANCELLED` | `kw_job(action="cancel")` reached a running job (state `cancelled`, no error payload) | run the tool again; `kw_snapshot restore` for the pre-call state if needed |

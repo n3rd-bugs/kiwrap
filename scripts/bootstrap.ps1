@@ -10,7 +10,9 @@
       4. freerouting-2.4.1.jar under <storage>/engines/freerouting/          (pinned in scripts/engines.json)
       5. a Freerouting profile under <storage>/freerouting/freerouting.json with analytics, telemetry,
          contact and the GitHub update check all OFF
-      6. reports Node.js (LTS lines are even majors; the VS Code extension needs it in Phase 3)
+      6. reports Node.js and Rust (report only, nothing installed): Node >= 20 LTS (even majors) builds the
+         VS Code extension, Rust stable-msvc builds its Live KiCad helper (scripts/build_extension.ps1;
+         docs/EXTENSION.md). Both are looked up on PATH and at their default install locations.
       7. reports the KiCad installs `kiwrap.installation` (or a Program Files glob) finds
 
     <storage> is %KIWRAP_HOME% if set, else %LOCALAPPDATA%\kiwrap (the same rule as kiwrap.platform).
@@ -394,17 +396,50 @@ if ($jreOk -and $jarOk -and -not $Check) {
     }
 }
 
-# ----------------------------------------------------------------------------------------------- 6. Node (report only)
+# ----------------------------------------------------------------------------------------------- 6. Node + Rust (report only)
 
-$node = Get-Command node -ErrorAction SilentlyContinue
-if ($null -eq $node) {
-    Write-Status 'node' 'warn' 'not on PATH - install Node LTS (https://nodejs.org) before Phase 3 (VS Code extension); report only'
+# The VS Code extension (extension/, docs/EXTENSION.md) is built by scripts/build_extension.ps1: Node >= 20 for
+# npm ci + esbuild + vsce, Rust stable-msvc for the Live KiCad helper (kiwrap-live.exe). Neither is installed
+# here: an installed VSIX needs neither (the helper ships prebuilt inside it); only building does.
+$nodeExe = $null
+$nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+if ($null -ne $nodeCmd) { $nodeExe = $nodeCmd.Source }
+elseif (Test-Path -LiteralPath (Join-Path $env:ProgramFiles 'nodejs\node.exe')) { $nodeExe = Join-Path $env:ProgramFiles 'nodejs\node.exe' }
+if ($null -eq $nodeExe) {
+    Write-Status 'node' 'warn' 'not on PATH and not under Program Files\nodejs - install Node.js LTS (https://nodejs.org) to build the VS Code extension (scripts\build_extension.ps1); report only'
 } else {
-    $nv = (Invoke-Native -FilePath $node.Source -Arguments @('--version') -TimeoutSec 30).StdOut.Trim()
+    $nv = (Invoke-Native -FilePath $nodeExe -Arguments @('--version') -TimeoutSec 30).StdOut.Trim()
     $major = 0
     if ($nv -match '^v(\d+)') { $major = [int]$Matches[1] }
-    if ($major -ge 20 -and ($major % 2) -eq 0) { Write-Status 'node' 'ok' "$nv ($($node.Source)) - even major = LTS line" }
-    else { Write-Status 'node' 'warn' "$nv is not an LTS line (even majors >= 20 are); report only" }
+    $where = if ($null -ne $nodeCmd) { $nodeExe } else { "$nodeExe, not on PATH in this shell" }
+    if ($major -ge 20 -and ($major % 2) -eq 0) { Write-Status 'node' 'ok' "$nv ($where) - even major = LTS line" }
+    elseif ($major -ge 20) { Write-Status 'node' 'warn' "$nv ($where) is not an LTS line (even majors >= 20 are); report only" }
+    else { Write-Status 'node' 'warn' "$nv ($where) is too old for the extension build (>= 20); report only" }
+}
+
+$cargoExe = $null
+$cargoCmd = Get-Command cargo -ErrorAction SilentlyContinue
+$cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $env:USERPROFILE '.cargo' }
+if ($null -ne $cargoCmd) { $cargoExe = $cargoCmd.Source }
+elseif (Test-Path -LiteralPath (Join-Path $cargoHome 'bin\cargo.exe')) { $cargoExe = Join-Path $cargoHome 'bin\cargo.exe' }
+if ($null -eq $cargoExe) {
+    Write-Status 'rust' 'warn' "cargo not on PATH and not under $cargoHome\bin - install Rust stable (https://rustup.rs, x86_64-pc-windows-msvc) to build the Live KiCad helper; report only"
+} else {
+    $rustcExe = Join-Path (Split-Path -Parent $cargoExe) 'rustc.exe'
+    if (-not (Test-Path -LiteralPath $rustcExe)) { $rustcExe = 'rustc' }
+    try {
+        $rv = Invoke-Native -FilePath $rustcExe -Arguments @('-vV') -TimeoutSec 30
+        $rustLine = ($rv.StdOut -split "`r?`n" | Where-Object { $_ -match '^rustc ' } | Select-Object -First 1)
+        $hostLine = ($rv.StdOut -split "`r?`n" | Where-Object { $_ -match '^host: ' } | Select-Object -First 1)
+        if ($null -eq $rustLine) { $rustLine = 'rustc (version unknown)' }
+        if ($null -ne $hostLine -and $hostLine -notmatch 'x86_64-pc-windows-msvc') {
+            Write-Status 'rust' 'warn' "$rustLine, $hostLine ($cargoExe) - the helper needs x86_64-pc-windows-msvc (rustup default stable-msvc); report only"
+        } else {
+            Write-Status 'rust' 'ok' "$rustLine ($cargoExe)"
+        }
+    } catch {
+        Write-Status 'rust' 'warn' "cargo found at $cargoExe but rustc -vV failed: $($_.Exception.Message); report only"
+    }
 }
 
 # ----------------------------------------------------------------------------------------------- 7. KiCad installs (report only)

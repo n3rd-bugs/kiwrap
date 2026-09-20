@@ -205,7 +205,7 @@ def sch_add_symbol(ctx: ToolContext, args: SchAddSymbolArgs) -> Receipt:
         )
         placed = placement_dict(outcome.value)
         m.receipt.changed["added"].append(placed["ref"] or placed["uuid"] or args.lib_id)
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         m.receipt.data.update(
             {
                 "ok": True,
@@ -547,7 +547,7 @@ def sch_connect(ctx: ToolContext, args: SchConnectArgs) -> Receipt:
             *[p["ref"] or p["uuid"] for p in out["power"]],
         ]
         m.receipt.changed["added"].extend(str(a) for a in added if a)
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         m.receipt.data.update(
             {
                 "ok": True,
@@ -823,7 +823,7 @@ def sch_add_item(ctx: ToolContext, args: SchAddItemArgs) -> Receipt:
         outcome = run_write("schematic.write", caps, install, ipc=via_ipc, file=via_file, prefer=prefer)
         out = outcome.value
         m.receipt.changed["added"].append(out.get("ref") or out.get("uuid") or item.type)
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         m.receipt.data.update(
             {"ok": True, "type": item.type, **out, "sheet": args.sheet or project.root_sch.name}
         )
@@ -981,7 +981,7 @@ def sch_edit(ctx: ToolContext, args: SchEditArgs) -> Receipt:
             label = p["ref"] or p["uuid"]
             if label not in m.receipt.changed[key]:
                 m.receipt.changed[key].append(label)
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         m.receipt.data.update(
             {"ok": True, "applied": applied, "skipped": [], "sheet": args.sheet or project.root_sch.name}
         )
@@ -1072,7 +1072,7 @@ def sch_annotate(ctx: ToolContext, args: SchAnnotateArgs) -> Receipt:
         )
         mapping: dict[str, str] = {str(k): str(v) for k, v in outcome.value.items()}
         m.receipt.changed["updated"].extend(sorted(mapping.values(), key=ref_key))
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         m.receipt.data.update(
             {"ok": True, "mapping": mapping, "renamed": len(mapping), "scheme": args.scheme}
         )
@@ -1331,7 +1331,7 @@ def sch_assign_footprints(ctx: ToolContext, args: SchAssignFootprintsArgs) -> Re
         outcome = run_write("schematic.write", caps, install, ipc=None, file=via_file, prefer=None)
         assigned = [str(r) for r in outcome.value]
         m.receipt.changed["updated"].extend(sorted(assigned, key=ref_key))
-        apply_outcome(m, outcome, install)
+        apply_outcome(m, outcome, install, ctx)
         after = {**{str(s["ref"]): s["footprint"] for s in symbols}, **{r: mapping[r] for r in assigned}}
         unresolved = [
             s for s in symbols if s["ref"] and (not after.get(str(s["ref"])) or str(s["ref"]) in rejected)

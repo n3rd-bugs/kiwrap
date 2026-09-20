@@ -7,7 +7,8 @@ deterministic across processes and clients can cache it. `PHASE0_TOOLS` is the o
 schematic / board authoring tools (each stage's mutations come before its reads, so the list reads
 as the flow: add -> connect -> get -> check); `kw_intent` (Phase 1c) sits with the setup tools
 because the intent is declared before the first symbol, and `kw_fab_bom` precedes
-`kw_fab_export`; `ALL_TOOLS` is what the server registers and `TOOL_NAMES` its names.
+`kw_fab_export`; `kw_live` (Phase 2, the human's live KiCad view) comes last because it is outside
+the data-first loop; `ALL_TOOLS` is what the server registers and `TOOL_NAMES` its names.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from kiwrap.core.tools import (
     intent,
     job,
     lib,
+    live,
     pcb_author,
     pcb_check,
     pcb_get,
@@ -74,6 +76,7 @@ ALL_TOOLS: tuple[ToolSpec, ...] = (
     render.PCB_RENDER,
     fab_bom.SPEC,
     fab_export.SPEC,
+    live.SPEC,
 )
 TOOL_NAMES: tuple[str, ...] = tuple(t.name for t in ALL_TOOLS)
 

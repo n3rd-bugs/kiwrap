@@ -26,7 +26,7 @@ import socket
 import threading
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from kiwrap.core.state import KiwrapError
@@ -187,9 +187,15 @@ class ProjectLock:
         self.release()
 
 
-def refuse_if_editor_open(project: Project) -> None:
-    """E_FILE_LOCKED when KiCad holds a `~*.lck` next to a design file (§11)."""
-    locks = project.editor_locks()
+def refuse_if_editor_open(project: Project, *, exempt: Iterable[str | Path] = ()) -> None:
+    """E_FILE_LOCKED when KiCad holds a `~*.lck` next to a design file (§11).
+
+    `exempt`: lock files (paths or names) that belong to the GUI session `kw_live` bound to this
+    project - that KiCad is kiwrap's own, its API server is what the mutating tools write through
+    (`kiwrap.backends.ipc.sessions.release_project()` reports them under `bound.locks`), so its
+    locks are not "another editor holds the file"."""
+    skip = {Path(str(e)).name for e in exempt}
+    locks = [p for p in project.editor_locks() if p.name not in skip]
     if locks:
         raise KiwrapError(
             "E_FILE_LOCKED",
@@ -204,8 +210,11 @@ def refuse_if_editor_open(project: Project) -> None:
 
 
 @contextlib.contextmanager
-def project_mutation(project: Project, *, timeout_s: float = 60.0) -> Iterator[None]:
-    """Lock + editor-lock refusal, the prologue of every mutating tool."""
-    refuse_if_editor_open(project)
+def project_mutation(
+    project: Project, *, timeout_s: float = 60.0, exempt: Iterable[str | Path] = ()
+) -> Iterator[None]:
+    """Lock + editor-lock refusal, the prologue of every mutating tool (`exempt`: the bound GUI
+    session's own lock files, see `refuse_if_editor_open`)."""
+    refuse_if_editor_open(project, exempt=exempt)
     with ProjectLock(project.lock_path, timeout_s=timeout_s):
         yield

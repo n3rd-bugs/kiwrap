@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".out",
+    "rootDir": "../..",
+    "types": ["node", "vscode", "mocha"]
+  },
+  "include": ["../../src/live/**/*.ts", "../../src/shared/**/*.ts", "./**/*.ts"],
+  "exclude": [".out"]
+}

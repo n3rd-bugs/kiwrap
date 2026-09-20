@@ -23,3 +23,12 @@ storage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Rust helpers (helper/)
+helper/target/
+target/
+
+# Phase 2 build outputs
+helper/target/
+extension/bin/
+extension/out/

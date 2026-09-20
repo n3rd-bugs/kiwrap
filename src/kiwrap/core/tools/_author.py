@@ -97,6 +97,8 @@ AUTHOR_BACKENDS: dict[str, tuple[str, str, str]] = {
     "ipc_pcb_refill": ("kiwrap.backends.ipc.writes", "pcb_refill", "IPC zone refill"),
     "ipc_sch_save": ("kiwrap.backends.ipc.writes", "sch_save", "IPC schematic save"),
     "ipc_pcb_save": ("kiwrap.backends.ipc.writes", "pcb_save", "IPC board save"),
+    # the live GUI (kw_live) bound to the project reloads a file written on disk behind it
+    "ipc_resync_bound": ("kiwrap.backends.ipc.sessions", "resync_bound_session", "the live GUI resync"),
 }
 
 G13_KEY = "ipc.schematic_update_shared_lib_symbol_hangs"
@@ -329,13 +331,46 @@ def run_write(
     return outcome
 
 
-def apply_outcome(m: Mutation, outcome: planner.Outcome[Any], install: Any) -> None:
+def apply_outcome(
+    m: Mutation, outcome: planner.Outcome[Any], install: Any, ctx: ToolContext | None = None
+) -> None:
     m.receipt.provider_used = outcome.provider_used(install)
     for tag in outcome.degraded:
         if tag not in m.receipt.degraded:
             m.receipt.degraded.append(tag)
     m.receipt.warnings.extend(outcome.warnings)
     m.receipt.data["plan"] = outcome.plan.to_dict()
+    if ctx is not None and outcome.provider_name == planner.FILE:
+        resync_bound(ctx, m)
+
+
+def resync_bound(ctx: ToolContext, m: Mutation, *, path: Path | None = None) -> None:
+    """After a write that landed on DISK while a live GUI session (kw_live) is bound to the
+    project - the file writer behind a guard (G13 / G16), a SES import, a refill save - make
+    the GUI reload the file (`sessions.resync_bound_session`: `RevertDocument`) so the live view
+    shows the write and the editor's next save cannot undo it (reviewer finding 2, 2026-09-20).
+    A failed revert is a warning + `live_view_stale` tag, never an error: the disk is right."""
+    if m.bound is None:
+        return
+    target = path or m.project.board
+    try:
+        result = backend(ctx, "ipc_resync_bound")(target)
+    except KiwrapError as err:
+        if err.code == "E_UNSUPPORTED" and "not available" in err.message and "sessions" in err.message:
+            return  # no IPC backend in this build (a test double)
+        if "live_view_stale" not in m.receipt.degraded:
+            m.receipt.degraded.append("live_view_stale")
+        m.receipt.warnings.append(
+            f"the live KiCad session could not reload the file written on disk ({err.code}: {err.message}); "
+            "the file on disk is authoritative - kw_live detach, or the next successful call, brings the view back"
+        )
+        return
+    if isinstance(result, dict) and result.get("changed"):
+        m.receipt.data["live_view"] = {"reloaded": result.get("reverted", [])}
+        m.receipt.warnings.append(
+            "this write went to the file on disk; the live KiCad session (kw_live) reloaded the file "
+            f"({', '.join(result.get('reverted', [])) or 'document'}) so the view and its next save carry it"
+        )
 
 
 # ---- sheets --------------------------------------------------------------------------------------------
@@ -631,6 +666,15 @@ def drc_validator(
         else:
             m.receipt.degraded.append("refill_unavailable")
             m.receipt.warnings.append("zone refill needs cli.drc_refill_flags; zones were written unfilled")
+    # a live GUI (kw_live) holds this board: kicad-cli must not rewrite the file under it (the
+    # editor would not reload; its next save would undo the refill) - the refill stays in
+    # kicad-cli's memory for the check only, like kw_pcb_drc does (reviewer finding 25)
+    save_refill = do_refill and m.bound is None
+    if do_refill and not save_refill:
+        m.receipt.warnings.append(
+            "the refilled zones were not written back to the board: a live KiCad session (kw_live) holds it; "
+            "refill in the GUI or after kw_live detach (kw_pcb_drc refill_zones=true)"
+        )
     try:
         report = ctx.services.run_drc(
             install,
@@ -638,7 +682,7 @@ def drc_validator(
             project.board,
             schematic_parity=parity,
             refill_zones=do_refill,
-            save_board=do_refill,
+            save_board=save_refill,
             severity="all",
         )
     except KiwrapError as err:
@@ -685,7 +729,7 @@ def drc_validator(
             )
         m.validator_delta("drc_touched_nets", sum(by_net.values()), {"by_net": by_net})
     m.history_extra["board_sha256"] = sha256_file(project.board)
-    if do_refill:
+    if save_refill:
         if project.board.name not in m.receipt.changed["updated"]:
             m.receipt.changed["updated"].append(project.board.name)
         # the refill wrote the board: re-hash so the fill is not taken for an external edit
@@ -708,6 +752,7 @@ def drc_validator(
         "touched_nets": by_net,
         "nets_with_must_fix": sorted(nets_with_must_fix),
         "refilled": do_refill,
+        "refill_saved": save_refill,
         "violations": listed[:MAX_LISTED],
         "violations_truncated": max(0, len(listed) - MAX_LISTED),
     }
@@ -867,6 +912,7 @@ __all__ = [
     "placement_ok",
     "placement_summary",
     "rehash_board_stages",
+    "resync_bound",
     "run_write",
     "schematic_writer",
     "settle_placed",

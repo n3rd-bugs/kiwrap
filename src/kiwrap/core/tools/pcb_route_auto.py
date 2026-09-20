@@ -110,6 +110,7 @@ from kiwrap.core.tools._author import (
     call_with_accepted,
     drc_validator,
     rehash_board_stages,
+    resync_bound,
     violation_net_names,
 )
 from kiwrap.core.tools._base import (
@@ -1262,7 +1263,9 @@ def _drc_after(
     ctx: ToolContext, m: Mutation, install: Any, caps: Any, config: Any, project: Project, nets: Iterable[str]
 ) -> dict[str, Any] | None:
     """Mandatory refill + classified DRC after a route (`refill_if_zones`: the fill on disk is
-    stale after any copper change; kicad-cli refills and saves where it can)."""
+    stale after any copper change; kicad-cli refills and saves where it can). The SES import
+    wrote the board on disk: a live GUI bound to the project reloads it first (finding 2)."""
+    resync_bound(ctx, m)
     rehash_board_stages(project, m.state, "placed")
     drc = drc_validator(ctx, m, install, caps, config, project, refill_if_zones=True, touched_nets=nets)
     settle_after_drc(project, m.state, drc)

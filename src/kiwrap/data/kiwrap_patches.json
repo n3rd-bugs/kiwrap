@@ -34,6 +34,19 @@
    ],
    "commands": [],
    "note": "2026-09-20: JOB_EXPORT_PCB_SPECCTRA + `kicad-cli pcb export specctra [-o FILE] BOARD` (KiCad's own DSN::ExportBoardToSpecctraFile as a headless job; default output <board>.dsn in the working directory; a malformed outline is a wxLogWarning on stderr and the bounding box is written) and JOB_IMPORT_PCB_SPECCTRA_SES + `kicad-cli pcb import-ses --ses FILE [-o OUT_BOARD] BOARD` (DSN::ImportSpecctraSession in a board-editor BOARD_COMMIT on the headless tool manager, exactly the editor's File > Import > Specctra Session: unlocked tracks/arcs/vias replaced by the session's routes, locked ones kept, SES placement applied to every named footprint including locked ones, unresolved references/layers/padstacks counted and warned, DRC markers dropped; a session without its sections -> exit 3 and the board untouched; without -o the board is saved in place, the project file is not written). `import-ses` is a sibling of `pcb import` because argparse only looks for a subcommand once a command's positionals are consumed and `pcb import` takes the file as its positional. Two commits (one per command), each with the qa_pcbnew cases in test_specctra_export.cpp (export contents; replacement/locked/placement semantics) and the qa_cli cases in test_pcb_specctra.py (DSN contents, DSN->SES->import round trip within the 1 um the DSN's six significant digits keep, locked copper + in-place save, error paths). Drafts: docs/upstream/drafts/specctra-jobs-export-mr.md, specctra-jobs-import-mr.md. Observed while testing, not fixed here: KiCad's own DSN reader (SPECCTRA_DB::LoadPCB) rejects KiCad's export at `(PN ...)` because the keyword table only knows `pn`; nothing in KiCad reads DSN files, so this is inert."
+  },
+  {
+   "id": "display-input",
+   "gap": "G15",
+   "branch": "mr/display-input",
+   "issue": null,
+   "mr": null,
+   "status": "local",
+   "keys": [
+    "gui.input_from_events"
+   ],
+   "commands": [],
+   "note": "2026-09-20: env-var-gated input mode KICAD_INPUT_FROM_EVENTS=1|cloak (docs/DISPLAY.md 12.5, docs/research/display/win-input-patch.md): KIPLATFORM::UI::GetMousePosition/GetMouseState/IsKeyDown answer from event-derived state, WarpPointer moves only the reported pointer, a process-wide wxEventFilter records pointer/buttons, mirrors key transitions with SetKeyboardState, synthesises wxEVT_CHAR_HOOK from wxEVT_KEY_DOWN and drops spurious LEAVE events; `cloak` additionally DWMWA_CLOAKs every wx top-level on show so a KiCad driven with PostMessage only (the kiwrap-live helper's events injector) is invisible on the desktop while Windows.Graphics.Capture still streams it. No CLI / IPC surface: the key `gui.input_from_events` is derived from the builds[] entry of the built commit (capability.build_carries_patch), never probed. `cloak` stays fork-only; the upstream draft is docs/upstream/drafts/display-input-mr.md (held under D19). Measured on pcbnew; eeschema / project sessions untested (DISPLAY.md 12.8 row 14)."
   }
  ],
  "builds": [
@@ -107,6 +120,21 @@
    ],
    "snapshot": "10.99.0+2225917b49.json",
    "note": "2026-09-20 RelWithDebInfo integration build = -5 + mr/specctra-fp-zone-frame (a bug fix in pcbnew's Specctra exporter, no CLI / IPC surface to probe, hence no `patches[]` entry: makeIMAGE() exported a footprint's rule areas from the LIBRARY-frame outline as if it were board geometry, un-rotating it about the footprint position and subtracting the position, so a placed part's keepout landed tens of millimetres away and the router routed through the real one; the fix iterates ZONE::GetLibraryOutline() as the image geometry; docs/upstream/drafts/specctra-fp-zone-frame-mr.md); qa_pcbnew SpecctraExport* 4/4 (new case SpecctraExportFootprintRuleAreaInImageFrame), qa_api re-run; T4 tree = -5's, T5 EQUAL to 10.99.0.json"
+  },
+  {
+   "tag": "kiwrap-build/6dd893f7d1-7",
+   "commit": "918923a346",
+   "base": "6dd893f7d1",
+   "branch": "kiwrap/6dd893f7d1+display",
+   "preset": "msvc-win64-release",
+   "patches": [
+    "ratsnest-export",
+    "specctra-jobs",
+    "specctra-fp-zone-frame",
+    "display-input"
+   ],
+   "snapshot": "",
+   "note": "2026-09-20 RelWithDebInfo integration build = -6 (kiwrap/6dd893f7d1) + merge of mr/display-input, on the branch kiwrap/6dd893f7d1+display (pushed to the private origin only, D19), installed and registered as C:/kiwrap-builds/6dd893f7d1-7 for kw_live's hidden mode and the extension's Live KiCad tabs; no T4/T5 run (the patch adds no CLI / IPC surface; T4 tree = -6's). Verified: KICAD_INPUT_FROM_EVENTS=cloak -> the PCB Editor frame reports DWMWA_CLOAKED, PrintWindow / WGC still capture the full UI, PostMessage-only input (kiwrap-live --inject events) selects, rotates, zooms and opens dialogs on the cloaked window (helper/tests/live_smoke.py 25/25)."
   }
  ]
 }

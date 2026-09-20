@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Live KiCad webview client: ES modules loaded by the webview and by node --test."
+}

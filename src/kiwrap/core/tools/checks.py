@@ -408,6 +408,14 @@ def pcb_drc(ctx: ToolContext, args: PcbDrcArgs) -> Receipt:
                 )
             if save is None:
                 save = refill
+        if save and m.bound is not None and args.save_board is None:
+            # a live GUI (kw_live) holds this board: kicad-cli must not rewrite the file under it
+            # (the editor would not reload; its next save would undo the refill) - check only
+            save = False
+            m.receipt.warnings.append(
+                "the refilled zones were not written back: a live KiCad session (kw_live) holds the board; "
+                "pass save_board=true to force it, or refill in the GUI"
+            )
         save = bool(save) and bool(refill)
         board_sha_before = sha256_file(project.board)
         report = ctx.services.run_drc(

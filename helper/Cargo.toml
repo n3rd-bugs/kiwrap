@@ -1,0 +1,12 @@
+# Cargo workspace for kiwrap's native helpers (Windows only, D18). Members are MIT like the rest
+# of the distribution; no GPL code is linked (docs/DISPLAY.md 8.7).
+[workspace]
+resolver = "2"
+members = ["kiwrap-live"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
