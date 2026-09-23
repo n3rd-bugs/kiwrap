@@ -301,7 +301,7 @@ parentheses.
 
 | setting | meaning |
 |---|---|
-| `kiwrap.serverProject` (auto) | the kiwrap checkout (uv project) to run `uv run --project <path> kiwrap serve` from; empty = resolved in any workspace (section 3: open folder, `%KIWRAP_REPO%`, extension parent, remembered, VSIX build origin), else *Locate kiwrap checkout...* |
+| `kiwrap.serverProject` (auto) | the kiwrap checkout (uv project) to run `uv run --project <path> kiwrap serve` from; empty = resolved in any workspace (section 2: open folder, `%KIWRAP_REPO%`, extension parent, remembered, VSIX build origin), else *Locate kiwrap checkout...* |
 | `kiwrap.uvPath` (`uv`) | the `uv` executable; `scripts/bootstrap.ps1` installs a private one under `<storage>/uv` when PATH has none |
 | `kiwrap.storageHome` (see §6) | passed as `--storage-home` to the server and exported to the helper; the contract says "unset = kiwrap's own default" so that the agent's server and the extension's share one home |
 | `kiwrap.kicadInstall` (newest) | the KiCad to target, a version spec `kw_env` lists ("Select KiCad" writes it) |
