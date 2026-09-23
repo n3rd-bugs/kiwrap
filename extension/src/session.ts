@@ -3,6 +3,7 @@
  * validator numbers and the live session state. The tree, the status bar and the diagnostics
  * manager subscribe to `onDidChange`.
  */
+import { NOT_FOUND_FIX } from './serverLocator';
 import * as vscode from 'vscode';
 import { KiwrapServer } from './kiwrapServer';
 import type { ClientState, ServerSpec } from './mcpClient';
@@ -94,7 +95,7 @@ export class KiwrapSession implements vscode.Disposable {
       throw new KiwrapError({
         code: 'E_CLIENT',
         message: this.serverError ?? 'the kiwrap server is not configured',
-        fix: 'set kiwrap.serverProject to the kiwrap checkout (the folder with pyproject.toml and src/kiwrap)',
+        fix: NOT_FOUND_FIX,
       });
     }
     await this.server.start();

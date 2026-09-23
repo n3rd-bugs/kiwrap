@@ -61,8 +61,14 @@ Ownership and lifetime:
   custom editor, running a check, the picker), restarted on crash with back-off, killed on
   `deactivate()`. One per VS Code window. Its stdio is the MCP transport; its stderr goes to the
   "kiwrap" output channel. It is a plain `uv run` of the private checkout: kiwrap is not on PyPI
-  (D19), so the extension needs the checkout path (`kiwrap.serverProject`, auto-detected when the
-  workspace is the checkout itself or `%KIWRAP_REPO%` points at it).
+  (D19), so the extension needs the checkout path. `extension/src/serverLocator.ts` resolves it in
+  any workspace, first hit wins: `kiwrap.serverProject` (User setting, taken as-is), an open folder
+  that is the checkout, `%KIWRAP_REPO%`, the extension's own parent (running from source), the
+  checkout remembered in global state from any earlier workspace, and `kiwrap-origin.json` - the
+  checkout `scripts/build_extension.ps1` packaged the VSIX from. When none resolves, one
+  notification offers *kiwrap: Locate kiwrap checkout...* (a validated folder picker writing the
+  User setting). Fixed 2026-09-23 after the extension failed with `E_CLIENT` in a non-kiwrap
+  workspace.
 - **KiCad GUI.** Only ever started through `kw_live launch` in that server, which applies kiwrap's
   process rules: `kiwrap.sandbox.ensure(install, enable_api_server=True)` (sandboxed config root,
   user `%APPDATA%\kicad` read-only), a short `TEMP`, no window activation, PID tracked in the
@@ -295,7 +301,7 @@ parentheses.
 
 | setting | meaning |
 |---|---|
-| `kiwrap.serverProject` (auto) | the kiwrap checkout (uv project) to run `uv run --project <path> kiwrap serve` from; empty = a workspace folder whose `pyproject.toml` names `kiwrap`, then `%KIWRAP_REPO%` |
+| `kiwrap.serverProject` (auto) | the kiwrap checkout (uv project) to run `uv run --project <path> kiwrap serve` from; empty = resolved in any workspace (section 3: open folder, `%KIWRAP_REPO%`, extension parent, remembered, VSIX build origin), else *Locate kiwrap checkout...* |
 | `kiwrap.uvPath` (`uv`) | the `uv` executable; `scripts/bootstrap.ps1` installs a private one under `<storage>/uv` when PATH has none |
 | `kiwrap.storageHome` (see §6) | passed as `--storage-home` to the server and exported to the helper; the contract says "unset = kiwrap's own default" so that the agent's server and the extension's share one home |
 | `kiwrap.kicadInstall` (newest) | the KiCad to target, a version spec `kw_env` lists ("Select KiCad" writes it) |

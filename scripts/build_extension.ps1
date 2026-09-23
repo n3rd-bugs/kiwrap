@@ -315,6 +315,11 @@ if ($NoPackage) {
     if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
     $vsix = Join-Path $OutDir ("{0}-{1}.vsix" -f $PkgName, $PkgVersion)
     if (Test-Path -LiteralPath $vsix) { Remove-Item -LiteralPath $vsix -Force }
+    # Record the checkout this VSIX is built from, so the installed extension finds `kiwrap serve` in
+    # any workspace (extension/src/serverLocator.ts, source 'build-origin'). Git-ignored; UTF-8, no BOM.
+    $origin = @{ checkout = $script:RepoRoot; built = (Get-Date).ToString('o') } | ConvertTo-Json -Compress
+    [System.IO.File]::WriteAllText((Join-Path $ExtensionDir 'kiwrap-origin.json'), $origin, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  origin: $script:RepoRoot (kiwrap-origin.json)"
     $vsceArgs = @('package', '--out', $vsix, '--allow-missing-repository')
     if (-not $IncludeDependencies) { $vsceArgs += '--no-dependencies' }
     if (-not (Get-ChildItem -LiteralPath $ExtensionDir -Filter 'LICENSE*' -File -ErrorAction SilentlyContinue)) { $vsceArgs += '--skip-license' }

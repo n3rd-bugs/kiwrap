@@ -13,8 +13,10 @@ D13: Claude Code inside VS Code is the agent client). The extension is an MCP cl
 | **Live KiCad** (`kiwrap.live` custom editor): the real, sandboxed KiCad editor streamed live into the `.kicad_pcb` / `.kicad_sch` tab; an agent's edit shows up in the tab in well under a second; **Raise KiCad** (HUD button, double-click, command) brings the real window to the front to edit by hand | `src/live/`, `media/live/` |
 | commands: Configure Claude Code (`.mcp.json` + CLAUDE.md / AGENTS.md block + skill copy, diff preview), Run ERC, Run DRC, Open Live KiCad, Close Live KiCad, Live KiCad: Raise KiCad, Select KiCad install, Restart server | `src/commands/`, `src/live/index.ts` |
 
-Settings: `kiwrap.uvPath`, `kiwrap.serverProject` (the kiwrap checkout; auto-detected when it is a
-workspace folder or `KIWRAP_REPO`), `kiwrap.storageHome`, `kiwrap.kicadInstall`, `kiwrap.checkOnSave`;
+Settings: `kiwrap.uvPath`, `kiwrap.serverProject` (the kiwrap checkout; normally left empty - it is
+found in any workspace: an open folder that is the checkout, `KIWRAP_REPO`, the checkout remembered
+from an earlier workspace, or the one the VSIX was built from; otherwise *kiwrap: Locate kiwrap
+checkout...* picks it and writes the User setting), `kiwrap.storageHome`, `kiwrap.kicadInstall`, `kiwrap.checkOnSave`;
 Live KiCad: `kiwrap.live.raiseOnDoubleClick` (default on), `kiwrap.live.fit`, `kiwrap.live.hud`,
 `kiwrap.live.helperPath`, `kiwrap.live.autoOpen3d`, and one EXPERIMENTAL knob, `kiwrap.live.inputMode`
 (see below).
@@ -77,6 +79,6 @@ The suite reads the extension API (`extension.exports`: `session`, `tree`, `diag
 `preview`) and the Live view's test hooks (`LiveView.testDispatch` / `testQuery`).
 
 Run by hand: `code --extensionDevelopmentPath=C:\Upwork\KiCad\extension --new-window <kicad project folder>`
-with `kiwrap.serverProject` set to the kiwrap checkout (or `KIWRAP_REPO`).
+(running from source, the checkout is the extension folder's parent and is found automatically).
 
 MIT. No GPL code. Runtime dependencies: `@modelcontextprotocol/sdk` (MIT), `zod` (MIT).

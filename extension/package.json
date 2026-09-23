@@ -97,6 +97,11 @@
         "icon": "$(list-selection)"
       },
       {
+        "command": "kiwrap.locateServer",
+        "title": "Locate kiwrap checkout...",
+        "category": "kiwrap"
+      },
+      {
         "command": "kiwrap.restartServer",
         "title": "Restart server",
         "category": "kiwrap",
@@ -334,7 +339,7 @@
             "type": "string",
             "default": "",
             "scope": "machine",
-            "description": "The kiwrap checkout (uv project with pyproject.toml and src/kiwrap) that provides `kiwrap serve`. Empty: a workspace folder that is the kiwrap checkout, else the KIWRAP_REPO environment variable. Machine scope: user settings only (the server runs whatever project this names)."
+            "description": "The kiwrap checkout (uv project with pyproject.toml and src/kiwrap) that provides `kiwrap serve`. Empty: found automatically in any workspace - an open folder that is the checkout, KIWRAP_REPO, the checkout remembered from an earlier workspace, or the checkout the VSIX was built from; if none of those is found, run 'kiwrap: Locate kiwrap checkout...'. Machine scope: user settings only (the server runs whatever project this names)."
           },
           "kiwrap.storageHome": {
             "type": "string",

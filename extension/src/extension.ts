@@ -13,7 +13,8 @@ import { DiagnosticsManager } from './diagnostics/manager';
 import { PreviewProvider } from './editors/previewProvider';
 import { activateLive, type LiveApi } from './live';
 import { KiwrapSession } from './session';
-import { serverSpec } from './settings';
+import { NOT_FOUND_MESSAGE } from './serverLocator';
+import { initServerLocator, resolveServerCheckout, serverSpec } from './settings';
 import { KiwrapStatusBar } from './status/statusBar';
 import { KiwrapTree } from './status/tree';
 import type { LiveSessionData } from './types';
@@ -34,6 +35,7 @@ export interface KiwrapApi {
 let session: KiwrapSession | undefined;
 
 export function activate(context: vscode.ExtensionContext): KiwrapApi {
+  initServerLocator(context);
   session = new KiwrapSession(context);
   context.subscriptions.push(session);
   const diagnostics = new DiagnosticsManager(session);
@@ -92,12 +94,23 @@ export function activate(context: vscode.ExtensionContext): KiwrapApi {
     }),
   );
 
+  let notFoundShown = false;
   const configure = () => {
+    // Resolve (and log) before building the spec: the first resolve remembers a build-origin /
+    // workspace hit, so a second one would report it as 'remembered'.
+    const where = resolveServerCheckout();
     const spec = serverSpec();
-    session?.attachServer(
-      spec,
-      spec ? undefined : 'kiwrap.serverProject is not set and no workspace folder holds the kiwrap checkout',
-    );
+    if (where) {
+      session?.output.appendLine(`kiwrap server: checkout ${where.dir} (${where.source})`);
+    }
+    session?.attachServer(spec, spec ? undefined : NOT_FOUND_MESSAGE);
+    if (!spec && !notFoundShown) {
+      // Once per window: the one action that fixes it, instead of a dead-end error on every tool call.
+      notFoundShown = true;
+      void vscode.window
+        .showWarningMessage(`kiwrap: ${NOT_FOUND_MESSAGE}.`, 'Locate kiwrap checkout...')
+        .then((choice) => (choice ? vscode.commands.executeCommand('kiwrap.locateServer') : undefined));
+    }
   };
   configure();
   context.subscriptions.push(

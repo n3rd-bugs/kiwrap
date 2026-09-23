@@ -10,7 +10,7 @@ import type { DiagnosticsManager } from '../diagnostics/manager';
 import { PREVIEW_VIEW_TYPE } from '../editors/previewProvider';
 import { findProjects, isBoard, isSchematic, projectForFile, type KicadProject } from '../project';
 import type { KiwrapSession } from '../session';
-import { kicadInstallSetting, serverSpec, setKicadInstallSetting } from '../settings';
+import { kicadInstallSetting, locateServerProject, serverSpec, setKicadInstallSetting } from '../settings';
 import type { KiwrapTree } from '../status/tree';
 import { KiwrapError, type LiveEditor } from '../types';
 import { configureClaudeCode, ProposedContentProvider, PROPOSED_SCHEME } from './configureClaude';
@@ -103,6 +103,16 @@ export function registerCommands(deps: Deps): void {
         },
       );
     }
+  });
+
+  // Picks the kiwrap checkout and writes kiwrap.serverProject (User settings); the configuration
+  // change restarts the server (extension.ts onDidChangeConfiguration).
+  reg('kiwrap.locateServer', async () => {
+    const dir = await locateServerProject();
+    if (dir) {
+      void vscode.window.showInformationMessage(`kiwrap: using the checkout ${dir}.`);
+    }
+    return dir;
   });
 
   reg('kiwrap.configureClaude', (arg) =>

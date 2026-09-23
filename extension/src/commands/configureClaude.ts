@@ -5,7 +5,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { KiwrapSession } from '../session';
-import { cfg, resolveServerProject, resolveStorageHome } from '../settings';
+import { cfg, locateServerProject, resolveServerProject, resolveStorageHome } from '../settings';
 import { applyEdits, planConfigure, uvCommand, type PlannedEdit } from './configurePlan';
 
 export const PROPOSED_SCHEME = 'kiwrap-proposed';
@@ -49,16 +49,16 @@ export async function configureClaudeCode(
   if (!workspace) {
     return undefined;
   }
-  const serverProject = resolveServerProject();
+  let serverProject = resolveServerProject();
   if (!serverProject) {
     const choice = await vscode.window.showErrorMessage(
-      'kiwrap: the kiwrap checkout is unknown. Set kiwrap.serverProject to the folder holding pyproject.toml and src/kiwrap.',
-      'Open settings',
+      'kiwrap: the kiwrap checkout is unknown (the .mcp.json must name it).',
+      'Locate kiwrap checkout...',
     );
-    if (choice) {
-      void vscode.commands.executeCommand('workbench.action.openSettings', 'kiwrap.serverProject');
+    serverProject = choice ? await locateServerProject() : undefined;
+    if (!serverProject) {
+      return undefined;
     }
-    return undefined;
   }
   // the same storage home for the agent's server, only when the setting names one (docs/EXTENSION.md section 6)
   const home = resolveStorageHome();

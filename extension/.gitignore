@@ -4,3 +4,6 @@ out/
 bin/
 .vscode-test/
 *.vsix
+
+# written by scripts/build_extension.ps1 (the checkout the VSIX was built from)
+kiwrap-origin.json
