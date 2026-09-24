@@ -1,6 +1,6 @@
 # Analysis tooling for `kw_pcb_analyze`: the recommended stack
 
-Date: 2026-09-24. Status: **proposal, waiting for the owner's decisions (§9)**. Nothing described here is implemented, and no dependency has been added to kiwrap.
+Date: 2026-09-24. Status: **accepted by the owner on 2026-09-24.** The remaining delivery details were resolved on evidence as [DECISIONS.md](DECISIONS.md) D24-D31 (full records in [decisions/D24-D31.md](decisions/D24-D31.md)); where they differ from this document, they win. Nothing described here is implemented yet, and no dependency has been added to kiwrap.
 
 This document pulls together seven research tracks. Every number below comes from one of them. Each was measured on this machine (Windows 11, Core Ultra 9 285K, 24 threads, 127 GB RAM, RTX 5080), on copper extracted from the KiCad 10 demo boards with kiwrap's own `BoardFile`. Licences were read from the LICENSE files.
 

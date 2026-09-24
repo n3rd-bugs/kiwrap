@@ -224,6 +224,153 @@ writes nothing into the project: no snapshot, no `.kiwrap/` state, no saved refi
 exports inside the project (outputs go to a temp or caller-given directory), and `.kicad_prl`
 restored. Mutating tools refuse with a teaching error in read-only mode.
 
-Open (research requested 2026-09-24): whether any client imposes a tool-count limit (item 4 of the
-review's decisions: wrap tool calls only if a real limit exists), and the geometry/analysis tooling
-for `kw_pcb_analyze` beyond numpy (item 5).
+Resolved 2026-09-24 by research ([ANALYSIS-TOOLING.md](ANALYSIS-TOOLING.md) §5, §6, accepted by the
+owner): Claude Code has no tool-count limit, so kiwrap keeps coherent tools and does not wrap them
+(guideline about 30-45 tools); the analysis stack is a Rust pyo3 wheel plus a pure-Python fallback
+and an optional FEM extra. The delivery details are D24-D31.
+
+## D24 — Format upgrades go only through `kw_project_upgrade` (amends D21)
+
+**Choice (resolved on evidence, 2026-09-24, at the owner's request; full record in [decisions/D24-D31.md](decisions/D24-D31.md)):** files
+move to a newer KiCad format only through `kw_project_upgrade(project, from_kicad, to_kicad, files)`.
+- **Publishing.** The tool is published with `_meta["anthropic/requiresUserInteraction"]: true` and
+  destructive annotations, and has no `dry_run`, `confirm` or `persist`. Claude Code 2.1.280/281
+  checks that flag before bypass mode and allow rules, so the call always asks.
+- **What it does.** The server re-derives the arguments and refuses any mismatch. It then snapshots,
+  converts exactly `files` with kicad-cli in the sandbox, runs ERC/DRC before and after, and pins the
+  target.
+- **Receipt.** It names the client permission flow that approved the call, not a human click: an SDK
+  host's `canUseTool` can also approve.
+- **`kw_project`.** It loses `upgrade`/`confirm`/`dry_run`; a stale call gets a teaching `E_BAD_ARGS`.
+  It gains a read-only `upgrade_preview`, and `status` returns `upgrade_args`.
+- **Other routes.** The extension modal calls the same tool. Elicitation stays an optional shortcut
+  outside the VS Code panel, which declines it.
+- **D15 check.** The end-to-end check with a real login is a manual checklist script.
+
+It is the first change after Phase 0+1.
+
+## D25 — Receipt shape: `pos` is KiCad's marker location, one cursor grammar, compact receipts
+
+**Choice (resolved on evidence, 2026-09-24; review decision 5; [decisions/D24-D31.md](decisions/D24-D31.md)):**
+- **Location.** There is no `anchor_pos` and no alias. A violation's `pos` is where KiCad marks it.
+  Its sources, in order: kicad-cli's JSON marker (`pos_source: "kicad"`), then kiwrap's computed
+  location (`"computed"`), otherwise null. It is never copied from an item. ERC keeps items[0]
+  (`pos_source: "item"`). `Violation.pos` becomes `first_item_pos`, and `path_mm` carries the marker
+  path or the computed closest points.
+- **Paging.** All paged tools share one cursor grammar, `<lane><off>(.<lane><off>)*@<ver8>`. ver8
+  covers the inputs and the arguments that decide order, and a stale cursor gives `E_STALE`. The DRC
+  report lane is keyed on the stored result id plus the filters, and the stored schema becomes
+  `kiwrap.drc_result.v2`.
+- **Size.** A successful result's text is the summary line plus compact JSON; Claude Code shows the
+  model `JSON.stringify(structuredContent)`. Budgets are measured on compact JSON: 28,000 chars per
+  page and 48,000 per receipt. Claude Code token-counts results over 50,000 chars against a
+  25,000-token cap, and compact DRC JSON measured 1.86 chars per token. The DRC run and ERC stop
+  inlining 500 violations; full lists go to `out_path`.
+- **Pre-1.0 policy (D19).** There are no aliases. Breaking changes land in one commit across server,
+  extension, skill, kw_help and tests, recorded in a CHANGELOG "Unreleased - breaking" list.
+
+## D26 — Sandbox KiCad runs in English; live GUIs get their own root
+
+**Choice (resolved on evidence, 2026-09-24; review decision 7; [decisions/D24-D31.md](decisions/D24-D31.md)):**
+- **The pin.** Every seed writes `system.language = "English"` (`sandbox.HEADLESS_LANGUAGE`), and no
+  locale environment variable is set. Measured on 8.0.9 to 10.99: German gives
+  "Freiraum-Verstoß … 0,6000 mm", and only the file pin fixes both the words and the decimal comma.
+- **Live GUIs.** They use a separate `-gui` root, selected by `enable_api_server=True`, which is also
+  English for now. Copying the user's language into it waits until two things stop depending on
+  translated text: netlist-import parsing and the window-title classification.
+- **Seed restore.** The seed is restored before and after each run.
+- **stdout.** No design data or report content is read from kicad-cli stdout or stderr. The
+  sandboxed `version` and `--help` probes are exempt.
+- **Guard.** A `,` decimal in a DRC/ERC description raises the backend `CliLocaleError`, which core
+  maps to `E_SANDBOX_LANGUAGE`.
+
+## D27 — Upstream drafts: the DRC marker `path` on top of !2780; transline fixes issue-first
+
+**Choice (resolved on evidence, 2026-09-24; ANALYSIS-TOOLING §9 decision 8; [decisions/D24-D31.md](decisions/D24-D31.md)):**
+- **DRC marker.** The fork carries upstream MR !2780 (flat per-violation `pos`/`layer`) unchanged,
+  plus our follow-up adding an optional per-violation `path {start, end}`. There is no drc.v1 bump
+  and no ERC change. kiwrap's keys are `cli.drc_json_has_marker_pos` and
+  `cli.drc_json_has_marker_path`, and `cli.drc_json_marker` is retired. The parser decides per
+  violation, from whether the field is present.
+- **Issue-first.** Every draft starts as an issue, because KiCad auto-closes MRs from new
+  contributors that have no assigned issue. The transline order:
+  - fix 1: the microstrip thickness double count, a bug fix and the first submission;
+  - fix 3′: the coupled-stripline label and the stale Z_DIFF at T=0;
+  - fix 2: coupled-microstrip thickness, a model change, so an issue draft only.
+- **No connectivity export for now.** It is a deferred card with a written trigger.
+- **Branches.** All on `base/6dd893f7d1`.
+- **Submission.** The owner rewrites the submitted prose (KiCad tool-generated-content policy §4.3).
+- **Push guard.** The fork's `public` remote push URL is now `DISABLED` (D19).
+
+Whether the private fork keeps its `Assisted-by: Claude Code` trailers is open for the owner: KiCad
+policy §4.2 requires the trailer for substantially tool-generated contributions.
+
+## D28 — Stackup sublayers: summed thickness, KiCad's thickness-weighted mean, sublayers kept
+
+**Choice (resolved on evidence, 2026-09-24; ANALYSIS-TOOLING §9 decision 9a; [decisions/D24-D31.md](decisions/D24-D31.md)):** there is one
+stackup model, `formats.reports.stackup`, which `formats/board.py` re-exports.
+- **Combining sublayers.** For a dielectric slot:
+  - thickness is the sum of its sublayers, in integer nm;
+  - εr and tan δ are the thickness-weighted arithmetic mean, as KiCad 10.0's tuning-profile
+    calculator computes them;
+  - material, colour, type and lock come from sublayer 0;
+  - `sublayers` lists each physical sublayer when there is more than one.
+- **Defaults.** Every parser (board, JSON, CSV, IPC) mirrors KiCad's load defaults and records the
+  fields it defaulted (`stackup_defaulted`).
+- **Tools.** `kw_pcb_get kinds=['stackup']` reads the file first. `kw_pcb_setup` and the DSN export
+  are unchanged. Impedance rules for mixed sublayers belong to `kw_pcb_analyze`.
+- **Bug fix.** The change fixes the existing stackup CSV label mismatch.
+
+## D29 — Fab limits: JLCPCB-only curated data and a vendor-floor gate on export
+
+**Choice (resolved on evidence, 2026-09-24; review decision 9; [decisions/D24-D31.md](decisions/D24-D31.md)):**
+- **Data.** v1 ships JLCPCB limits only, in `data/fab_limits.json`: seven sets (2-layer at 1, 2,
+  2.5, 3.5 and 4.5 oz; multilayer 4-32 at 1 and 2 oz). Each source records its URL, read date and a
+  verbatim quote. A manual stdlib refresh script checks for drift.
+- **Gate.** With `profile='jlcpcb'`, `kw_fab_export` runs a `fab_limits` gate. It blocks
+  (`E_FAB_LIMIT`) only when:
+  - the board breaks the vendor's lowest stated floor for its layer class;
+  - it breaks a vendor-wide limit (layer count, outline);
+  - or the stored DRC holds copper clearance or short errors that are not yet measured.
+
+  Everything else warns.
+- **Force.** `force={'reason': ..., 'gates': [...]}` overrides only the named gates. A bare force
+  still overrides only `drc_clean`, and receipts add `forced_gates`.
+
+## D30 — `native.geom` lives in `kiwrap.analysis`; import contracts; a content-keyed board-model cache
+
+**Choice (resolved on evidence, 2026-09-24; ANALYSIS-TOOLING §9 decisions 5, 9b, 9c; [decisions/D24-D31.md](decisions/D24-D31.md)):**
+- **Environment record.** `kiwrap.analysis.environment.probe_environment()` reports environment
+  capabilities, and `kw_env` shows them as `data.environment`. `capability.py` stays keyed on KiCad
+  installs.
+- **Single import site.** The only `import kiwrap_geom` is in `analysis/engines/native.py`, which
+  also holds `GEOM_VERSION` and `GEOM_FINGERPRINT`. The possible reasons are `not_installed`,
+  `import_failed`, `version_mismatch`, `fingerprint_mismatch`, `built_with_panic_abort`, `disabled`
+  (`KIWRAP_GEOM=pure`), `restart_required` and `panicked`.
+- **Without the wheel.** Union, difference and offset refuse with a teaching error whose fix is
+  `uv sync --all-extras` (a plain `uv sync` removes extras). Clearance and islands fall back to pure
+  Python, tagged degraded.
+- **Shared primitives.** Pairwise-distance primitives are written once, in `formats.geometry`.
+- **Enforcement.** Six import-linter contracts, ruff TID253 and a subprocess leak test keep optional
+  packages inside `kiwrap.analysis`.
+- **Board-model cache.** It is `core.state.ModelCache`, keyed on content: the sha256 of the board and
+  of the `.kicad_pro`. NTFS stamps kept identical values across two same-size writes in 171 of 200
+  trials. It has an LRU byte budget and an idle TTL, and releases a model in slices: a jetson model
+  holds about 2.1 GB, and a plain drop paused 6-8 s.
+
+## D31 — kiwrap-geom ships as a committed abi3 wheel pinned by `uv.lock`
+
+**Choice (resolved on evidence, 2026-09-24; ANALYSIS-TOOLING §9 decisions 1 and 9d; [decisions/D24-D31.md](decisions/D24-D31.md)):**
+- **The wheel.** `helper/kiwrap-geom/wheel/kiwrap_geom-<v>-cp311-abi3-win_amd64.whl` is tracked in
+  git. It is installed through a default dependency group, `native`, with a uv path source.
+- **Pin and delivery.** `uv.lock` is the only version and hash pin: no PyPI (D19), no bootstrap
+  download, no VSIX copy. A plain `uv run --project <checkout>` installs it on a fresh clone, offline.
+- **Cargo.** `helper/Cargo.toml` adds the crate with `default-members = ["kiwrap-live"]` and
+  `[profile.pyext] inherits = "release", panic = "unwind"`. Cargo rejects a per-package `panic`
+  setting. With `abort`, a panic killed Python with 0xC0000409; with `unwind` it raises
+  `PanicException` and the process survives.
+- **Build and check.** `scripts/build_geom_wheel.py` is the only writer of the wheel and its pins.
+  Its `--check` mode is a blocking gate in pytest and in the ubuntu scripts-lint job.
+- **Python.** Only a GIL cp311-abi3 wheel ships; the checkout venv runs CPython 3.14.4.
+- **Timing.** It is wired in only when `kiwrap.analysis` first imports it; until then the crate is
+  developed with `cargo test -p kiwrap-geom`.
