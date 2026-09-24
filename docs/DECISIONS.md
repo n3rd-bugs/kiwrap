@@ -195,3 +195,35 @@ updates live.
 **Consequence:** stock KiCad 10.0.x/11 is the only requirement for the live view; the
 display-input bench build (6dd893f7d1-7) is unregistered; DISPLAY.md decisions 5, 11, 13, 14
 are closed as "not pursued"; the e2e keeps the stock view-only scenario as the product path.
+
+## D21 — A project runs on the KiCad matching its file format; upgrading needs the user's consent
+
+**Choice (owner, 2026-09-24, from the feature-request review, requests/kiwrap-feature-requests.review.md
+item 1):** for a project kiwrap did not create, kiwrap picks an installed KiCad whose file-format epoch
+matches the project's files (the newest point release of that epoch). If none is installed, kiwrap
+must not silently write a newer format: reads may run (in memory / on copies), but any operation that
+would save the design files in a newer format stops and the **user is asked** whether the schematic
+and board may be upgraded (MCP elicitation where the client supports it, otherwise a teaching error
+the agent relays, and a modal in the VS Code extension); only then does `kw_project(action='upgrade',
+confirm=true)` convert them. The prompt also names the alternative: install the matching KiCad.
+**Why:** the review reproduced four paths that re-stamped a KiCad 10.0 project as 10.99 (unopenable in
+10.0) on default arguments. D16 stays "develop against the newest KiCad" but never writes a newer
+format into a user's files without consent.
+
+## D22 — `kw_pcb_drc` does not save by default
+
+**Choice (owner, 2026-09-24):** `save_board` defaults to false: zones are refilled in memory for the
+check and the board on disk is untouched. Fabrication exports refill (or warn about stale fills)
+themselves.
+
+## D23 — Read-only mode: a server flag plus per-call `persist=false`
+
+**Choice (owner, 2026-09-24, as recommended):** `kiwrap serve --readonly` (and `KIWRAP_READONLY=1`)
+makes every call non-persisting; individual calls can pass `persist=false`. A non-persisting call
+writes nothing into the project: no snapshot, no `.kiwrap/` state, no saved refill, no reports or
+exports inside the project (outputs go to a temp or caller-given directory), and `.kicad_prl`
+restored. Mutating tools refuse with a teaching error in read-only mode.
+
+Open (research requested 2026-09-24): whether any client imposes a tool-count limit (item 4 of the
+review's decisions: wrap tool calls only if a real limit exists), and the geometry/analysis tooling
+for `kw_pcb_analyze` beyond numpy (item 5).
