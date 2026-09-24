@@ -18,6 +18,13 @@ Verified facts encoded here (docs/VERIFICATION.md / docs/ARCHITECTURE.md §2):
   634 airwires -> exactly 499 unconnected_items). `capped_types()` names the saturated types so
   kw_pcb_drc can say the counts are lower bounds (matrix keys `cli.drc_error_limit`,
   `cli.drc_extended_error_limit`, `cli.drc_extended_error_types`).
+- `--all-track-errors` (review item 19, §5 claim 12): without it each track stops at its FIRST
+  violation (`drc_test_provider_copper_clearance.cpp:289,304,668`) and which one is reported
+  depends on the R-tree and worker threads; the review reproduced 12 violations by default against
+  18 with the flag, including a short the default hid. Listed in `cli.flags.pcb drc` from 8.0
+  (matrix); `supports_all_track_errors()` gates it and `run_drc` refuses it where it is absent.
+- Where the JSON goes: `out_json` (kw_pcb_drc passes a path under the storage home, review item 3
+  / D23 - never the project); the default beside the board stays for direct callers.
 """
 
 from __future__ import annotations
@@ -37,6 +44,12 @@ from kiwrap.sandbox import ConfigRoot
 
 OLDEST_KICAD_WITH_DRC = OLDEST_KICAD_WITH_ERC  # both arrived in 8.0 (matrix §2)
 OLDEST_KICAD_WITH_DRC_REFILL = "10.0.0"
+OLDEST_KICAD_WITH_ALL_TRACK_ERRORS = "8.0.0"
+
+
+def supports_all_track_errors(caps: Capabilities) -> bool:
+    """True when this kicad-cli's `pcb drc` takes `--all-track-errors` (module docstring)."""
+    return bool(caps.has("cli.has_drc")) and has_flag(caps, "pcb drc", "--all-track-errors")
 
 
 def report_from_drc_json(doc: dict[str, Any], *, source: str) -> Report:
@@ -93,6 +106,7 @@ def run_drc(
     `refill_zones` / `save_board` need `cli.drc_refill_flags`; `save_board` mutates `board` in
     place (KiCad refills and re-saves), so callers snapshot first. `schematic_parity` needs the
     project's schematic next to the board (kicad-cli resolves it from the `.kicad_pro`).
+    `all_track_errors` needs `supports_all_track_errors(caps)` (else `Unsupported`).
     """
     caps = resolve_caps(install, caps)
     if not caps.has("cli.has_drc"):
@@ -114,6 +128,13 @@ def run_drc(
             install,
             oldest_kicad_with_it=OLDEST_KICAD_WITH_DRC_REFILL,
             fallback="swig ZONE_FILLER",
+        )
+    if all_track_errors and not supports_all_track_errors(caps):
+        raise Unsupported(
+            "cli.flags.pcb drc --all-track-errors",
+            install,
+            oldest_kicad_with_it=OLDEST_KICAD_WITH_ALL_TRACK_ERRORS,
+            fallback="run without all_track_errors (each track reports its first violation only)",
         )
     board = Path(board)
     out = Path(out_json) if out_json else board.with_name(board.stem + ".drc.json")
@@ -140,6 +161,7 @@ def run_drc(
         "exit_code_violations": res.violations,
         "path": str(out),
         "board_saved": bool(save_board),
+        "all_track_errors": bool(all_track_errors),
         "capped": capped_types(report, caps),
     }
     return report

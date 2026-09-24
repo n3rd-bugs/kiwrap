@@ -5,34 +5,52 @@ Every mutating tool follows the same sequence (docs/ARCHITECTURE.md §11):
     project lock -> editor-lock refusal -> external-edit check -> do the work -> re-hash the
     inputs of the stage reached -> git snapshot "[kiwrap] <tool> ..." -> Receipt with
     provider_used, stage, snapshot, next_suggested.
+
+Which KiCad a project runs on (docs/DECISIONS.md D21, requests/kiwrap-feature-requests.review.md item
+1 / B1 and theme T1): `effective_target()` is the one resolver every tool calls instead of
+`services.install(state.target_kicad)`. It answers the pinned target, else the newest installed
+point release that writes the files' own format, else the nearest newer one (reads only). A write
+that would save the design files in a newer format asks the user (MCP elicitation, both the
+2025-era server request and the 2026-07-28 `InputRequiredResult` round trip) or fails with
+`E_FORMAT_UPGRADE_REQUIRED`; files newer than every install are `E_FORMAT_NEWER`. The mutation
+epilogue re-reads the stamps and undoes any call that raised one without consent (the stamp
+guard: the only layer that catches a write path nobody anticipated).
 """
 
 from __future__ import annotations
 
+import contextvars
+import copy
 import datetime as _dt
 import inspect
+import shutil
 import subprocess
 import traceback
-from collections.abc import Callable, Iterator
+import uuid
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any
 
+from mcp.server.mcpserver.context import Context as McpContext
 from mcp.types import CallToolResult, ToolAnnotations
 from pydantic import BaseModel, Field, ValidationError
 
 from kiwrap.core.services import Services
-from kiwrap.core.state import KiwrapError, Receipt, ValidatorDelta
+from kiwrap.core.state import KiwrapError, Receipt, ValidatorDelta, readonly
 from kiwrap.core.state.gates import Force, check_gate
 from kiwrap.core.state.jobs import JobQueue
 from kiwrap.core.state.locks import project_mutation
-from kiwrap.core.state.project import Project, ProjectState
+from kiwrap.core.state.project import FileStamp, Project, ProjectState
 from kiwrap.core.state.receipts import ReceiptOut, error_to_result, receipt_to_result
 from kiwrap.core.state.snapshots import create as snapshot_create
 from kiwrap.core.state.snapshots import head as snapshot_head
 from kiwrap.core.state.snapshots import is_dirty as snapshot_is_dirty
+from kiwrap.core.state.snapshots import owned_files
+from kiwrap.core.state.snapshots import restore as snapshot_restore
 from kiwrap.core.state.stages import ExternalEditCheck, check_external_edit, next_suggested
+from kiwrap.installation import version_tuple
 
 ToolResult = Annotated[CallToolResult, ReceiptOut]
 
@@ -259,14 +277,50 @@ def _cli_data(exc: BaseException) -> dict[str, Any]:
 # ---- registration ------------------------------------------------------------------------------
 
 
+#: the MCP request context (`mcp.server.mcpserver.Context`) of the tool call running in this
+#: thread, bound by `make_callable` so a consent point deep inside a handler can elicit from the
+#: client (D21); None outside an MCP call (direct handler calls, background jobs, the CLI)
+_REQUEST: contextvars.ContextVar[Any] = contextvars.ContextVar("kiwrap_mcp_request", default=None)
+#: the keyword the SDK injects the request context through (excluded from the inputSchema)
+MCP_CONTEXT_ARG = "kiwrap_mcp_context"
+
+
+class InputRequired(BaseException):
+    """A consent point needs the client's answer under the 2026-07-28 protocol, where a server
+    cannot send `elicitation/create` mid-call: `make_callable` returns `result` (an
+    `InputRequiredResult`) and the client retries the call with the answer in `input_responses`.
+    A BaseException so no `except Exception` on the way up swallows it; raised before the tool
+    writes anything (the consent point is the target resolution at the start of a mutation)."""
+
+    def __init__(self, result: Any):
+        super().__init__("input required")
+        self.result = result
+
+
+def bound_request() -> Any:
+    """The MCP request context of the current tool call, or None."""
+    return _REQUEST.get()
+
+
 def make_callable(spec: ToolSpec, ctx: ToolContext) -> Callable[..., CallToolResult]:
     """Turn a ToolSpec into a plain function whose signature mirrors the input model.
 
     The mcp SDK derives `inputSchema` from the signature and `outputSchema` from the
     `Annotated[CallToolResult, ReceiptOut]` return annotation; we validate the arguments a
-    second time through the pydantic model so the handler receives a typed object.
+    second time through the pydantic model so the handler receives a typed object. One extra
+    keyword (`MCP_CONTEXT_ARG`, annotated with the SDK's `Context`, hence injected by the SDK and
+    left out of the inputSchema) carries the request context into `_REQUEST` for the D21
+    consent prompt.
+
+    Every tool also publishes the common argument `persist` (docs/DECISIONS.md D23, review item 2):
+    `persist=false` - or a read-only server (`kiwrap serve --readonly`, `KIWRAP_READONLY=1`) - runs
+    the handler inside a `readonly.DetachedCall` (nothing written into the project; a tool that
+    would write it is refused with E_READONLY before the handler runs).
     """
     params: list[inspect.Parameter] = []
+    own_persist = readonly.PERSIST_ARG in spec.input_model.model_fields
+    read_only_hint = bool(getattr(spec.annotations, "read_only_hint", False))
+    readonly.register_tool(spec.name, read_only_hint=read_only_hint)
     for fname, finfo in spec.input_model.model_fields.items():
         ann: Any = finfo.annotation if finfo.annotation is not None else Any
         # description AND the numeric constraints (ge/le -> minimum/maximum, ...) so the published
@@ -281,15 +335,56 @@ def make_callable(spec: ToolSpec, ctx: ToolContext) -> Callable[..., CallToolRes
         params.append(
             inspect.Parameter(fname, inspect.Parameter.KEYWORD_ONLY, default=default, annotation=ann)
         )
+    if not own_persist:
+        params.append(
+            inspect.Parameter(
+                readonly.PERSIST_ARG,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=Annotated[bool | None, Field(description=readonly.PERSIST_DESCRIPTION)],
+            )
+        )
+    params.append(
+        inspect.Parameter(
+            MCP_CONTEXT_ARG, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=McpContext | None
+        )
+    )
 
     def tool_fn(**kwargs: Any) -> ToolResult:
+        token = _REQUEST.set(kwargs.pop(MCP_CONTEXT_ARG, None))
+        persist = kwargs.get(readonly.PERSIST_ARG) if own_persist else kwargs.pop(readonly.PERSIST_ARG, None)
+        call: readonly.DetachedCall | None = None
         try:
+            ro_persist = persist if isinstance(persist, bool) else None
             args = spec.input_model.model_validate(kwargs)
-            result = spec.handler(ctx, args)
+            # D23: a non-persisting call is refused (E_READONLY) or runs detached from the project
+            spec_project = getattr(args, "project", None)
+            call = readonly.begin(
+                ctx,
+                spec.name,
+                args,
+                ro_persist,
+                read_only_hint=read_only_hint,
+                project_spec=spec_project if isinstance(spec_project, str) else None,
+            )
+            if call is None:
+                result = spec.handler(ctx, args)
+            else:
+                args = readonly.prepare_args(call, args)
+                with call:
+                    result = spec.handler(call.ctx, args)
+                result = call.annotate(result)
+        except InputRequired as need:  # D21 consent under the 2026-07-28 protocol: ask, then retry
+            return need.result
         except BaseException as exc:  # noqa: BLE001 - every failure must reach the agent as isError
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
-            return error_to_result(enrich_unsupported(ctx, to_kiwrap_error(exc)))
+            err = enrich_unsupported(ctx, to_kiwrap_error(exc))
+            if call is not None and err.code != "E_READONLY":
+                err.data.setdefault("readonly", call.info())
+            return error_to_result(err)
+        finally:
+            _REQUEST.reset(token)
         if isinstance(result, CallToolResult):
             return result
         return receipt_to_result(spec.name, result, ok=bool(result.data.get("ok", True)))
@@ -333,19 +428,795 @@ def enrich_unsupported(ctx: ToolContext, err: KiwrapError) -> KiwrapError:
 TOOL_NEEDS: dict[str, str] = {"kw_sch_check": "cli.has_erc", "kw_pcb_drc": "cli.has_drc"}
 
 
-def suggest_next(ctx: ToolContext, state: ProjectState, preferred: str | None = None) -> str | None:
+def suggest_next(
+    ctx: ToolContext, state: ProjectState, preferred: str | None = None, *, target: Any = None
+) -> str | None:
     """`preferred` (a handler's choice) or the stage's default, unless the project's target KiCad
-    lacks the capability that tool needs; None then."""
+    lacks the capability that tool needs; None then. The target is `target` (a `TargetChoice`),
+    else the one the running mutation resolved, else the pinned `state.target_kicad`."""
     tool = preferred or next_suggested(state.stage)
     key = TOOL_NEEDS.get(tool or "")
-    if key and state.target_kicad:
-        try:
+    if not key:
+        return tool
+    install = getattr(target, "install", None)
+    if install is None:
+        running = _CURRENT.get()
+        install = getattr(getattr(running, "target", None), "install", None)
+    try:
+        if install is None and state.target_kicad:
             install = ctx.services.install(state.target_kicad)
-            if not ctx.services.caps(install).has(key):
-                return None
-        except Exception:  # noqa: BLE001 - an unknown target keeps the default suggestion
-            return tool
+        if install is not None and not ctx.services.caps(install).has(key):
+            return None
+    except Exception:  # noqa: BLE001 - an unknown target keeps the default suggestion
+        return tool
     return tool
+
+
+# ---- which KiCad writes this project (D21) --------------------------------------------------------
+
+#: the design-file kinds whose `(version N)` stamp decides which KiCad may write a project
+DESIGN_KINDS: tuple[str, ...] = ("sch", "pcb")
+#: `TargetChoice.source` values (the contract's vocabulary)
+SOURCE_PINNED = "pinned"
+SOURCE_CREATED = "created"
+SOURCE_FILE_EPOCH = "file_epoch"
+SOURCE_NEWER_READONLY = "file_epoch_newer_readonly"
+#: `InputRequiredResult.input_requests` key of the upgrade consent (2026-07-28 protocol)
+CONSENT_KEY = "kiwrap.format_upgrade"
+
+
+@dataclass
+class TargetChoice:
+    """`effective_target()`'s answer: the install a call runs on and why.
+
+    `source`: `pinned` (kw_project retarget / upgrade, or a hand-pinned state), `created`
+    (kw_project create stamped the files in that install's format), `file_epoch` (not pinned:
+    the newest install writing the files' own format), `file_epoch_newer_readonly` (no install
+    writes that format; the nearest newer one reads it, writes need an upgrade).
+    `project_epoch` is `{kind: newest stamp}` of the design files, `install_epoch` the install's
+    `formats.<kind>`; `writable_kinds` the kinds the install can save without moving any file to a
+    newer KiCad line (every file's generation equals the install's epoch), `writable` all of them.
+    `readable` is False when some file is newer than the install (kicad-cli cannot load it).
+    """
+
+    install: Any
+    source: str
+    project_epoch: dict[str, int]
+    install_epoch: dict[str, int]
+    writable: bool
+    notes: list[str] = field(default_factory=list)
+    writable_kinds: frozenset[str] = frozenset()
+    readable: bool = True
+    files: list[FileStamp] = field(default_factory=list)
+    #: every installed KiCad considered: {version, root, formats, reads, matches}
+    candidates: list[dict[str, Any]] = field(default_factory=list)
+    #: the KiCad line the files belong to ("10.0"; None when no known release writes that format)
+    project_kicad: str | None = None
+    #: the newest released install command for that line (`backends.cli.upgrade.install_hint`)
+    install_hint: str | None = None
+    #: {kind: the generations (known release epochs) the files of that kind belong to}
+    file_generations: dict[str, list[int]] = field(default_factory=dict)
+    #: {kind: every known release epoch} (the version matrix plus the installs)
+    known_epochs: dict[str, list[int]] = field(default_factory=dict)
+    #: the upgrade report when this call upgraded the project with the user's consent
+    upgraded: dict[str, Any] | None = None
+    #: the version matrix as data (`format_releases`), newest first
+    releases: list[dict[str, Any]] = field(default_factory=list)
+
+    def release_for(self, kinds: Iterable[str] | None = None) -> tuple[str | None, str | None]:
+        """(KiCad line, install hint) of the newest released KiCad that writes the files of
+        `kinds` in their own format and reads every other design file - what to install instead
+        of upgrading. For a board-only write on a project whose schematics are older (the review's
+        kit-dev-coldfire: 9.0 sheets, board re-saved by 10.0.6) that is KiCad 10.0.
+
+        Never a line newer than the chosen install (the upgrade target), and (None, None) when the
+        files of a wanted kind already mix format generations - no KiCad writes such a set, so
+        there is nothing to install instead (fixer finding 6: the matrix's unreleased 11.0.0
+        shares 10.99's epochs, and a mixed 10.99/10.0 project was called 'KiCad 11.0 format' with
+        the advice to install KiCad 11.0)."""
+        wanted = set(kinds) if kinds is not None else set(self.project_epoch)
+        if any(len(self.file_generations.get(k, [])) > 1 for k in wanted):
+            return None, None
+        newest = {k: max(v) for k, v in self.file_generations.items() if v}
+        wanted &= set(newest)
+        if not wanted or wanted == set(self.project_epoch):
+            return self.project_kicad, self.install_hint
+        limit = self.version if self.readable else None
+        fallback: dict[str, Any] | None = None
+        for rel in self.releases:  # newest first
+            if _newer_than(str(rel.get("version") or ""), limit):
+                continue
+            formats = rel.get("formats") or {}
+            writes = all(formats.get(k) == newest[k] for k in wanted)
+            reads = all(
+                isinstance(formats.get(k), int) and formats[k] >= e for k, e in self.project_epoch.items()
+            )
+            if writes and reads:
+                if rel.get("released") and rel.get("install_hint"):
+                    return str(rel.get("line")), str(rel["install_hint"])
+                fallback = rel  # the oldest unreleased match: a nightly before the next major's seed
+        return (str(fallback.get("line")), None) if fallback else (self.project_kicad, self.install_hint)
+
+    @property
+    def mixed(self) -> bool:
+        """The files of some kind belong to different KiCad format generations (a sheet re-saved
+        by a newer KiCad next to older ones): no single KiCad writes this project as it is."""
+        return any(len(v) > 1 for v in self.file_generations.values())
+
+    @property
+    def version(self) -> str:
+        return str(getattr(self.install, "version", "") or "")
+
+    def writable_for(self, kinds: Iterable[str] | None = None) -> bool:
+        wanted = set(kinds) if kinds is not None else set(self.project_epoch)
+        return self.readable and wanted <= set(self.writable_kinds)
+
+    def upgrade_files(self) -> list[FileStamp]:
+        """The files an upgrade to this install would move to a newer KiCad line."""
+        out = []
+        for f in self.files:
+            epoch = self.install_epoch.get(f.kind)
+            if f.stamp is None or epoch is None or f.stamp >= epoch:
+                continue
+            if _generation_of(f.stamp, self.known_epochs.get(f.kind, [])) != epoch:
+                out.append(f)
+        return out
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kicad": self.version,
+            "source": self.source,
+            "project_epoch": dict(self.project_epoch),
+            "install_epoch": dict(self.install_epoch),
+            "writable": self.writable,
+            "writable_kinds": sorted(self.writable_kinds),
+            "readable": self.readable,
+            "project_kicad": self.project_kicad,
+            "notes": list(self.notes),
+        }
+
+    def summary(self) -> dict[str, Any]:
+        """The compact form every mutation receipt carries as `data.target`."""
+        out: dict[str, Any] = {"kicad": self.version, "source": self.source, "epoch_match": self.writable}
+        if self.upgraded:
+            out["upgraded"] = True
+        return out
+
+
+def _generation_of(stamp: int, known: list[int]) -> int | None:
+    """The epoch of the oldest known KiCad release that reads `stamp` (the smallest known epoch
+    >= stamp), None when the stamp is newer than every known one. Two stamps with the same
+    generation are the same file format as far as any known KiCad is concerned: KiCad 10.0.6
+    re-saving the 10.0 demo's `(version 20260101)` schematic writes 20260306, which every 10.0.x
+    reads (verified 2026-09-24, `sch upgrade` on a copy of pic_programmer)."""
+    for epoch in known:
+        if epoch >= stamp:
+            return epoch
+    return None
+
+
+def _install_epochs(ctx: ToolContext, install: Any) -> dict[str, int]:
+    """`{kind: formats.<kind>}` of an install for the design kinds (missing keys are left out);
+    `services.install_formats` when the services have it (no probe), else the record."""
+    fn = getattr(ctx.services, "install_formats", None)
+    try:
+        if callable(fn):
+            values: Any = fn(install)
+        else:
+            caps = ctx.services.caps(install)
+            values = {k: caps[f"formats.{k}"] for k in DESIGN_KINDS if f"formats.{k}" in caps}
+    except (KiwrapError, TypeError):
+        return {}
+    out: dict[str, int] = {}
+    for kind in DESIGN_KINDS:
+        val = values.get(kind) if isinstance(values, dict) else None
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            out[kind] = int(val)
+    return out
+
+
+def format_releases(ctx: ToolContext) -> list[dict[str, Any]]:
+    """The version matrix as `[{version, line, formats, nightly, released, install_hint}]`
+    (`services.format_releases`; [] when the build has no matrix - unit tests with fakes)."""
+    fn = getattr(ctx.services, "format_releases", None)
+    if not callable(fn):
+        return []
+    try:
+        return list(fn() or [])
+    except KiwrapError:
+        return []
+
+
+def _newer_than(version: str, limit: str | None) -> bool:
+    """`version` is a newer KiCad than `limit` (False without a limit or a parsable version)."""
+    if not limit or not version:
+        return False
+    a, b = version_tuple(version), version_tuple(limit)
+    return bool(a and b) and a > b
+
+
+def _line_for(
+    generations: dict[str, int | None], releases: list[dict[str, Any]], *, not_newer_than: str | None = None
+) -> tuple[str | None, str | None]:
+    """(KiCad line, install hint) of the matrix release writing exactly `generations`: the newest
+    released point release with an install hint first, else the OLDEST unreleased one (the 10.99
+    nightly, not the unreleased 11.0.0 the matrix seeds with the same epochs - fixer finding 6);
+    a release newer than `not_newer_than` (the chosen install) is never named."""
+    if not generations or any(g is None for g in generations.values()):
+        return None, None
+    fallback: dict[str, Any] | None = None
+    for rel in releases:  # newest first
+        if _newer_than(str(rel.get("version") or ""), not_newer_than):
+            continue
+        formats = rel.get("formats") or {}
+        if all(formats.get(k) == g for k, g in generations.items()):
+            if rel.get("released") and rel.get("install_hint"):
+                return str(rel.get("line")), str(rel["install_hint"])
+            fallback = rel
+    if fallback is not None:
+        return str(fallback.get("line")), None
+    return None, None
+
+
+def _kicad_line(version: str) -> str:
+    """'10.99.0' -> '10.99' (the line a KiCad version belongs to)."""
+    parts = [p for p in str(version).split(".") if p]
+    return ".".join(parts[:2]) if len(parts) >= 2 else str(version)
+
+
+def _file_line(choice: TargetChoice, f: FileStamp) -> str | None:
+    """The KiCad line whose format one design file is in (its generation named by the matrix,
+    never newer than the chosen install; else an installed KiCad writing it), None if unknown."""
+    if f.stamp is None:
+        return None
+    gen = _generation_of(int(f.stamp), choice.known_epochs.get(f.kind, []))
+    if gen is None:
+        return None
+    line, _hint = _line_for({f.kind: gen}, choice.releases, not_newer_than=choice.version or None)
+    if line:
+        return line
+    for cand in choice.candidates:
+        if (cand.get("formats") or {}).get(f.kind) == gen:
+            return _kicad_line(str(cand.get("version") or ""))
+    return None
+
+
+def _join(items: list[str]) -> str:
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+#: how many files a conversion message names before it says "and N more"
+_FILES_NAMED = 6
+
+
+def _conversion_text(choice: TargetChoice) -> tuple[str, str, int]:
+    """(the files an upgrade to the chosen install would convert, each with the KiCad line of its
+    format; the KiCad lines that could open them before; how many files) - the wording of the D21
+    prompt when the project has no single named KiCad line (fixer finding 6)."""
+    files = choice.upgrade_files() or [f for f in choice.files if f.stamp is not None]
+    named: list[str] = []
+    lines: list[str] = []
+    for f in files:
+        line = _file_line(choice, f)
+        named.append(f"{f.path} ({f'KiCad {line} format' if line else f'format {f.stamp}'})")
+        if line and line not in lines:
+            lines.append(line)
+    shown = named[:_FILES_NAMED]
+    if len(named) > _FILES_NAMED:
+        shown.append(f"{len(named) - _FILES_NAMED} more files")
+    olds = _join([f"KiCad {x}" for x in lines]) if lines else "the KiCad that wrote them"
+    return _join(shown), olds, len(files)
+
+
+def resolve_target(
+    ctx: ToolContext, project: Project, state: ProjectState, *, prefer: str | None = None
+) -> TargetChoice:
+    """Which installed KiCad this project runs on, without any policy (never raises for the
+    files' format; E_NO_KICAD when nothing is installed or the pin names a missing install).
+
+    Order (review item 1 fix layer 1): `prefer` (a per-call choice, kw_live's `target_kicad`) or
+    the pinned `state.target_kicad`; else the newest install whose format generation equals every
+    design file's (`file_epoch`); else the install with the lowest epochs that still reads every
+    file (`file_epoch_newer_readonly`); else the newest install, `readable=False`. A project
+    without any stamped design file runs on the newest install.
+    """
+    installs = list(ctx.services.installs())
+    if not installs:
+        ctx.services.install(None)  # raises E_NO_KICAD with its teaching fix
+    releases = format_releases(ctx)
+    files = project.format_stamps()
+    stamped = [f for f in files if f.stamp is not None]
+    project_epoch: dict[str, int] = {}
+    for f in stamped:
+        project_epoch[f.kind] = max(project_epoch.get(f.kind, 0), int(f.stamp or 0))
+    epochs_by_key = {i.key(): _install_epochs(ctx, i) for i in installs}
+    known: dict[str, list[int]] = {}
+    for kind in DESIGN_KINDS:
+        vals = {
+            int(r["formats"][kind]) for r in releases if isinstance((r.get("formats") or {}).get(kind), int)
+        }
+        vals |= {e[kind] for e in epochs_by_key.values() if kind in e}
+        known[kind] = sorted(vals)
+    gens: dict[str, set[int | None]] = {}
+    for f in stamped:
+        gens.setdefault(f.kind, set()).add(_generation_of(int(f.stamp or 0), known[f.kind]))
+
+    def assess(epochs: dict[str, int]) -> tuple[bool, frozenset[str]]:
+        reads = all(k not in epochs or epochs[k] >= e for k, e in project_epoch.items())
+        wk = frozenset(
+            k for k in DESIGN_KINDS if k not in project_epoch or k not in epochs or gens.get(k) == {epochs[k]}
+        )
+        return reads, wk
+
+    candidates: list[dict[str, Any]] = []
+    for inst in installs:
+        e = epochs_by_key[inst.key()]
+        reads, wk = assess(e)
+        candidates.append(
+            {
+                "version": inst.version,
+                "root": str(getattr(inst, "root", "")),
+                "formats": dict(e),
+                "reads": reads,
+                "matches": reads and set(project_epoch) <= wk,
+            }
+        )
+
+    notes: list[str] = []
+    spec = prefer or state.target_kicad
+    pinned = None
+    if spec:
+        try:
+            pinned = ctx.services.install(spec)
+        except KiwrapError as err:
+            if prefer or err.code != "E_NO_KICAD":
+                raise
+            # the pinned KiCad was uninstalled (a point-release update): the files' format decides
+            notes.append(
+                f"the pinned KiCad {spec} is not installed; the install writing the files' format is used "
+                "(kw_project(action='retarget') pins another)"
+            )
+    if pinned is not None:
+        install = pinned
+        source = SOURCE_PINNED if prefer else (state.target_source or SOURCE_PINNED)
+    elif not stamped:
+        install = installs[0]
+        source = SOURCE_FILE_EPOCH
+        if files:
+            notes.append("no design file carries a (version N) stamp: the newest installed KiCad is used")
+    else:
+        matching = [i for i, c in zip(installs, candidates, strict=True) if c["matches"]]
+        readers = [(n, i) for n, (i, c) in enumerate(zip(installs, candidates, strict=True)) if c["reads"]]
+        if matching:
+            install, source = matching[0], SOURCE_FILE_EPOCH
+        elif readers:
+            kinds = sorted(project_epoch)
+            _n, install = min(
+                readers,
+                key=lambda item: (tuple(epochs_by_key[item[1].key()].get(k, 0) for k in kinds), item[0]),
+            )
+            source = SOURCE_NEWER_READONLY
+        else:
+            install, source = installs[0], SOURCE_FILE_EPOCH
+    epochs = epochs_by_key.get(install.key()) or _install_epochs(ctx, install)
+    readable, writable_kinds = assess(epochs)
+    newest_gen = {k: max((g for g in v if g is not None), default=None) for k, v in gens.items()}
+    mixed = {k: sorted(g for g in v if g is not None) for k, v in gens.items() if len(v) > 1}
+    line: str | None = None
+    hint: str | None = None
+    if not mixed:
+        # a mixed project belongs to no single KiCad line (fixer finding 6); a release newer than
+        # the install that reads the files is never named (the matrix's unreleased 11.0.0 shares
+        # the 10.99 nightly's epochs)
+        line, hint = _line_for(newest_gen, releases, not_newer_than=install.version if readable else None)
+        if line is None and all(v is not None for v in newest_gen.values()) and newest_gen:
+            for inst in installs:  # no matrix (unit tests): name the line by an install writing it
+                e = epochs_by_key[inst.key()]
+                if all(e.get(k) == g for k, g in newest_gen.items()):
+                    line = getattr(inst, "major_minor", None) or ".".join(inst.version.split(".")[:2])
+                    break
+    for kind, values in mixed.items():
+        names = [f"{f.path} ({f.stamp})" for f in stamped if f.kind == kind]
+        notes.append(
+            f"the {kind} files mix KiCad format generations {values}: "
+            + ", ".join(names)
+            + " - an older KiCad cannot load the project; kw_project(action='upgrade') makes them uniform "
+            "(or kw_snapshot restore the state before the mix)"
+        )
+    choice = TargetChoice(
+        install=install,
+        source=source,
+        project_epoch=project_epoch,
+        install_epoch=dict(epochs),
+        writable=readable and set(project_epoch) <= writable_kinds,
+        notes=notes,
+        writable_kinds=writable_kinds,
+        readable=readable,
+        files=files,
+        candidates=candidates,
+        project_kicad=line,
+        install_hint=hint,
+        file_generations={k: sorted(g for g in v if g is not None) for k, v in gens.items()},
+        known_epochs={k: list(v) for k, v in known.items()},
+        releases=releases,
+    )
+    fmt = ", ".join(f"{k} {v}" for k, v in sorted(project_epoch.items()))
+    what = f"KiCad {line} format ({fmt})" if line else f"file format {fmt}"
+    if not readable:
+        notes.append(
+            f"the files ({what}) are newer than KiCad {install.version} "
+            f"({', '.join(f'{k} {v}' for k, v in sorted(epochs.items()))}): it cannot load them"
+        )
+    elif stamped and not set(project_epoch) <= writable_kinds:
+        if line:
+            notes.append(
+                f"the files are in {what}; KiCad {install.version} writes a newer format, so it runs reads only - "
+                "a write asks to upgrade the project (D21) or needs the matching KiCad"
+                + (f" ({hint})" if hint else "")
+            )
+        else:
+            convert, _olds, _n = _conversion_text(choice)
+            notes.append(
+                f"KiCad {install.version} would save {convert} in the KiCad {_kicad_line(install.version)} format, "
+                "so it runs reads only - a write asks to upgrade the project first (D21)"
+            )
+    return choice
+
+
+def _uniform_label(choice: TargetChoice, kinds: Iterable[str] | None = None) -> tuple[str | None, str | None]:
+    """('KiCad <line>', install hint) when the files the write concerns belong to one named KiCad
+    line; (None, None) for a project whose files mix format generations or whose format no known
+    release names - the prompt then names the files that would be converted instead (fixer finding
+    6: 'from file format pcb 20260206, sch 20260830 format', and 'is in KiCad 11.0 format ...
+    install KiCad 11.0' for a mixed 10.99/10.0 project). `release_for` never names a line newer
+    than the upgrade target."""
+    if choice.mixed:
+        return None, None
+    line, hint = choice.release_for(kinds)
+    if not line:
+        return None, None
+    return f"KiCad {line}", hint
+
+
+def upgrade_calls(project: Project) -> tuple[str, str]:
+    """(the non-committing `dry_run=true` call, the consent-bearing `confirm=true` call)."""
+    pro = project.pro_path.as_posix()
+    return (
+        f'kw_project(action="upgrade", project="{pro}", dry_run=true)',
+        f'kw_project(action="upgrade", project="{pro}", confirm=true)',
+    )
+
+
+def format_upgrade_error(
+    choice: TargetChoice,
+    project: Project,
+    *,
+    answer: str | None = None,
+    guard: dict[str, Any] | None = None,
+    kinds: Iterable[str] | None = None,
+) -> KiwrapError:
+    """E_FORMAT_UPGRADE_REQUIRED (contract (b)): saving would move the files to a newer KiCad format
+    and no installed KiCad writes theirs. `answer`: the user's elicitation answer (decline /
+    cancel) when one was asked; `guard`: the stamp guard's findings when the write already
+    happened and was rolled back; `kinds`: the design kinds the refused write saves (they pick
+    the KiCad line / install hint named as the alternative).
+
+    `example` is the NON-committing `dry_run=true` call (it reports the conversion and the ERC /
+    DRC counts before and after - something to show the user); the `confirm=true` call appears
+    only in `fix`, after 'if yes:' (fixer finding 9: an agent treating `example` as the corrective
+    call must never run the consent-bearing one without asking)."""
+    uniform, hint = _uniform_label(choice, kinds)
+    y = choice.version
+    y_line = _kicad_line(y) if y else ""
+    matching = [c["version"] for c in choice.candidates if c.get("matches")]
+    dry_call, upgrade_call = upgrade_calls(project)
+    if uniform:
+        message = (
+            f"{project.name} is in {uniform} format; saving it with KiCad {y} would upgrade the files to a newer "
+            f"format that {uniform} cannot open"
+        )
+        ask = (
+            f"ask the user whether the project may be upgraded to KiCad {y} format ({uniform} can no longer open "
+            "it afterwards)"
+        )
+    else:
+        convert, olds, n = _conversion_text(choice)
+        them = "it" if n == 1 else "them"
+        mixed = " (its files already mix KiCad file formats)" if choice.mixed else ""
+        message = (
+            f"saving {project.name}{mixed} with KiCad {y} would convert {convert} to the KiCad {y_line} format, "
+            f"which {olds} cannot open"
+        )
+        ask = (
+            f"ask the user whether {convert} may be converted to the KiCad {y_line} format ({olds} can no longer "
+            f"open {them} afterwards)"
+        )
+    fix = (
+        f"{ask}; {dry_call} shows the conversion and the ERC/DRC counts before and after without changing "
+        f"anything; if yes: {upgrade_call} (converted on a copy, snapshot first), then retry this call"
+    )
+    if matching:
+        fix += (
+            f"; or keep the format: kw_project(action='retarget', target_kicad='{matching[0]}') "
+            f"(KiCad {matching[0]} writes the files' own format)"
+        )
+    elif uniform:
+        fix += f"; or install {uniform}" + (f" ({hint})" if hint else "") + " and retry"
+    elif choice.mixed:
+        fix += (
+            "; or restore a snapshot from before the formats were mixed (kw_snapshot(action='list'), then "
+            "kw_snapshot(action='restore', ref=...))"
+        )
+    else:
+        fix += "; or install the KiCad that wrote the files and retry"
+    if answer in ("decline", "cancel"):
+        why = f"the user {'declined' if answer == 'decline' else 'dismissed'} the upgrade prompt; D21: never without consent"
+    elif guard:
+        why = "a write raised the files' format stamp without the user's consent; the call was rolled back (D21)"
+    else:
+        why = "kiwrap never saves a project in a newer KiCad format without the user's consent (D21)"
+    files = choice.upgrade_files() or [f for f in choice.files if f.stamp is not None]
+    data: dict[str, Any] = {
+        "project": project.pro_path.as_posix(),
+        "files": [f.to_dict() for f in files],
+        "project_epoch": dict(choice.project_epoch),
+        "project_kicad": uniform[len("KiCad ") :] if uniform else None,
+        "mixed": choice.mixed,
+        "candidates": [{"version": c["version"], "formats": c["formats"]} for c in choice.candidates],
+        "upgrade_to": y or None,
+        "install_hint": hint if uniform else None,
+        "target_source": choice.source,
+        "install_epoch": dict(choice.install_epoch),
+        "dry_run_call": dry_call,
+    }
+    if answer:
+        data["answer"] = answer
+    if guard:
+        data["guard"] = guard
+    return KiwrapError(
+        "E_FORMAT_UPGRADE_REQUIRED",
+        message,
+        why=why,
+        fix=fix,
+        candidates=matching,
+        example=dry_call,
+        data=data,
+    )
+
+
+def format_newer_error(choice: TargetChoice, project: Project) -> KiwrapError:
+    """E_FORMAT_NEWER: the design files are newer than the KiCad that would open them."""
+    readers = [c["version"] for c in choice.candidates if c.get("reads")]
+    fmt = ", ".join(f"{k} {v}" for k, v in sorted(choice.project_epoch.items()))
+    if readers:
+        fix = (
+            f"KiCad {readers[0]} reads these files: kw_project(action='retarget', target_kicad='{readers[0]}'), "
+            "or kw_project(action='retarget', target_kicad='auto') to follow the files' format"
+        )
+    else:
+        fix = "install a KiCad that reads this format" + (
+            f" ({choice.install_hint})" if choice.install_hint else " (the newest release or nightly)"
+        )
+    fix += "; reads that do not need KiCad still work: kw_pcb_get / kw_sch_get with provider='file'"
+    return KiwrapError(
+        "E_FORMAT_NEWER",
+        f"{project.name}'s files ({fmt}) are newer than KiCad {choice.version} "
+        f"({', '.join(f'{k} {v}' for k, v in sorted(choice.install_epoch.items()))})",
+        why="a KiCad refuses files written by a newer version (kicad-cli exits 3: 'created with a more recent version')",
+        fix=fix,
+        candidates=readers,
+        data={
+            "project": project.pro_path.as_posix(),
+            "files": [f.to_dict() for f in choice.files if f.stamp is not None],
+            "project_epoch": dict(choice.project_epoch),
+            "needed_kicad": choice.project_kicad,
+            "candidates": [{"version": c["version"], "formats": c["formats"]} for c in choice.candidates],
+            "install_hint": choice.install_hint,
+            "kicad": choice.version,
+            "target_source": choice.source,
+        },
+    )
+
+
+class UpgradeConsent(BaseModel):
+    """The elicitation form of the D21 prompt (one boolean; the action carries accept/decline)."""
+
+    upgrade: bool = Field(
+        default=True,
+        title="Upgrade the project files",
+        description="Convert the schematic and board to the newer KiCad format (a snapshot is taken first)",
+    )
+
+
+def consent_message(project: Project, choice: TargetChoice, kinds: Iterable[str] | None = None) -> str:
+    """'Upgrade <project> from KiCad <x> format to <y>? KiCad <x> will no longer open it.
+    Alternatively install KiCad <x>.' (the wording of the SAFETY contract) when the files belong
+    to one named KiCad line. A project whose files mix generations (or carry a format no known
+    release names) is asked about the files that would actually be converted instead, and is never
+    told to install a KiCad newer than the upgrade target (fixer finding 6)."""
+    uniform, hint = _uniform_label(choice, kinds)
+    y = choice.version
+    if uniform:
+        alt = f" Alternatively install {uniform}" + (f" ({hint})." if hint else ".")
+        return f"Upgrade {project.name} from {uniform} format to KiCad {y}? {uniform} will no longer open it.{alt}"
+    convert, olds, n = _conversion_text(choice)
+    them = "it" if n == 1 else "them"
+    text = (
+        f"Upgrade {project.name} to the KiCad {_kicad_line(y)} format (KiCad {y})? {convert} would be converted; "
+        f"{olds} will no longer open {them}."
+    )
+    if choice.mixed:
+        return text + (
+            " The project's files already mix KiCad formats, so no single KiCad writes them all; the alternative is "
+            "restoring a snapshot from before they were mixed."
+        )
+    return text + " Alternatively install the KiCad that wrote them."
+
+
+def _client_elicits(request: Any) -> bool:
+    """The client declared form elicitation (an empty `elicitation: {}` means form, 2025-06-18)."""
+    try:
+        caps = request.client_capabilities
+    except Exception:  # noqa: BLE001 - no request context: no client to ask
+        return False
+    el = getattr(caps, "elicitation", None) if caps is not None else None
+    if el is None:
+        return False
+    return getattr(el, "form", None) is not None or getattr(el, "url", None) is None
+
+
+def _answer_of(action: str, content: Any) -> str:
+    if action != "accept":
+        return action
+    if isinstance(content, BaseModel):
+        content = content.model_dump()
+    if isinstance(content, dict) and content.get("upgrade") is False:
+        return "decline"
+    return "accept"
+
+
+def ask_upgrade_consent(message: str) -> str | None:
+    """Ask the MCP client's user (D21). Returns 'accept' / 'decline' / 'cancel', or None when no
+    client can be asked (no request bound, or the client declared no elicitation, or the request
+    could not be sent). Under the 2026-07-28 protocol (no back-channel) the question travels as
+    an `InputRequiredResult` (`InputRequired` is raised) and the answer arrives on the retry."""
+    request = _REQUEST.get()
+    if request is None or not _client_elicits(request):
+        return None
+    try:
+        session = request.session
+    except Exception:  # noqa: BLE001
+        return None
+    if getattr(session, "can_send_request", True):
+        try:
+            import anyio.from_thread
+
+            result = anyio.from_thread.run(request.elicit, message, UpgradeConsent)
+        except Exception:  # noqa: BLE001 - not in a worker thread / no back-channel / client error
+            return None
+        return _answer_of(str(getattr(result, "action", "cancel")), getattr(result, "data", None))
+    responses = getattr(request, "input_responses", None) or {}
+    answer = responses.get(CONSENT_KEY) if isinstance(responses, dict) else None
+    if answer is not None:
+        return _answer_of(str(getattr(answer, "action", "cancel")), getattr(answer, "content", None))
+    from mcp.server.elicitation import render_elicitation_schema
+    from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResult
+
+    raise InputRequired(
+        InputRequiredResult(
+            input_requests={
+                CONSENT_KEY: ElicitRequest(
+                    params=ElicitRequestFormParams(
+                        message=message, requested_schema=render_elicitation_schema(UpgradeConsent)
+                    )
+                )
+            },
+            request_state="kiwrap:format_upgrade",
+        )
+    )
+
+
+def effective_target(
+    ctx: ToolContext,
+    project: Project,
+    state: ProjectState,
+    *,
+    for_write: bool,
+    kinds: Iterable[str] | None = None,
+    allow_newer: bool = False,
+    prefer: str | None = None,
+) -> TargetChoice:
+    """The install a tool call runs on, with the D21 policy applied (review item 1).
+
+    - Files newer than the chosen install: `E_FORMAT_NEWER`, except for a read that can be served
+      without KiCad loading the files (`allow_newer=True`: kw_pcb_get / kw_sch_get / ... fall
+      through to the file provider).
+    - `for_write` and the install would move a file of `kinds` (default: every design kind) to a
+      newer KiCad line: the user is asked (MCP elicitation); on accept the project is upgraded
+      (`kw_project upgrade` semantics, inside this call's lock and snapshot history) and pinned,
+      otherwise `E_FORMAT_UPGRADE_REQUIRED`.
+    Inside a `mutation()` the choice is recorded on it (`Mutation.target`: the planner's ipc11
+    precondition and the receipt's `data.target` read it)."""
+    if for_write:
+        readonly.refuse_writes("saving design files")  # D23: a non-persisting call never writes one
+    choice = resolve_target(ctx, project, state, prefer=prefer)
+    running = current_mutation(project)
+    if not choice.readable and (for_write or not allow_newer):
+        raise format_newer_error(choice, project)
+    if for_write and not choice.writable_for(kinds):
+        answer = ask_upgrade_consent(consent_message(project, choice, kinds))
+        if answer != "accept":
+            raise format_upgrade_error(choice, project, answer=answer, kinds=kinds)
+        report = upgrade_with_consent(ctx, project, state, choice.install, running)
+        choice = resolve_target(ctx, project, state)
+        choice.upgraded = report
+        choice.notes.append(
+            f"the user agreed: the project was upgraded to KiCad {choice.version} format "
+            f"(pre-upgrade snapshot {str(report.get('snapshot_before') or '')[:12]})"
+        )
+    if running is not None:
+        running.target = choice
+    return choice
+
+
+def _same_install(a: Any, b: Any) -> bool:
+    try:
+        return bool(a.key() == b.key())
+    except AttributeError:
+        return a is b
+
+
+def saves_in_format(install: Any, caps: Any, project: Project, kind: str, m: Mutation | None = None) -> bool:
+    """True when `install` saving a `kind` file of `project` keeps every file of that kind in
+    its KiCad line: the precondition of a refill save (`drc_validator`, `kw_pcb_drc`) and of an
+    ipc11 write (the planner; review item 1 (b)/(c)). Uses the running mutation's resolved target
+    when it is this install; else every stamped file of the kind must equal `formats.<kind>`.
+    An install whose record has no `formats.<kind>` cannot be judged: True (the stamp guard
+    still watches the result)."""
+    running = m if m is not None else current_mutation(project)
+    target = getattr(running, "target", None)
+    if (
+        isinstance(target, TargetChoice)
+        and target.install is not None
+        and _same_install(target.install, install)
+    ):
+        return target.readable and kind in target.writable_kinds
+    try:
+        epoch = int(caps[f"formats.{kind}"])
+    except (KeyError, TypeError, ValueError):
+        return True
+    return all(f.stamp == epoch for f in project.format_stamps() if f.kind == kind and f.stamp is not None)
+
+
+def upgrade_with_consent(
+    ctx: ToolContext, project: Project, state: ProjectState, install: Any, running: Mutation | None
+) -> dict[str, Any]:
+    """Run the sanctioned up-conversion after the user said yes (`core.tools.project.perform_upgrade`),
+    inside the running mutation when there is one (its lock is held), else in its own."""
+    from kiwrap.core.tools.project import perform_upgrade  # the kw_project module imports this one
+
+    if running is not None:
+        report = perform_upgrade(ctx, running, install, checks=False, reason=f"{running.tool} (user consent)")
+        commit = snapshot_create(
+            project.dir, f"[kiwrap] {running.tool}: upgrade to KiCad {install.version} format (user consent)"
+        )
+        report["snapshot_after"] = commit
+        running.receipt.warnings.append(
+            f"the project was upgraded to KiCad {install.version} format with the user's consent before this "
+            f"change (snapshot {str(commit or '')[:12]}; kw_snapshot restore {str(report.get('snapshot_before') or '')[:12]} undoes it)"
+        )
+        running.upgrade_report = report
+        return report
+    with mutation(ctx, project, "kw_project", gate=False) as m:
+        report = perform_upgrade(ctx, m, install, checks=False, reason="user consent")
+        m.summary = f"upgrade to KiCad {install.version} format (user consent)"
+        m.receipt = Receipt(
+            provider_used=ctx.services.provider(install), data={"ok": True, "upgrade": report}
+        )
+    state.target_kicad, state.target_source = m.state.target_kicad, m.state.target_source
+    return report
 
 
 # ---- mutation prologue / epilogue ---------------------------------------------------------------
@@ -368,6 +1239,21 @@ class Mutation:
     #: pid, socket, locks, files), else None - the tool then writes through that KiCad and must not
     #: rewrite its files on disk behind it
     bound: dict[str, Any] | None = None
+    #: `{relpath: (version N)}` of the design files when the call began (the stamp guard's baseline)
+    stamps_before: dict[str, int | None] = field(default_factory=dict)
+    #: the call may raise format stamps (kw_project upgrade, or after the user consented)
+    allow_format_upgrade: bool = False
+    #: what `effective_target()` resolved inside this call (None until a tool asks)
+    target: Any = None
+    #: the state as loaded, for the stamp guard's rollback
+    initial_state: ProjectState | None = None
+    #: the report of an upgrade the user consented to during this call (`data.upgrade`)
+    upgrade_report: dict[str, Any] | None = None
+    #: False inside a non-persisting call (D23): no snapshot, the state stays in memory
+    persist: bool = True
+    #: the owned files (`snapshots.owned_files`) when the call began: the stamp guard's rollback
+    #: removes what the call added beside them (fixer finding 5), None when not listed
+    files_before: frozenset[str] | None = None
 
     @property
     def degraded(self) -> list[str]:
@@ -413,15 +1299,110 @@ def release_own_sessions(ctx: ToolContext, project: Project) -> dict[str, Any]:
     return dict(info or {})
 
 
+#: the mutation running in this thread (its project lock is held): `effective_target()` records
+#: its choice on it and upgrades inside it, the planner reads its stamps (ipc11 precondition)
+_CURRENT: contextvars.ContextVar[Mutation | None] = contextvars.ContextVar("kiwrap_mutation", default=None)
+
+#: tools whose purpose is to put files back as they were (a restore may raise a stamp)
+FORMAT_GUARD_EXEMPT = frozenset({"kw_snapshot"})
+
+
+def current_mutation(project: Project | None = None) -> Mutation | None:
+    """The mutation running in this thread (on `project`, when given), else None."""
+    m = _CURRENT.get()
+    if m is None or project is None:
+        return m
+    try:
+        same = m.project.dir.resolve() == project.dir.resolve()
+    except OSError:
+        same = m.project.dir == project.dir
+    return m if same else None
+
+
+def stamp_map(project: Project) -> dict[str, int | None]:
+    return {f.path: f.stamp for f in project.format_stamps()}
+
+
+def _owned_listing(project: Project) -> frozenset[str] | None:
+    """The project's owned files now (relative posix paths), None when they cannot be listed."""
+    try:
+        return frozenset(owned_files(project.dir))
+    except OSError:
+        return None
+
+
+def _remove_added_files(m: Mutation) -> list[str]:
+    """After the stamp guard put the files back from the baseline: delete the owned files the call
+    CREATED (absent from the prologue's listing; `.kiwrap/` state excluded). A snapshot restore
+    only rewinds tracked files, so a template `.kicad_pro` of a rolled-back create or a
+    `.kiwrap-upgrade.tmp` stayed behind and went into the next snapshot (fixer finding 5)."""
+    if m.files_before is None:
+        return []
+    removed: list[str] = []
+    for rel in sorted(_owned_listing(m.project) or ()):
+        if rel in m.files_before or rel.startswith(".kiwrap/"):
+            continue
+        try:
+            (m.project.dir / rel).unlink()
+        except OSError:
+            continue
+        removed.append(rel)
+    return removed
+
+
+@contextmanager
+def scratch_folder(ctx: ToolContext, kind: str) -> Iterator[Path]:
+    """A throw-away folder `<storage>/tmp/<kind>/<id>/` for a kicad-cli intermediate that must never
+    land in the project (an ERC / DRC report JSON, a netlist), removed on exit. The backends'
+    default output is BESIDE the input (`<root>.erc.json`, `<board>.drc.json`, `<root>.net`):
+    requests/kiwrap-feature-requests.review.md item 2 and §3 small defects found those left in a
+    reviewed project."""
+    folder = Path(ctx.services.storage_home) / "tmp" / kind / uuid.uuid4().hex[:12]
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        yield folder
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def _guard_writer(m: Mutation, rose: list[dict[str, Any]]) -> str | None:
+    """The installed KiCad that wrote the raised stamps (its `formats.<kind>` equals every raised
+    file's new stamp), newest first; None when no single install explains them. The stamp guard's
+    error names it as `upgrade_to` - the effective target may well write the files' own format
+    (the write ran on another install), so naming the target would be wrong (EXTENSION build
+    report, review item 1)."""
+    target = m.target if isinstance(m.target, TargetChoice) else None
+    if target is None or not rose:
+        return None
+    kinds = {".kicad_sch": "sch", ".kicad_pcb": "pcb"}
+    for cand in target.candidates:  # newest first (discovery order)
+        formats = cand.get("formats") or {}
+        if all(formats.get(kinds.get(Path(r["path"]).suffix, "")) == r["stamp_after"] for r in rose):
+            return str(cand.get("version") or "") or None
+    return None
+
+
 @contextmanager
 def mutation(
     ctx: ToolContext, project: Project, tool: str, *, force: Any = None, gate: bool = True
 ) -> Iterator[Mutation]:
     """Lock the project, refuse open editors, detect external edits, check the gate, snapshot the
     state before the call when it differs from the last snapshot (so an external edit or the
-    remains of a crashed call stay reachable by `kw_snapshot restore`), then snapshot + save state
-    on the way out (also on failure, so a half-applied change is committed as its own snapshot
-    and remains undoable; the message then carries `FAILED <code>`)."""
+    remains of a crashed call stay reachable by `kw_snapshot restore`), record the design files'
+    format stamps, then (stamp guard) undo the call if it raised a stamp without consent, and
+    snapshot + save state on the way out (also on failure, so a half-applied change is committed
+    as its own snapshot and remains undoable; the message then carries `FAILED <code>`).
+
+    A consent question under the 2026-07-28 protocol (`InputRequired`) leaves no trace: nothing
+    was written yet, the call is repeated with the answer.
+
+    Inside a non-persisting call (D23, `readonly.current()`) the same tool body runs detached:
+    `_detached_mutation`."""
+    call = readonly.current()
+    if call is not None:
+        with _detached_mutation(ctx, project, tool, call, force=force, gate=gate) as dm:
+            yield dm
+        return
     parsed = Force.parse(force)
     info = release_own_sessions(ctx, project)
     bound = info.get("bound") if isinstance(info.get("bound"), dict) else None
@@ -438,15 +1419,183 @@ def mutation(
         m = Mutation(
             project=project, state=state, tool=tool, external=external, forced_reason=forced, bound=bound
         )
+        m.initial_state = copy.deepcopy(state)
+        m.stamps_before = stamp_map(project)
+        m.files_before = _owned_listing(project)
         _snapshot_before(m)
+        token = _CURRENT.set(m)
+        finish = True
+        guard_error: KiwrapError | None = None
         try:
             yield m
+        except InputRequired:
+            finish = False
+            raise
+        except BaseException as exc:
+            if not isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                err = to_kiwrap_error(exc)
+                m.failure_code = err.code
+                found = _format_guard(m)
+                if found is not None:
+                    # the rollback is reported whatever failed - a PermissionError mid-write too
+                    # (fixer finding 5: only a KiwrapError used to carry `format_guard`)
+                    err.data.setdefault("format_guard", found)
+                    if err is not exc:
+                        raise err from exc
+            raise
+        else:
+            found = _format_guard(m)
+            if found is not None and found.get("restored"):
+                guard_error = format_upgrade_error(
+                    m.target if isinstance(m.target, TargetChoice) else _guard_choice(ctx, m),
+                    project,
+                    guard=found,
+                )
+                writer = _guard_writer(m, list(found.get("files") or []))
+                if writer:
+                    found["written_by"] = writer
+                    guard_error.data["upgrade_to"] = writer
+                    guard_error.message = (
+                        f"{project.name}: a write by KiCad {writer} raised the files' format "
+                        + ", ".join(
+                            f"{r['path']} {r['stamp_before']} -> {r['stamp_after']}" for r in found["files"]
+                        )
+                        + "; the call was rolled back"
+                    )
+                    target = m.target if isinstance(m.target, TargetChoice) else None
+                    if target is not None and target.writable and target.version != writer:
+                        # the project's own KiCad writes its format; another install did the write
+                        guard_error.fix = (
+                            f"the project runs on KiCad {target.version}, which writes its format: pin it with "
+                            f"kw_project(action='retarget', target_kicad='{target.version}') and retry; converting "
+                            f"to KiCad {writer} format needs the user's consent "
+                            f"(kw_project(action='upgrade', to_kicad='{writer}', confirm=true))"
+                        )
+                        guard_error.candidates = [target.version]
+                m.failure_code = guard_error.code
+        finally:
+            _CURRENT.reset(token)
+            if finish:
+                _finish(ctx, m)
+        if guard_error is not None:
+            raise guard_error
+
+
+@contextmanager
+def _detached_mutation(
+    ctx: ToolContext, project: Project, tool: str, call: readonly.DetachedCall, *, force: Any, gate: bool
+) -> Iterator[Mutation]:
+    """`mutation()` for a non-persisting call (D23, review item 2 / theme T2 `detached()`): the
+    tool must be one a read-only call may run (else E_READONLY - normally refused before the
+    handler); the lock is the project's `.kiwrap/lock` when `.kiwrap/` exists, else one under the
+    storage home; no editor-lock refusal (nothing is written); the state comes from and goes back
+    to the in-memory store; no snapshot before or after; the stamp guard is replaced by the call's
+    project guard, which puts back any design file the call changed."""
+    readonly.refuse_writes_unless_detachable(tool)
+    parsed = Force.parse(force)
+    release_own_sessions(ctx, project)
+    with readonly.detached_lock(ctx.services.storage_home, project):
+        state = readonly.load_state(project)
+        external = check_external_edit(project, state)
+        forced = check_gate(tool, state.stage, parsed) if gate else None
+        m = Mutation(
+            project=project, state=state, tool=tool, external=external, forced_reason=forced, persist=False
+        )
+        m.initial_state = copy.deepcopy(state)
+        m.stamps_before = stamp_map(project)
+        token = _CURRENT.set(m)
+        finish = True
+        try:
+            yield m
+        except InputRequired:
+            finish = False
+            raise
         except BaseException as exc:
             if not isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 m.failure_code = to_kiwrap_error(exc).code
             raise
         finally:
-            _finish(ctx, m)
+            _CURRENT.reset(token)
+            if finish:
+                _finish(ctx, m)
+
+
+def _guard_choice(ctx: ToolContext, m: Mutation) -> TargetChoice:
+    """A `TargetChoice` for the guard's error when the tool never resolved one."""
+    try:
+        return resolve_target(ctx, m.project, m.state)
+    except KiwrapError:
+        return TargetChoice(
+            install=None, source=SOURCE_FILE_EPOCH, project_epoch={}, install_epoch={}, writable=False
+        )
+
+
+def _format_guard(m: Mutation) -> dict[str, Any] | None:
+    """The stamp guard (review item 1 fix layer 3): compare every design file's `(version N)`
+    with the prologue's. A stamp that rose (or a new file stamped above everything its kind had)
+    without `allow_format_upgrade` is an up-conversion nobody consented to: the files go back to
+    the call's baseline snapshot and the state to what it was (unless a live GUI session holds the
+    project - then the disk is the GUI's and only a warning is given). Returns the findings, or
+    None when nothing rose."""
+    if m.allow_format_upgrade or m.tool in FORMAT_GUARD_EXEMPT:
+        return None
+    after = stamp_map(m.project)
+    known = m.target.known_epochs if isinstance(m.target, TargetChoice) else {}
+
+    def generation(rel: str, stamp: int) -> int:
+        # a re-save inside one KiCad line (20260101 -> 20260306 by 10.0.6) is not an upgrade;
+        # without a resolved target the raw stamps are compared
+        epochs = known.get({".kicad_sch": "sch", ".kicad_pcb": "pcb"}.get(Path(rel).suffix, ""), [])
+        gen = _generation_of(stamp, epochs) if epochs else None
+        return gen if gen is not None else stamp
+
+    top: dict[str, int] = {}
+    for rel, stamp in m.stamps_before.items():
+        kind = Path(rel).suffix
+        if stamp is not None:
+            top[kind] = max(top.get(kind, 0), stamp)
+    rose: list[dict[str, Any]] = []
+    for rel, stamp in after.items():
+        if stamp is None:
+            continue
+        before = m.stamps_before.get(rel)
+        limit = before if before is not None else top.get(Path(rel).suffix)
+        if limit is not None and generation(rel, stamp) > generation(rel, limit):
+            rose.append({"path": rel, "stamp_before": before, "stamp_after": stamp})
+    if not rose:
+        return None
+    found: dict[str, Any] = {"files": rose, "restored": False}
+    if m.bound is not None:
+        m.receipt.warnings.append(
+            "format_upgraded: "
+            + ", ".join(f"{r['path']} {r['stamp_before']} -> {r['stamp_after']}" for r in rose)
+            + " - the live KiCad session saved the files in its newer format; kw_snapshot restore "
+            + f"{(m.baseline or '')[:12]} brings the previous format back"
+        )
+        if "format_upgraded" not in m.receipt.degraded:
+            m.receipt.degraded.append("format_upgraded")
+        return found
+    if m.baseline:
+        try:
+            snapshot_restore(m.project.dir, m.baseline, tool=m.tool, commit=False)
+        except KiwrapError as exc:
+            found["restore_error"] = exc.message
+        else:
+            found["restored"] = True
+            found["snapshot"] = m.baseline
+            removed = _remove_added_files(m)
+            if removed:
+                found["removed"] = removed
+            if m.initial_state is not None:
+                m.state = copy.deepcopy(m.initial_state)
+            m.receipt.changed = {"added": [], "updated": [], "removed": []}
+    if not found["restored"]:
+        m.receipt.warnings.append(
+            "format_upgraded: "
+            + ", ".join(f"{r['path']} {r['stamp_before']} -> {r['stamp_after']}" for r in rose)
+            + " - could not be rolled back automatically; restore a snapshot from before this call"
+        )
+    return found
 
 
 def _snapshot_before(m: Mutation) -> None:
@@ -464,7 +1613,20 @@ def _snapshot_before(m: Mutation) -> None:
 def _finish(ctx: ToolContext, m: Mutation) -> None:
     r = m.receipt
     r.stage = m.state.stage
-    r.next_suggested = suggest_next(ctx, m.state, r.next_suggested)
+    r.next_suggested = suggest_next(ctx, m.state, r.next_suggested, target=m.target)
+    if isinstance(m.target, TargetChoice):
+        r.data.setdefault("target", m.target.summary())
+        if m.target.source == SOURCE_NEWER_READONLY:
+            r.warnings.extend(n for n in m.target.notes if n not in r.warnings)
+    if m.upgrade_report is not None:
+        r.data.setdefault("upgrade", m.upgrade_report)
+    try:
+        after = stamp_map(m.project)
+    except OSError:
+        after = m.stamps_before
+    if after != m.stamps_before:
+        # every call that changed a design file's stamp (or added one) says so (review item 1)
+        r.data.setdefault("epochs", {"before": dict(m.stamps_before), "after": after})
     for d in m.degraded:
         if d not in r.degraded:
             r.degraded.append(d)
@@ -495,6 +1657,12 @@ def _finish(ctx: ToolContext, m: Mutation) -> None:
     if m.forced_reason:
         entry["force"] = m.forced_reason
     m.state.history = (m.state.history + [entry])[-200:]
+    if not m.persist:
+        # D23: the stage, hashes and validator history stay in this process's memory; no
+        # .kiwrap/state.json, no snapshot
+        readonly.store_state(m.project, m.state)
+        r.snapshot = None
+        return
     m.project.save_state(m.state)
     try:
         sha = snapshot_create(m.project.dir, message)
@@ -509,7 +1677,14 @@ def _finish(ctx: ToolContext, m: Mutation) -> None:
 
 
 def read_state(project: Project) -> tuple[ProjectState, ExternalEditCheck]:
-    """Read-only tools still detect external edits (and persist the downgrade)."""
+    """Read-only tools still detect external edits (and persist the downgrade - in memory only
+    inside a non-persisting call, D23)."""
+    if readonly.current() is not None:
+        state = readonly.load_state(project)
+        external = check_external_edit(project, state)
+        if external.external_edit:
+            readonly.store_state(project, state)
+        return state, external
     state = project.load_state()
     external = check_external_edit(project, state)
     if external.external_edit:

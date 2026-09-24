@@ -42,8 +42,29 @@ INSTRUCTIONS = (
     "kw_pcb_check) and act on it; renders (kw_sch_render / kw_pcb_render) are secondary. Never edit .kicad_* "
     "files by hand (stages downgrade with external_edit); never guess library ids or pin positions. "
     "Positions are millimetres. Errors are isError results with {code, message, why, fix, candidates, example}; "
-    "kw_help(topic=<code or tool>) explains each. kw_snapshot(restore) is undo."
+    "kw_help(topic=<code or tool>) explains each. kw_snapshot(restore) is undo. "
+    "A project runs on the installed KiCad that writes its files' own format (kw_project status: "
+    "target_effective, epoch_match); a save that would move the files to a newer KiCad format stops with "
+    "E_FORMAT_UPGRADE_REQUIRED (or an elicitation prompt): ask the user, then kw_project(action='upgrade', "
+    "confirm=true), or have them install the matching KiCad - never work around it. persist=false on any call "
+    "writes nothing into the project (kw_help topic readonly)."
 )
+
+#: appended to INSTRUCTIONS by a read-only server (docs/DECISIONS.md D23)
+READONLY_INSTRUCTIONS = (
+    " THIS SERVER IS READ-ONLY (kiwrap serve --readonly / KIWRAP_READONLY=1): nothing is written into projects, "
+    "reports and exports go to <storage>/results/ or an absolute out_dir you pass, and the mutating tools refuse "
+    "with E_READONLY - review with the read tools, kw_sch_check, kw_pcb_drc (then kw_pcb_drc(action='report')), "
+    "kw_fab_bom and kw_fab_export(dry_run=true or out_dir=...)."
+)
+
+
+def instructions(ctx: ToolContext | None = None) -> str:
+    """The server instructions; a read-only server says so up front (D23)."""
+    from kiwrap.core.state import readonly
+
+    return INSTRUCTIONS + (READONLY_INSTRUCTIONS if readonly.server_readonly(ctx) else "")
+
 
 REPORT_TOOLS = {
     "kw_sch_check",
@@ -165,7 +186,7 @@ def build_server(
     then per stage: the authoring tools, the data-first reads, the validator, the render; the
     catalog is the single source of the order, so `tools/list` is identical across processes)."""
     ctx = context or build_context(storage_home, services)
-    mcp = KiwrapServer(name="kiwrap", version=__version__, instructions=INSTRUCTIONS)
+    mcp = KiwrapServer(name="kiwrap", version=__version__, instructions=instructions(ctx))
     register_tools(mcp, ctx)
     mcp.kiwrap_context = ctx  # type: ignore[attr-defined]  # handy for tests and the CLI
     return mcp

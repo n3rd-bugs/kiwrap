@@ -1,18 +1,22 @@
 /**
  * Command registrations: ERC / DRC, Open Live KiCad (delegates to `kiwrap.live.open` when the
  * live component registered it, else calls kw_live when the server publishes it), Select KiCad
- * install, Configure Claude Code, server restart / output / refresh, open the preview.
+ * install, Upgrade project file format, Configure Claude Code, server restart / output / refresh,
+ * open the preview.
+ *
+ * Errors the consent flow already showed (consent.ts: the D21 upgrade modal, E_FORMAT_NEWER,
+ * E_READONLY) are `handled` and not shown again here.
  */
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { DiagnosticsManager } from '../diagnostics/manager';
 import { PREVIEW_VIEW_TYPE } from '../editors/previewProvider';
 import { findProjects, isBoard, isSchematic, projectForFile, type KicadProject } from '../project';
 import type { KiwrapSession } from '../session';
+import { formatLabel, proactiveUpgradeInfo } from '../consent';
 import { kicadInstallSetting, locateServerProject, serverSpec, setKicadInstallSetting } from '../settings';
+import { effectiveTarget, installFormats, installSpec, MATCH_PROJECT_LABEL, matchesSpec, matchingInstalls, selectionArg } from '../status/installModel';
 import type { KiwrapTree } from '../status/tree';
-import { KiwrapError, type LiveEditor } from '../types';
+import { KiwrapError, isHandledError, type LiveEditor } from '../types';
 import { configureClaudeCode, ProposedContentProvider, PROPOSED_SCHEME } from './configureClaude';
 
 export const LIVE_OPEN_COMMAND = 'kiwrap.live.open';
@@ -26,6 +30,10 @@ interface Deps {
 }
 
 function showError(session: KiwrapSession, what: string, err: unknown): void {
+  if (isHandledError(err)) {
+    session.log(`${what}: ${err instanceof Error ? err.message : String(err)} (already shown)`);
+    return;
+  }
   const text = err instanceof KiwrapError ? `${err.message}${err.fix ? ` - ${err.fix}` : ''}` : String(err);
   session.log(`${what}: ${text}`);
   void vscode.window.showErrorMessage(`kiwrap: ${what}: ${text}`, 'Show output').then((c) => {
@@ -128,48 +136,103 @@ export function registerCommands(deps: Deps): void {
       void vscode.window.showWarningMessage(`kiwrap: no KiCad installs known${session.envError ? ` (${session.envError})` : ''}.`);
       return;
     }
-    let version: string | undefined = typeof arg === 'string' ? arg : undefined;
-    if (!version) {
+    // a string (programmatic) or the tree's install node (the inline "Select" action and the
+    // context menu pass the element) selects directly; anything else opens the picker
+    let version: string | undefined = selectionArg(arg);
+    if (version === undefined) {
+      const st = session.projectStatus;
+      const effective = effectiveTarget(st);
+      const matching = matchingInstalls(rows, st?.epochs);
       const items = [
-        { label: '$(history) newest (kiwrap default)', description: session.env?.default_install ?? '', version: '' },
-        ...rows.map((r) => ({
-          label: `$(circuit-board) KiCad ${r.version}`,
-          description: `${r.source} - ${r.root}`,
-          detail: r.capabilities ? Object.entries(r.capabilities).filter(([, v]) => v === true).map(([k]) => k).join(' ') : undefined,
-          version: r.version,
-        })),
+        {
+          label: `$(symbol-file) ${MATCH_PROJECT_LABEL}`,
+          description: effective
+            ? `KiCad ${effective} for ${session.project?.name ?? 'the project'}`
+            : 'kiwrap picks the KiCad whose file format equals the project files (D21)',
+          detail: undefined as string | undefined,
+          version: '',
+        },
+        ...rows.map((r) => {
+          const formats = Object.entries(installFormats(r));
+          const caps = r.capabilities ? Object.entries(r.capabilities).filter(([, v]) => v === true).map(([k]) => k).join(' ') : '';
+          return {
+            label: `$(circuit-board) KiCad ${r.version}`,
+            description: `${matching.includes(r) ? "writes the project's format - " : ''}${r.source} - ${r.root}`,
+            detail: [formats.length ? `formats ${formats.map(([k, v]) => `${k} ${v}`).join(', ')}` : '', caps].filter(Boolean).join(' | ') || undefined,
+            version: installSpec(r, rows),
+          };
+        }),
       ];
-      const pick = await vscode.window.showQuickPick(items, { placeHolder: 'KiCad install to target (kiwrap.kicadInstall)' });
+      const pick = await vscode.window.showQuickPick(items, { placeHolder: 'KiCad install kiwrap uses (kiwrap.kicadInstall)' });
       if (!pick) {
         return;
       }
       version = pick.version;
     }
     await setKicadInstallSetting(version || undefined);
-    session.log(`kicadInstall = ${version || '(newest)'}`);
-    // an existing project remembers its own target in .kiwrap/state.json (kiwrap.core.state.project);
-    // offer to retarget it - there is no kw_project action for this yet (reported as a deviation)
+    session.log(`kicadInstall = ${version || "(match the project's file format)"}`);
+    session.fire();
+    // An existing project can also be pinned to the explicit choice: kw_project retarget (contract
+    // (c)) writes the pin without touching the files (this used to hand-edit .kiwrap/state.json).
+    // Not awaited: the question must not block the selection.
     const p = session.pickWorkspaceProject();
-    const stateFile = p ? path.join(p.dir, '.kiwrap', 'state.json') : undefined;
-    if (p && stateFile && fs.existsSync(stateFile) && version) {
-      const choice = await vscode.window.showInformationMessage(
-        `kiwrap: also retarget project ${p.name} (its .kiwrap/state.json) to KiCad ${version}? Stages re-validate on the next check.`,
-        'Retarget',
-        'Keep',
-      );
-      if (choice === 'Retarget') {
-        try {
-          const raw = JSON.parse(fs.readFileSync(stateFile, 'utf8')) as Record<string, unknown>;
-          raw.target_kicad = version;
-          fs.writeFileSync(stateFile, JSON.stringify(raw, null, 1) + '\n', 'utf8');
-          session.log(`retargeted ${p.name} -> ${version}`);
-        } catch (err) {
-          showError(session, 'retarget failed', err);
-        }
-      }
+    if (p && version && session.projectStatus) {
+      const pinned = version;
+      void vscode.window
+        .showInformationMessage(
+          `kiwrap: also pin project ${p.name} to KiCad ${pinned}? Its files are not changed; kiwrap still asks before saving them in a newer format.`,
+          'Pin project',
+          'Keep',
+        )
+        .then(async (choice) => {
+          if (choice !== 'Pin project') {
+            return;
+          }
+          try {
+            const server = await session.ready();
+            await server.projectRetarget(p.pro, pinned);
+            session.log(`pinned ${p.name} -> ${pinned}`);
+          } catch (err) {
+            showError(session, 'pin (kw_project retarget) failed', err);
+          }
+          void session.refreshProject();
+        });
     }
     void session.refreshProject();
-    session.fire();
+  });
+
+  // D21: the proactive form of the consent modal (the tree's "file format" row offers it when no
+  // installed KiCad writes the project's format); the reactive form is consent.ts on any call.
+  reg('kiwrap.upgradeProject', async (arg) => {
+    const p = await resolveProject(session, arg instanceof vscode.Uri ? arg : undefined);
+    if (!p) {
+      return;
+    }
+    let server;
+    try {
+      server = await session.ready();
+    } catch (err) {
+      showError(session, 'upgrade', err);
+      return;
+    }
+    const st = session.projectStatus ?? (await session.refreshProject());
+    const rows = session.env?.installs ?? [];
+    const upgradeTo = kicadInstallSetting() ?? session.env?.default_install ?? undefined;
+    // the server's project_kicad / install_hint / file_epochs / candidates (fixer finding 3), and the
+    // installs that already write the files' format (a 9.0 project with 9.0.9 installed): the modal
+    // says so instead of claiming none can; upgrading to one of them is a no-op
+    const { info, writers } = proactiveUpgradeInfo(p.pro, st, rows, upgradeTo);
+    const target = upgradeTo ? rows.find((r) => matchesSpec(r, upgradeTo)) : undefined;
+    if (target && writers.includes(target.version)) {
+      void vscode.window.showInformationMessage(`kiwrap: ${p.name} is already in the KiCad ${target.version} file format.`);
+      return;
+    }
+    session.log(`upgrade requested for ${p.name} (${formatLabel(info)} -> ${upgradeTo ?? 'server default'})`);
+    try {
+      await session.consent.decide(info, (n, a, o) => server.client.call(n, a, o));
+    } catch (err) {
+      showError(session, 'upgrade', err);
+    }
   });
 
   reg('kiwrap.openLive', async (arg) => {

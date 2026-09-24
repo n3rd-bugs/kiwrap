@@ -397,10 +397,12 @@ def test_fab_export_jlcpcb_profile_end_to_end(hp: Harness):
     sc = hp.ok("kw_fab_export", project=proj, profile="jlcpcb", targets=["pos", "bom"], include_dnp=True)
     pos_call = next(kw for n, kw in hp.backend.calls if n == "export_pcb" and kw.get("target") == "pos")
     assert "exclude_dnp" not in pos_call and sc["data"]["bom"]["components"] == 4
-    # generic stays the Phase 0 behaviour: no options, no bundle, no positions
+    # generic keeps kicad-cli's options: no bundle, no CPL / corrections; since review item 4 the
+    # positions report (rows KiCad wrote, excluded refs with the reason, BOM diff) is there too
     hp.backend.calls.clear()
     sc = hp.ok("kw_fab_export", project=proj, targets=["pos", "bom"])
-    assert "bundle" not in sc["data"]["files"] and "positions" not in sc["data"]
+    assert "bundle" not in sc["data"]["files"] and "corrected" not in sc["data"]["positions"]
+    assert {"rows", "refs", "excluded", "flags", "bom_diff"} <= set(sc["data"]["positions"])
     assert hp.backend.calls[-2][1].keys() >= {"target", "out_dir"} and "format" not in hp.backend.calls[-2][1]
 
 

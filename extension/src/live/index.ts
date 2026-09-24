@@ -34,6 +34,11 @@ export interface LiveDeps {
   output?: vscode.OutputChannel;
   /** Directory holding media/ (defaults to the extension root). */
   mediaRoot?: vscode.Uri;
+  /**
+   * The install to launch when a caller names none (the live tab's Start button): ext-core's
+   * explicit kiwrap.kicadInstall, undefined = kw_live's default, the project's effective target (D21).
+   */
+  targetKicad?: () => string | undefined;
 }
 
 export interface LiveOpenArgs {
@@ -132,7 +137,8 @@ export function activateLive(context: vscode.ExtensionContext, deps: LiveDeps = 
     async open(args = {}) {
       const { project, editor, file } = await resolveProject(args);
       try {
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Live KiCad: starting KiCad...' }, async () => { await sessions.open(project, editor, args.inputMode, args.target_kicad); });
+        const target = args.target_kicad ?? deps.targetKicad?.();
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Live KiCad: starting KiCad...' }, async () => { await sessions.open(project, editor, args.inputMode, target); });
       } catch (e) {
         // the file's live tab still opens: its card explains the state (a kept session of the
         // other editor kind, a missing helper) and carries the Start button
@@ -158,8 +164,17 @@ export function activateLive(context: vscode.ExtensionContext, deps: LiveDeps = 
     close: () => sessions.close(),
   };
 
+  // An error the core's consent flow already put in front of the user (the D21 format-upgrade modal
+  // on kw_live launch, E_FORMAT_NEWER, E_READONLY: `handled`, extension/src/consent.ts) is logged,
+  // not shown a second time.
   const wrap = <T>(name: string, fn: (...a: any[]) => Promise<T> | T) => vscode.commands.registerCommand(name, async (...a: any[]) => {
-    try { return await fn(...a); } catch (e) { const msg = e instanceof Error ? e.message : String(e); out.appendLine(`[live] ${name} failed: ${msg}`); void vscode.window.showErrorMessage(`Live KiCad: ${msg}`); return undefined; }
+    try { return await fn(...a); } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const handled = !!e && typeof e === 'object' && (e as { handled?: unknown }).handled === true;
+      out.appendLine(`[live] ${name} failed: ${msg}${handled ? ' (already shown)' : ''}`);
+      if (!handled) { void vscode.window.showErrorMessage(`Live KiCad: ${msg}`); }
+      return undefined;
+    }
   });
 
   context.subscriptions.push(

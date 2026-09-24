@@ -6,7 +6,7 @@
  *
  * No `vscode` import: the unit tests run it against test/unit/fakeServer.ts.
  */
-import { McpClient, type McpClientOptions, type ServerSpec } from './mcpClient';
+import { McpClient, type CallOptions, type McpClientOptions, type ServerSpec } from './mcpClient';
 import type {
   EnvData,
   LiveArgs,
@@ -113,11 +113,28 @@ export class KiwrapServer {
   // ---- typed wrappers ---------------------------------------------------------------------------
 
   env(refresh = false): Promise<Receipt<EnvData>> {
-    return this.client.call<EnvData>('kw_env', { refresh });
+    return this.client.call<EnvData>('kw_env', { refresh }, { interactive: false });
   }
 
+  /** kw_project status: a background read for the tree, never a modal. */
   projectStatus(project: string): Promise<Receipt<ProjectStatusData>> {
-    return this.client.call<ProjectStatusData>('kw_project', { action: 'status', project });
+    return this.client.call<ProjectStatusData>('kw_project', { action: 'status', project }, { interactive: false });
+  }
+
+  /**
+   * kw_project retarget (review item 1 fix layer 1, contract (c)): pins the project's target KiCad
+   * in `.kiwrap/state.json` without touching the design files.
+   */
+  projectRetarget(project: string, targetKicad: string, call?: CallOptions): Promise<Receipt<Record<string, unknown>>> {
+    return this.client.call('kw_project', { action: 'retarget', project, target_kicad: targetKicad }, call);
+  }
+
+  /**
+   * kw_project upgrade (D21): the only sanctioned up-conversion. `confirm: true` is the user's
+   * consent (the extension asks with a modal first); `toKicad` defaults to the server's choice.
+   */
+  projectUpgrade(project: string, toKicad?: string, call?: CallOptions): Promise<Receipt<Record<string, unknown>>> {
+    return this.client.call('kw_project', compact({ action: 'upgrade', project, confirm: true, to_kicad: toKicad }), call);
   }
 
   projectCreate(dir: string, name: string, targetKicad?: string, boardSizeMm?: [number, number]) {
@@ -131,29 +148,29 @@ export class KiwrapServer {
     return this.client.call<Record<string, unknown>>('kw_project', args);
   }
 
-  schCheck(project: string, opts: SchCheckOptions = {}): Promise<Receipt<SchCheckData>> {
-    return this.client.call<SchCheckData>('kw_sch_check', { project, ...compact(opts) });
+  schCheck(project: string, opts: SchCheckOptions = {}, call?: CallOptions): Promise<Receipt<SchCheckData>> {
+    return this.client.call<SchCheckData>('kw_sch_check', { project, ...compact(opts) }, call);
   }
 
-  pcbDrc(project: string, opts: PcbDrcOptions = {}): Promise<Receipt<PcbDrcData>> {
-    return this.client.call<PcbDrcData>('kw_pcb_drc', { project, ...compact(opts) });
+  pcbDrc(project: string, opts: PcbDrcOptions = {}, call?: CallOptions): Promise<Receipt<PcbDrcData>> {
+    return this.client.call<PcbDrcData>('kw_pcb_drc', { project, ...compact(opts) }, call);
   }
 
-  pcbCheck(project: string, opts: PcbCheckOptions = {}): Promise<Receipt<PcbCheckData>> {
-    return this.client.call<PcbCheckData>('kw_pcb_check', { project, ...compact(opts) });
+  pcbCheck(project: string, opts: PcbCheckOptions = {}, call?: CallOptions): Promise<Receipt<PcbCheckData>> {
+    return this.client.call<PcbCheckData>('kw_pcb_check', { project, ...compact(opts) }, call);
   }
 
-  schRender(project: string, opts: SchRenderOptions = {}): Promise<Receipt<RenderData>> {
-    return this.client.call<RenderData>('kw_sch_render', { project, ...compact(opts) });
+  schRender(project: string, opts: SchRenderOptions = {}, call?: CallOptions): Promise<Receipt<RenderData>> {
+    return this.client.call<RenderData>('kw_sch_render', { project, ...compact(opts) }, call);
   }
 
-  pcbRender(project: string, opts: PcbRenderOptions = {}): Promise<Receipt<RenderData>> {
-    return this.client.call<RenderData>('kw_pcb_render', { project, ...compact(opts) });
+  pcbRender(project: string, opts: PcbRenderOptions = {}, call?: CallOptions): Promise<Receipt<RenderData>> {
+    return this.client.call<RenderData>('kw_pcb_render', { project, ...compact(opts) }, call);
   }
 
   /** kw_live (Phase 2 contract 2). Throws E_NO_TOOL while the server does not publish it. */
-  live(args: LiveArgs): Promise<Receipt<LiveSessionData>> {
-    return this.client.call<LiveSessionData>('kw_live', compact(args));
+  live(args: LiveArgs, call?: CallOptions): Promise<Receipt<LiveSessionData>> {
+    return this.client.call<LiveSessionData>('kw_live', compact(args), call);
   }
 
   get liveAvailable(): boolean {

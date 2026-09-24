@@ -49,6 +49,10 @@ ERROR_CODES = (
     "E_LIB_NOT_FOUND",
     "E_LIB_UNSUPPORTED",
     "E_LIB",
+    "E_READONLY",
+    "E_FORMAT_UPGRADE_REQUIRED",
+    "E_FORMAT_NEWER",
+    "E_STALE",
 )
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH (snapshots)")
@@ -259,7 +263,13 @@ def test_project_create_status_and_upgrade(h: Harness):
         st["stage"] == "created" and st["target_installed"] is True and st["snapshot_head"] == sc["snapshot"]
     )
     assert st["epochs"] == {"sch": 20260306, "pcb": 20260206} and st["files"]["sch"] == ["demo.kicad_sch"]
-    h.fail("kw_project", "E_UNSUPPORTED", action="upgrade", project=str(proj), to_kicad="10")
+    # D21: a created project runs on its own KiCad, which writes its format
+    assert (
+        st["target_effective"] == "10.0.0" and st["target_source"] == "created" and st["epoch_match"] is True
+    )
+    # upgrading to the KiCad that already writes the files' format converts nothing (it pins it)
+    up = h.ok("kw_project", action="upgrade", project=str(proj), to_kicad="10")["data"]
+    assert up["upgraded"] is False and up["target_kicad"] == "10.0.0"
 
 
 def test_project_create_old_dialect(tmp_path: Path):

@@ -1,6 +1,6 @@
 ---
 name: kiwrap-flow
-description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones (B.Cu plane) -> kw_pcb_route_auto (+ kw_job, kw_pcb_fix) -> kw_pcb_zones (F.Cu pour) -> kw_pcb_route touch-ups -> kw_pcb_drc -> kw_fab_bom / kw_fab_export(profile="jlcpcb")), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors. Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
+description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones (B.Cu plane) -> kw_pcb_route_auto (+ kw_job, kw_pcb_fix) -> kw_pcb_zones (F.Cu pour) -> kw_pcb_route touch-ups -> kw_pcb_drc -> kw_fab_bom / kw_fab_export(profile="jlcpcb")), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors (including the file-format upgrade consent, E_FORMAT_UPGRADE_REQUIRED / kw_project upgrade, and read-only reviews with persist=false). Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
 ---
 
 # kiwrap flow (data first)
@@ -40,7 +40,12 @@ Installed KiCads (newest first) with capability summaries. **KiCad 11 first**: p
 (10.99 nightly / 11.0), then 10.0.x. `kw_project create` writes `<name>.kicad_pro`, an empty root
 `<name>.kicad_sch` and `<name>.kicad_pcb` in the target's format and starts the snapshot history;
 pass `board_size_mm=[w, h]` for a rectangular outline (or set it later with `kw_pcb_setup`).
-`action="status"` returns stage, hashes, epochs, external edits and `next_suggested`.
+`create` refuses a directory that already holds `.kicad_sch` / `.kicad_pcb` files - an existing
+design is opened with `status` on its `.kicad_pro`, never re-created.
+`action="status"` returns stage, hashes, epochs, external edits and `next_suggested`, plus which
+KiCad the project runs on: `target_effective`, `target_source`, `epoch_match`, `project_kicad`,
+`install_hint`, `file_epochs[]`, `warnings`. On a project you did not create, call `status` first
+and read `epoch_match` / `warnings` (see "File formats and read-only mode" below).
 
 ## 1b. `kw_intent(action="set", intent={blocks, rails, interfaces, nets, constraints})`
 
@@ -175,12 +180,17 @@ counts and footprint filters. A guessed id costs an `E_BAD_ARGS` / `lib_symbol_i
    `drc_touched_nets` validator and `data.drc.violations` (touched nets first, uuid + mm) say what
    the op did: `tracks_crossing` / `shorting_items` = wrong geometry, `unconnected_items` = not
    done yet, `clearance` = too close.
-6. `kw_pcb_drc(project, schematic_parity?, refill_zones?)` - KiCad's word: `must_fix` /
-   `review` / `cosmetic`, `data.ok` = `must_fix == 0` -> stage `drc_clean`. Copper zones are
-   refilled (and saved) before the check by default when the KiCad can (`zones_stale` in
-   `degraded` when it cannot; track-vs-zone clearance items are then `review`). Fix from
-   `data.violations[]` (`type`, `class`, `pos`, `items[].uuid`) with `kw_pcb_place` /
-   `kw_pcb_route` (`delete` the offending uuid, route again) and re-run.
+6. `kw_pcb_drc(project, schematic_parity?, refill_zones?, save_board?, all_track_errors?)` -
+   KiCad's word: `must_fix` / `review` / `cosmetic`, `data.ok` = `must_fix == 0` -> stage
+   `drc_clean`. Copper zones are refilled IN MEMORY before the check by default when the KiCad
+   can (D22: the board file is not saved unless you pass `save_board=true`; `zones_stale` in
+   `degraded` when it cannot refill; track-vs-zone clearance items are then `review`).
+   `all_track_errors` (on by default where kicad-cli has it) reports every violation of a track,
+   so a short is never hidden behind a first clearance error. Fix from `data.violations[]`
+   (`type`, `class`, `pos`, `items[].uuid`) with `kw_pcb_place` / `kw_pcb_route` (`delete` the
+   offending uuid, route again) and re-run. To re-read the last run without running KiCad:
+   `kw_pcb_drc(project, action="report", types?, classes?, refs?, nets?, bbox_mm?, cursor?,
+   limit?)` - `E_STALE` when the board changed since (run it again).
 
 ## 5. Fabrication: `kw_fab_bom` and `kw_fab_export(profile="jlcpcb")`
 
@@ -231,6 +241,26 @@ validates; `kw_sch_diff` is unsupported and the ratsnest is an estimate. Tool na
 receipts are identical; only `provider_used` / `degraded` differ - read them instead of asking
 which version is installed.
 
+## File formats and read-only mode (D21-D23)
+
+- A project runs on the installed KiCad that writes its files' own format (`kw_help(topic="formats")`).
+  A write that would save the schematic / board in a NEWER format - which the older KiCad can no
+  longer open - stops with `E_FORMAT_UPGRADE_REQUIRED` (or the client shows an elicitation prompt).
+- Playbook: **ask the user** in plain words ("Upgrade <project> from KiCad 10.0 format to 10.99?
+  KiCad 10.0 will no longer open it; or install KiCad 10.0: <data.install_hint>"). The error's
+  `example` is `kw_project(action="upgrade", project=..., dry_run=true)` - safe to run, it converts a
+  copy and reports ERC/DRC before and after for the user. Only after a yes:
+  `kw_project(action="upgrade", project=..., confirm=true)`, then retry the original call. If they
+  prefer to keep the format: they install the KiCad in `data.install_hint` (kiwrap then picks it by
+  itself), or `kw_project(action="retarget", target_kicad=<a KiCad in candidates>)`. A project whose
+  sheets already mix formats is described file by file; its alternative is a snapshot from before
+  the mix. Never work around the error.
+- Read-only (`kw_help(topic="readonly")`): `persist=false` on any call, or a server started with
+  `kiwrap serve --readonly` / `KIWRAP_READONLY=1`, writes nothing into the project (reports and
+  exports go under kiwrap's storage home or your `out_dir`, `data.readonly` says where). Reviewing
+  someone else's project: pass `persist=false` to every call. Tools that would change design files
+  refuse with `E_READONLY`; tell the user instead of retrying.
+
 ## Teaching errors (`isError: true`)
 
 | code | meaning | do this |
@@ -246,6 +276,10 @@ which version is installed.
 | `E_EXTERNAL_EDIT` | `if_match` no longer matches the sheet / a file changed under an operation | re-read (`kw_sch_get`, `data.sheets`) and retry; re-run validators |
 | `E_TIMEOUT` | KiCad exceeded its time budget | `run_async=true` + `kw_job`; narrow reads with filters |
 | `E_INTERNAL` | kiwrap bug or git failure | report `data.traceback`; restore a snapshot |
+| `E_FORMAT_UPGRADE_REQUIRED` | the call would save the files in a newer KiCad format; nothing was written (or the stamp guard rolled it back, `data.guard`) | ask the user; show the `dry_run=true` upgrade; if yes `kw_project(action="upgrade", confirm=true)` and retry; else `data.install_hint` / `retarget` |
+| `E_FORMAT_NEWER` | the files are newer than the KiCad the call would use | `retarget` to a KiCad in `candidates` or install a newer one; `provider="file"` reads still work |
+| `E_READONLY` | read-only mode (`serve --readonly`, `KIWRAP_READONLY=1`, `persist=false`) refused a write | tell the user; drop `persist=false` only if they want the change |
+| `E_STALE` | a stored DRC result or a cursor is older than the file (`data.reason`) | run `kw_pcb_drc` again; restart paging without `cursor` |
 
 ## Rules
 
@@ -257,3 +291,4 @@ which version is installed.
 - Read every receipt's `validators` and `stage`; act on `next_suggested`.
 - Do not call `kw_pcb_sync` / `kw_fab_export` with `force` to skip a gate unless the user
   explicitly accepts it.
+- Never pass `confirm=true` to `kw_project(action="upgrade")` without the user's yes.

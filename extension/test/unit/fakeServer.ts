@@ -144,6 +144,103 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
   const server = mcp as unknown as LooseServer;
   const project = z.string().describe('project directory or .kicad_pro path');
 
+  // D21 / D23 scenarios, chosen by a marker in the project path (review item 1: a KiCad 10.0
+  // project with only 10.99 installed):
+  //   oldfmt       writes need an upgrade until kw_project(action='upgrade', confirm=true) ran
+  //   oldstuck     still asks after the upgrade (the retry must not ask twice)
+  //   upgradefail  the upgrade itself fails
+  //   newerfmt     files newer than every install (E_FORMAT_NEWER)
+  //   guardfmt     the stamp guard rolled back a write on 10.99 although 10.0.6 writes the format;
+  //                passes once kw_project(action='retarget', target_kicad='10.0.6') pinned it
+  //   newerpin     newer than the pinned 10.0.6, but the installed 10.99 reads them (E_FORMAT_NEWER + candidates)
+  //   readonly     the server is read-only (E_READONLY)
+  const calls: Json[] = [];
+  const upgraded = new Set<string>();
+  const pinned = new Set<string>();
+  const keyOf = (p: string | undefined) => (p ?? '').replace(/\\/g, '/').replace(/\/[^/]+\.kicad_pro$/i, '').toLowerCase();
+  const scenario = (p: string | undefined): string => {
+    const m = /(oldfmt|oldstuck|upgradefail|newerfmt|newerpin|guardfmt|readonly)/.exec(p ?? '');
+    return m ? m[1] : '';
+  };
+  const formatGate = (tool: string, args: Json) => {
+    calls.push({ tool, args });
+    const p = args.project as string | undefined;
+    const sc = scenario(p);
+    if ((sc === 'oldfmt' && !upgraded.has(keyOf(p))) || sc === 'oldstuck' || sc === 'upgradefail') {
+      return teachingError('E_FORMAT_UPGRADE_REQUIRED', `${tool} would save ${p} in KiCad 10.99 format; no installed KiCad writes format 20260206`, {
+        why: 'D21: kiwrap never writes a newer file format without the user\'s consent',
+        fix: "ask the user; kw_project(action='upgrade', confirm=true) or install the matching KiCad",
+        data: {
+          files: [
+            { path: 'C:/fake/oldfmt/oldfmt.kicad_pcb', kind: 'pcb', stamp: 20260206 },
+            { path: 'C:/fake/oldfmt/oldfmt.kicad_sch', kind: 'sch', stamp: 20260206 },
+          ],
+          project_epoch: { pcb: 20260206, sch: 20260206 },
+          candidates: [{ version: '10.99.0', formats: { sch: 20260830, pcb: 20260901 } }],
+          upgrade_to: '10.99.0',
+          install_hint: 'winget install KiCad.KiCad --version 10.0.6',
+        },
+      });
+    }
+    if (sc === 'newerfmt') {
+      return teachingError('E_FORMAT_NEWER', `${p} is in format 20270101, newer than every installed KiCad`, {
+        fix: 'install KiCad 11.0 or newer',
+        data: {
+          files: [{ path: 'C:/fake/newerfmt/newerfmt.kicad_pcb', kind: 'pcb', stamp: 20270101 }],
+          project_epoch: { pcb: 20270101 },
+          candidates: [
+            { version: '10.99.0', formats: { sch: 20260830, pcb: 20260901 } },
+            { version: '10.0.6', formats: { sch: 20260206, pcb: 20260206 } },
+          ],
+          needed_kicad: '11.0',
+        },
+      });
+    }
+    if (sc === 'guardfmt' && !pinned.has(keyOf(p))) {
+      return teachingError('E_FORMAT_UPGRADE_REQUIRED', `${p} is in KiCad 10.0 format; saving it with KiCad 10.99.0 would upgrade the files`, {
+        why: "a write raised the files' format stamp without the user's consent; the call was rolled back (D21)",
+        candidates: ['10.0.6'],
+        data: {
+          project: p,
+          files: [{ path: 'guardfmt.kicad_pcb', kind: 'pcb', stamp: 20260206 }],
+          project_epoch: { pcb: 20260206 },
+          project_kicad: '10.0',
+          candidates: [
+            { version: '10.99.0', formats: { sch: 20260830, pcb: 20260901 } },
+            { version: '10.0.6', formats: { sch: 20260206, pcb: 20260206 } },
+          ],
+          upgrade_to: '10.99.0',
+          install_hint: 'winget install KiCad.KiCad --version 10.0.6',
+          guard: { files: [{ path: 'guardfmt.kicad_pcb', stamp_before: 20260206, stamp_after: 20260901 }], restored: true },
+        },
+      });
+    }
+    if (sc === 'newerpin') {
+      // pinned to 10.0.6, but the files were saved by 10.99: the installed 10.99 reads them
+      return teachingError('E_FORMAT_NEWER', `${p}'s files (pcb 20260901) are newer than KiCad 10.0.6 (pcb 20260206)`, {
+        candidates: ['10.99.0'],
+        data: {
+          project: p,
+          files: [{ path: 'C:/fake/newerpin/newerpin.kicad_pcb', kind: 'pcb', stamp: 20260901 }],
+          project_epoch: { pcb: 20260901 },
+          needed_kicad: '10.99',
+          candidates: [
+            { version: '10.99.0', formats: { sch: 20260830, pcb: 20260901 } },
+            { version: '10.0.6', formats: { sch: 20260206, pcb: 20260206 } },
+          ],
+          kicad: '10.0.6',
+          target_source: 'pinned',
+        },
+      });
+    }
+    if (sc === 'readonly' && (tool === 'kw_live' || args.save_board === true)) {
+      return teachingError('E_READONLY', `${tool} would write ${p} but the server runs with --readonly`, {
+        fix: 'restart kiwrap serve without --readonly (or unset KIWRAP_READONLY)',
+      });
+    }
+    return null;
+  };
+
   server.registerTool('kw_env', { description: 'fake env', inputSchema: { refresh: z.boolean().optional() } }, async () =>
     receipt('kw_env', FAKE_ENV, { provider_used: 'discovery', next_suggested: 'kw_project' }),
   );
@@ -152,13 +249,15 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
     'kw_project',
     {
       description: 'fake project',
-      inputSchema: { action: z.enum(['create', 'status', 'upgrade']), project: project.optional(), dir: z.string().optional(), name: z.string().optional(), target_kicad: z.string().optional(), board_size_mm: z.array(z.number()).optional() },
+      inputSchema: { action: z.enum(['create', 'status', 'upgrade', 'retarget']), project: project.optional(), dir: z.string().optional(), name: z.string().optional(), target_kicad: z.string().optional(), board_size_mm: z.array(z.number()).optional(), to_kicad: z.string().optional(), confirm: z.boolean().optional() },
     },
     async (args) => {
+      calls.push({ tool: 'kw_project', args });
       if (args.action === 'status') {
         if (!args.project) {
           return teachingError('E_BAD_ARGS', 'status needs `project`', { example: 'kw_project(action="status", project="C:/work/blinky")' });
         }
+        const old = scenario(args.project) === 'oldfmt' && !upgraded.has(keyOf(args.project));
         return receipt(
           'kw_project',
           {
@@ -168,15 +267,20 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
             name: 'fake',
             stage: 'sch_written',
             next_suggested: 'kw_sch_check',
-            target_kicad: '10.99.0',
+            target_kicad: old ? null : '10.99.0',
             target_installed: true,
             hashes: {},
-            epochs: { sch: 20260830, pcb: 20260901 },
+            epochs: old ? { sch: 20260206, pcb: 20260206 } : { sch: 20260830, pcb: 20260901 },
             files: { sch: ['fake.kicad_sch'], pcb: ['fake.kicad_pcb'] },
             editor_locks: [],
             snapshot_head: null,
             external_edit: null,
             history: [],
+            // D21 status fields (contract (c))
+            target_effective: '10.99.0',
+            target_source: old ? 'file_epoch_newer_readonly' : 'pinned',
+            epoch_match: !old,
+            warnings: old ? ['no installed KiCad writes format 20260206; writes need kw_project(action="upgrade", confirm=true)'] : [],
           },
           { stage: 'sch_written', next_suggested: 'kw_sch_check' },
         );
@@ -184,7 +288,32 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
       if (args.action === 'create') {
         return receipt('kw_project', { ok: true, project: `${args.dir}/${args.name}.kicad_pro`, name: args.name, target_kicad: args.target_kicad ?? '10.99.0' });
       }
-      return teachingError('E_UNSUPPORTED', 'kw_project upgrade is not available in Phase 0');
+      if (args.action === 'retarget') {
+        if (!args.target_kicad) {
+          return teachingError('E_BAD_ARGS', 'retarget needs `target_kicad`');
+        }
+        pinned.add(keyOf(args.project));
+        return receipt('kw_project', { ok: true, project: args.project, target_kicad: args.target_kicad, target_source: 'pinned' });
+      }
+      // upgrade (D21): the only sanctioned up-conversion, needs confirm=true
+      if (!args.confirm) {
+        return teachingError('E_BAD_ARGS', 'upgrade needs confirm=true (the user consented)');
+      }
+      if (scenario(args.project) === 'upgradefail') {
+        return teachingError('E_UPGRADE_FAILED', 'kicad-cli pcb upgrade failed (rc 3)', { fix: 'restore the snapshot' });
+      }
+      upgraded.add(keyOf(args.project));
+      return receipt(
+        'kw_project',
+        { ok: true, project: args.project, upgraded_to: args.to_kicad ?? '10.99.0', files: ['fake.kicad_sch', 'fake.kicad_pcb'] },
+        {
+          snapshot: 'snap-pre-upgrade',
+          validators: [
+            { name: 'erc', before: 2, after: 2 },
+            { name: 'drc', before: 5, after: 5 },
+          ],
+        },
+      );
     },
   );
 
@@ -206,7 +335,8 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
   server.registerTool(
     'kw_pcb_drc',
     { description: 'fake drc', inputSchema: { project, schematic_parity: z.boolean().optional(), refill_zones: z.boolean().nullable().optional(), save_board: z.boolean().nullable().optional(), severity: z.string().optional() } },
-    async () =>
+    async (args) =>
+      formatGate('kw_pcb_drc', args) ??
       receipt(
         'kw_pcb_drc',
         { ok: false, kicad_version: '10.99.0', errors: 1, warnings: 1, must_fix: 1, review: 0, cosmetic: 1, unconnected: 0, parity_violations: 0, capped: [], violations: FAKE_DRC_VIOLATIONS, violations_truncated: 0, options: { schematic_parity: false, refill_zones: false, save_board: false } },
@@ -250,6 +380,10 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
         inputSchema: { action: z.enum(['launch', 'attach', 'status', 'screenshot', 'detach', 'raise']), project: z.string().optional(), editor: z.enum(['pcb', 'sch', 'project']).optional(), mode: z.enum(['view', 'hidden', 'auto', 'mirror']).optional(), session_id: z.string().optional(), max_px: z.number().optional(), surface: z.string().optional() },
       },
       async (args) => {
+        const gated = args.action === 'launch' ? formatGate('kw_live', args) : null;
+        if (gated) {
+          return gated;
+        }
         const session = { ok: true, session_id: 'live-1', pid: 4242, install: '10.99.0', api_socket: 'ipc://kicad-live-1', token: 'tok', editors: [args.editor ?? 'pcb'], alive: true, mode: args.mode ?? 'view', mode_used: args.mode === 'hidden' ? 'hidden' : 'view', cloaked: args.mode === 'hidden', project: args.project ?? null };
         if (args.action === 'screenshot') {
           return receipt('kw_live', { ok: true, width: 2, height: 2, bytes: 70 }, {}, PNG_2X2);
@@ -261,6 +395,11 @@ export function buildFakeServer(opts: { live?: boolean } = {}): McpServer {
       },
     );
   }
+
+  // every call the D21 / D23 scenarios made, in order (the consent tests assert the upgrade call)
+  server.registerTool('fake_calls', { description: 'the recorded calls', inputSchema: {} }, async () =>
+    ({ content: [{ type: 'text', text: JSON.stringify(calls) }], structuredContent: { ok: true, data: { calls } } }),
+  );
 
   server.registerTool('fake_crash', { description: 'exit the process', inputSchema: {} }, async () => {
     setTimeout(() => process.exit(3), 10);

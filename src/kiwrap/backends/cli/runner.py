@@ -7,6 +7,13 @@ Guarantees (docs/ARCHITECTURE.md §6, docs/VERIFICATION.md claims 9 and 10):
 - any `.kicad_prl` that the run created next to an input file is deleted again (KiCad 10.0 writes
   one even on read-only operations — capability `cli.writes_prl_on_read`; the check is unconditional
   because it is a no-op on versions that do not);
+- an EXISTING `.kicad_prl` is snapshotted (bytes + mtime) before the run and put back afterwards
+  when the run rewrote it (requests/kiwrap-feature-requests.review.md B2: kicad-cli 10.0.6 merged its
+  defaults into a user's `.kicad_prl` during `pcb drc` without `--save-board`; re-verified
+  2026-09-24 for `pcb drc` on 10.0.6 and 10.99.0 and for `sch/pcb upgrade`, while `sch erc` left it
+  alone). `.kicad_prl` is per-user view state that snapshots exclude, so nothing else could undo
+  it. The restore is skipped (and reported in `CliResult.prl_kept`) when a KiCad lock file
+  (`~*.lck`) sat next to it before the run: an open editor owns the file then;
 - exit codes are mapped from KiCad's `include/cli/exit_codes.h` plus the observed deviations in
   claim 9: 0 ok; 5 = rule violations (`--exit-code-violations`), returned rather than raised;
   3 = ERR_INVALID_INPUT_FILE ("Failed to load board/schematic" on 9/10); the C `return -1` of the
@@ -80,6 +87,10 @@ class CliResult:
     created_files: list[Path] = field(default_factory=list)
     updated_files: list[Path] = field(default_factory=list)
     removed_prl: list[Path] = field(default_factory=list)
+    #: pre-existing `.kicad_prl` files the run rewrote and the runner put back byte-identical
+    restored_prl: list[Path] = field(default_factory=list)
+    #: pre-existing `.kicad_prl` files the run rewrote but an open editor's lock kept as they are
+    prl_kept: list[Path] = field(default_factory=list)
 
     @property
     def violations(self) -> bool:
@@ -177,7 +188,7 @@ def run_kicad_cli(
         env = config.env()
         if env_extra:
             env.update(env_extra)
-        prl_before = {p: p.exists() for p in _prl_candidates(argv[1:], cwd)}
+        prl_before = _prl_snapshot(_prl_candidates(argv[1:], cwd))
         files_before = _snapshot(watch)
         t0 = time.perf_counter()
         try:
@@ -195,6 +206,7 @@ def run_kicad_cli(
         except subprocess.TimeoutExpired as exc:
             duration = time.perf_counter() - t0
             _cleanup_prl(prl_before)
+            _restore_prl(prl_before)
             config.restore_seed()
             out = (
                 exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
@@ -211,6 +223,7 @@ def run_kicad_cli(
             ) from exc
         duration = time.perf_counter() - t0
         removed_prl = _cleanup_prl(prl_before)
+        restored_prl, prl_kept = _restore_prl(prl_before)
         config.restore_seed()
         files_after = _snapshot(watch)
 
@@ -226,6 +239,8 @@ def run_kicad_cli(
         created_files=created,
         updated_files=updated,
         removed_prl=removed_prl,
+        restored_prl=restored_prl,
+        prl_kept=prl_kept,
     )
     if rc in set(accept):
         return result
@@ -247,16 +262,70 @@ def run_kicad_cli(
     )
 
 
-def _cleanup_prl(prl_before: Mapping[Path, bool]) -> list[Path]:
+@dataclass(frozen=True)
+class _PrlState:
+    """A `.kicad_prl` next to an input before the run: `data` None = it did not exist."""
+
+    data: bytes | None
+    mtime_ns: int = 0
+    editor_open: bool = False  # a KiCad `~*.lck` sat in the same directory before the run
+
+    @property
+    def existed(self) -> bool:
+        return self.data is not None
+
+
+def _prl_snapshot(candidates: Iterable[Path]) -> dict[Path, _PrlState]:
+    out: dict[Path, _PrlState] = {}
+    for prl in candidates:
+        try:
+            data = prl.read_bytes()
+            mtime = prl.stat().st_mtime_ns
+        except OSError:
+            out[prl] = _PrlState(None)
+            continue
+        locked = any(True for _ in prl.parent.glob("~*.lck"))
+        out[prl] = _PrlState(data, mtime, locked)
+    return out
+
+
+def _cleanup_prl(prl_before: Mapping[Path, _PrlState]) -> list[Path]:
+    """Delete a `.kicad_prl` the run created (it did not exist before)."""
     removed: list[Path] = []
-    for prl, existed in prl_before.items():
-        if not existed and prl.exists():
+    for prl, before in prl_before.items():
+        if not before.existed and prl.exists():
             try:
                 prl.unlink()
                 removed.append(prl)
             except OSError:
                 pass
     return removed
+
+
+def _restore_prl(prl_before: Mapping[Path, _PrlState]) -> tuple[list[Path], list[Path]]:
+    """Put back the bytes (and mtime) of every pre-existing `.kicad_prl` the run rewrote (review
+    B2); returns (restored, kept because an editor lock was present)."""
+    restored: list[Path] = []
+    kept: list[Path] = []
+    for prl, before in prl_before.items():
+        if before.data is None:
+            continue
+        try:
+            now = prl.read_bytes()
+        except OSError:
+            now = None
+        if now == before.data:
+            continue
+        if before.editor_open:
+            kept.append(prl)
+            continue
+        try:
+            prl.write_bytes(before.data)
+            os.utime(prl, ns=(before.mtime_ns, before.mtime_ns))
+            restored.append(prl)
+        except OSError:
+            kept.append(prl)
+    return restored, kept
 
 
 def _first_error_line(text: str) -> str:

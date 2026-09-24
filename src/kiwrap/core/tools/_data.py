@@ -51,10 +51,17 @@ label_only_nets (DerivedNet)`).
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
+import datetime as _dt
+import hashlib
 import inspect
+import json
+import os
 import re
+import uuid
 from collections.abc import Iterable, Mapping, Sequence
+from pathlib import Path
 from typing import Any, Literal
 
 from kiwrap.core.state import KiwrapError
@@ -480,13 +487,28 @@ def chunk(items: Sequence[Any], cursor: str | None, limit: int) -> tuple[list[An
 #: rest of the receipt, so the text block of a result is never cut mid-JSON (reviewer finding 7:
 #: 200 symbols at `normal` detail were 60 112 chars, truncated with `next_cursor: null`).
 PAGE_BUDGET_CHARS = 40_000
+#: the smallest item budget a page keeps after the singletons (outline, rules, hierarchy, ...) took
+#: their share of `PAGE_BUDGET_CHARS`
+MIN_PAGE_BUDGET_CHARS = 8_000
+#: nesting depth of `data.items[i]` in the receipt text (`{` > `data` > `items` > item)
+ITEMS_DEPTH = 3
+
+
+def rendered_size(obj: Any, depth: int = ITEMS_DEPTH) -> int:
+    """Characters `obj` adds to the receipt text when it sits `depth` levels deep in the receipt
+    JSON (`json.dumps(receipt, indent=1)`, `kiwrap.core.state.receipts.receipt_to_result`): its own
+    indent=1 dump, plus `depth` spaces on every one of its lines, plus the `,\\n` separator.
+    Review item 6 / §3 small defects: measuring at indent 0 under-counted a page by about 25%
+    (a "40k" page rendered as 48.6-49.7k)."""
+    text = json.dumps(obj, indent=1, default=str)
+    return len(text) + depth * (text.count("\n") + 1) + 2
 
 
 @dataclasses.dataclass(frozen=True)
 class Page:
     items: list[Any]
     next_cursor: str | None
-    chars: int  # serialised size of `items` (indent=1, as the receipt text renders it)
+    chars: int  # size of `items` in the receipt text (`rendered_size` at their depth)
     shortened: bool  # fewer than `limit` items because the budget was reached
 
     def warning(self, limit: int) -> str | None:
@@ -506,20 +528,20 @@ def chunk_by_budget(
     *,
     render: Any = None,
     budget_chars: int = PAGE_BUDGET_CHARS,
+    depth: int = ITEMS_DEPTH,
 ) -> Page:
     """Page by COUNT and by SIZE: items are rendered (`render(item)`, e.g. the detail pruning) and
-    serialised one by one; the page closes at `limit` items or when the next item would push the
-    page over `budget_chars` (at least one item is always returned). `next_cursor` is the offset
-    reached, so paging continues exactly where this page stopped."""
-    import json
-
+    measured as the receipt text shows them (`rendered_size` at `depth`); the page closes at
+    `limit` items or when the next item would push the page over `budget_chars` (at least one item
+    is always returned). `next_cursor` is the offset reached, so paging continues exactly where
+    this page stopped. ONE list only: a tool paging several lists uses `page_lanes`."""
     start = parse_cursor(cursor)
     page: list[Any] = []
     chars = 2
     shortened = False
     for item in items[start : start + limit]:
         rendered = render(item) if render is not None else item
-        size = len(json.dumps(rendered, indent=1, default=str)) + 2
+        size = rendered_size(rendered, depth)
         if page and chars + size > budget_chars:
             shortened = True
             break
@@ -527,6 +549,285 @@ def chunk_by_budget(
         chars += size
     end = start + len(page)
     return Page(page, str(end) if end < len(items) else None, chars, shortened)
+
+
+# ---- several lists behind one cursor (review item 6, B3) ------------------------------------------
+
+_CURSOR_PART = re.compile(r"^(?P<lane>[a-z])(?P<off>\d+)$")
+
+
+@dataclasses.dataclass(frozen=True)
+class Lane:
+    """One list a page walks: `key` is its one-letter cursor tag (`i` items, `u` unrouted airwires,
+    `n` netlist nets), `depth` where its entries sit in the receipt text."""
+
+    key: str
+    items: Sequence[Any]
+    render: Any = None
+    depth: int = ITEMS_DEPTH
+
+
+@dataclasses.dataclass(frozen=True)
+class MultiPage:
+    """`pages[key]` = the rendered entries of each lane; `starts` / `ends` the offsets walked;
+    `next_cursor` is None only when EVERY lane is exhausted."""
+
+    pages: dict[str, list[Any]]
+    starts: dict[str, int]
+    ends: dict[str, int]
+    totals: dict[str, int]
+    next_cursor: str | None
+    chars: int
+    shortened: bool
+    version: str | None
+
+    def more(self, key: str) -> bool:
+        return self.ends[key] < self.totals[key]
+
+    def warning(self, limit: int, names: Mapping[str, str] | None = None) -> str | None:
+        """The one continuation hint (None on the last page): names every lane with entries left
+        and repeats the exact `next_cursor`, so the text body (warnings come before `data`) can
+        never disagree with `data.next_cursor` (review item 6's text/structured mismatch)."""
+        if self.next_cursor is None:
+            return None
+        left = [
+            f"{(names or {}).get(k, k)} {self.ends[k]}/{self.totals[k]}" for k in self.pages if self.more(k)
+        ]
+        why = (
+            f"the result budget ({self.chars} chars) closed the page early"
+            if self.shortened
+            else f"limit={limit} per list reached"
+        )
+        return (
+            f"more results: {', '.join(left)} returned so far ({why}); continue with "
+            f"cursor={self.next_cursor!r} - one cursor pages every list, nothing is skipped"
+        )
+
+
+def format_multi_cursor(offsets: Mapping[str, int], version: str | None) -> str:
+    """`i<off>.u<off>@<version>` (lane order as given; `@<version>` only when versioned)."""
+    body = ".".join(f"{k}{int(v)}" for k, v in offsets.items())
+    return f"{body}@{version}" if version else body
+
+
+def parse_multi_cursor(cursor: str | None, lanes: Sequence[str], version: str | None) -> dict[str, int]:
+    """Offsets per lane from a cursor `page_lanes` returned (`i12.u40@1a2b3c4d`).
+
+    - None / "" start every lane at 0.
+    - A bare integer (the pre-review cursor) sets every lane to that offset, which is exactly what
+      the old shared cursor meant; a lane the cursor does not name starts at 0.
+    - A lane tag this call does not page is E_BAD_ARGS (the cursor came from other `kinds`).
+    - A version other than `version` (the data changed between pages) is E_STALE: the offsets
+      would point into a different list (review B3: "a board edit between pages")."""
+    out = {k: 0 for k in lanes}
+    if not cursor:
+        return out
+    body, _, ver = str(cursor).strip().partition("@")
+    if ver and version and ver != version:
+        raise KiwrapError(
+            "E_STALE",
+            f"cursor {cursor!r} was issued for version {ver}; the design is now at {version}",
+            why="the file changed between pages, so the offsets point into a different list and items would be "
+            "skipped or repeated",
+            fix="start over without cursor (the first page reflects the current file)",
+            data={"reason": "cursor_version", "cursor_version": ver, "current_version": version},
+        )
+    if body.lstrip("-").isdigit():
+        n = parse_cursor(body)
+        return {k: n for k in lanes}
+    for part in body.split("."):
+        m = _CURSOR_PART.match(part)
+        if not m or m.group("lane") not in out:
+            raise KiwrapError(
+                "E_BAD_ARGS",
+                f"cursor {cursor!r} is not one this tool returned",
+                why="cursors are opaque (`i<offset>.u<offset>@<version>`) and belong to the kinds of the call "
+                "that returned them",
+                fix="pass the `next_cursor` of the previous result with the same arguments, or omit it to start over",
+            )
+        out[m.group("lane")] = int(m.group("off"))
+    return out
+
+
+def page_lanes(
+    lanes: Sequence[Lane],
+    cursor: str | None,
+    limit: int,
+    *,
+    version: str | None = None,
+    budget_chars: int = PAGE_BUDGET_CHARS,
+) -> MultiPage:
+    """Page several lists with ONE cursor and ONE size budget (review item 6, B3).
+
+    The old code paged `data.items` and `connectivity.unrouted` (kw_sch_get: `netlist.nets`) with
+    the same offset but separate budgets and returned `items_cursor or airwire_cursor`: when the
+    items stopped at 92 and the airwires at 43, the next page started both at 92 and airwires
+    43-91 were never returned. Here every lane keeps its own offset in the composite cursor, the
+    lanes fill in order from one shared budget (`limit` applies per lane), a lane the budget closed
+    early resumes exactly where it stopped, and `next_cursor` is None only when all lanes are
+    exhausted. `version` (e.g. the board sha8) makes a cursor from an older file E_STALE. At least
+    one entry is returned while any lane has one left."""
+    keys = [lane.key for lane in lanes]
+    starts = parse_multi_cursor(cursor, keys, version)
+    pages: dict[str, list[Any]] = {k: [] for k in keys}
+    ends: dict[str, int] = {}
+    totals: dict[str, int] = {}
+    chars = 2
+    shortened = False
+    for lane in lanes:
+        start = min(starts[lane.key], len(lane.items))
+        starts[lane.key] = start
+        totals[lane.key] = len(lane.items)
+        end = start
+        if not shortened:
+            for item in lane.items[start : start + limit]:
+                rendered = lane.render(item) if lane.render is not None else item
+                size = rendered_size(rendered, lane.depth)
+                if chars + size > budget_chars and any(pages.values()):
+                    shortened = True
+                    break
+                pages[lane.key].append(rendered)
+                chars += size
+                end += 1
+        ends[lane.key] = end
+    done = all(ends[k] >= totals[k] for k in keys)
+    nxt = None if done else format_multi_cursor(ends, version)
+    return MultiPage(pages, starts, ends, totals, nxt, chars, shortened, version)
+
+
+def singleton_budget(*singletons: Any, depth: int = 2) -> int:
+    """`PAGE_BUDGET_CHARS` minus what the singletons (outline, rules, hierarchy, ...) add to the
+    same receipt text, floored at `MIN_PAGE_BUDGET_CHARS`, so items + singletons stay below the
+    60 000-character text cap together and the text body is never cut (review item 6)."""
+    used = sum(rendered_size(s, depth) for s in singletons if s is not None)
+    return max(MIN_PAGE_BUDGET_CHARS, PAGE_BUDGET_CHARS - used)
+
+
+def file_version(*paths: Any) -> str:
+    """The first 8 hex characters of the sha256 over the given files' bytes (a missing file counts
+    as empty): the `@<version>` of a composite cursor."""
+    h = hashlib.sha256()
+    for p in paths:
+        with contextlib.suppress(OSError):
+            h.update(Path(p).read_bytes())
+        h.update(b"\0")
+    return h.hexdigest()[:8]
+
+
+# ---- complete results in a file (review item 6: out_path / format='ndjson') ------------------------
+
+OUT_SUFFIXES = (".json", ".ndjson", ".jsonl", ".txt")
+OutFormat = Literal["json", "ndjson"]
+
+
+def project_results_dir(storage_home: Path, project_dir: Path, name: str = "") -> Path:
+    """`<storage>/results/<name>-<sha1(project dir)[:12]>/`: where kiwrap keeps per-project results
+    OUTSIDE the project (review theme T2; D23). Keyed by the resolved, case-folded directory, so two
+    copies with the same name never share a folder (the collision behind review B4)."""
+    folder = Path(project_dir).resolve()
+    digest = hashlib.sha1(os.path.normcase(str(folder)).encode("utf-8")).hexdigest()[:12]
+    label = re.sub(r"[^A-Za-z0-9_.-]+", "_", name or folder.name)[:40] or "project"
+    return Path(storage_home) / "results" / f"{label}-{digest}"
+
+
+def resolve_out_file(
+    requested: str | None,
+    *,
+    storage_home: Path,
+    project_dir: Path,
+    project_name: str,
+    stem: str,
+    fmt: str,
+) -> Path:
+    """The file a complete result is written to.
+
+    `None` / `'auto'` -> `<storage>/results/<project>/exports/<stem>-<utc>-<rand>.<fmt>` (never
+    inside the project, D23). Otherwise an ABSOLUTE path: an existing directory gets the same
+    generated file name; a file must end in .json / .ndjson / .jsonl / .txt, must not be a
+    `.kicad_*` file, and its folder must exist (review T2's allow-rules). Anything else is
+    E_BAD_ARGS."""
+    ext = ".ndjson" if fmt == "ndjson" else ".json"
+    stamp = _dt.datetime.now(_dt.UTC).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:6]
+    generated = f"{stem}-{stamp}{ext}"
+    if requested is None or str(requested).strip().lower() in ("", "auto"):
+        folder = project_results_dir(storage_home, project_dir, project_name) / "exports"
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder / generated
+    path = Path(str(requested)).expanduser()
+    example = (
+        "out_path='C:/Users/me/review/board.ndjson' (or 'auto' for a file under the kiwrap storage home)"
+    )
+    if not path.is_absolute():
+        raise KiwrapError(
+            "E_BAD_ARGS",
+            f"out_path {requested!r} is not an absolute path",
+            fix="pass an absolute file or directory path, or 'auto'",
+            example=example,
+        )
+    if path.is_dir():
+        return path / generated
+    if ".kicad_" in path.name.lower() or path.suffix.lower() not in OUT_SUFFIXES:
+        raise KiwrapError(
+            "E_BAD_ARGS",
+            f"out_path {path.name!r} must end in {', '.join(OUT_SUFFIXES)}",
+            why="kiwrap never writes over a KiCad file and only writes data files here",
+            fix="choose a .ndjson / .json file name, or pass a directory",
+            example=example,
+        )
+    if not path.parent.is_dir():
+        raise KiwrapError(
+            "E_BAD_ARGS",
+            f"the folder of out_path ({path.parent}) does not exist",
+            fix="create the folder first, or pass 'auto'",
+            example=example,
+        )
+    return path
+
+
+def write_result_file(
+    path: Path, fmt: str, header: Mapping[str, Any], sections: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Write a complete (unpaged) result.
+
+    - `fmt='json'`: one document `{**header, **sections}`.
+    - `fmt='ndjson'`: a `{"kind": "header", ...}` line, then one line per list entry (entries keep
+      their own `kind`; entries of a list without one get the list name without its plural `s`,
+      e.g. `unrouted` / `net`) and one line per singleton (`{"kind": "<name>", ...}`).
+
+    Written to `<path>.tmp` and renamed, so a reader never sees half a file. Returns
+    `{path, format, bytes, sha256, lines, counts}` for the receipt."""
+    counts: dict[str, int] = {}
+    if fmt == "ndjson":
+        lines = [json.dumps({"kind": "header", **header}, default=str)]
+        for name, value in sections.items():
+            if isinstance(value, list):
+                counts[name] = len(value)
+                default_kind = name[:-1] if name.endswith("s") else name
+                for entry in value:
+                    row = dict(entry) if isinstance(entry, Mapping) else {"value": entry}
+                    row.setdefault("kind", default_kind)
+                    lines.append(json.dumps(row, default=str))
+            elif value is not None:
+                body = dict(value) if isinstance(value, Mapping) else {"value": value}
+                lines.append(json.dumps({"kind": name, **body}, default=str))
+        text = "\n".join(lines) + "\n"
+    else:
+        for name, value in sections.items():
+            if isinstance(value, list):
+                counts[name] = len(value)
+        text = json.dumps({**header, **sections}, indent=1, default=str) + "\n"
+    data = text.encode("utf-8")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+    return {
+        "path": str(path),
+        "format": fmt,
+        "bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "lines": text.count("\n") if fmt == "ndjson" else None,
+        "counts": counts,
+    }
 
 
 def prune(item: Mapping[str, Any], detail: str, keep: Mapping[str, Iterable[str]]) -> dict[str, Any]:

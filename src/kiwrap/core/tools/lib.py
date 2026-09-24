@@ -31,7 +31,7 @@ from kiwrap.core import planner
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
 from kiwrap.core.state.receipts import ReceiptOut
-from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec
+from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, effective_target, read_state
 from kiwrap.formats.libs import LibError, LibIndex, LibResolver, split_lib_id
 
 MAX_LIMIT = 100
@@ -66,10 +66,11 @@ def _project(spec: str | None) -> Project | None:
 
 
 def _install(ctx: ToolContext, project: Project | None, target: str | None) -> Any:
-    spec = target
-    if spec is None and project is not None:
-        spec = project.load_state().target_kicad
-    return ctx.services.install(spec)
+    if target is None and project is not None:
+        # the project's own KiCad (D21: its files' format), libraries are read, never written
+        state, _ = read_state(project)
+        return effective_target(ctx, project, state, for_write=False, allow_newer=True).install
+    return ctx.services.install(target)
 
 
 def make_index(ctx: ToolContext, project: Project | None, target_kicad: str | None) -> tuple[LibIndex, Any]:

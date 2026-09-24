@@ -77,7 +77,41 @@ export interface McpClientOptions {
   maxRestarts?: number;
   /** Per-call timeout in ms (default 10 minutes: DRC/route jobs are slow). */
   callTimeoutMs?: number;
+  /**
+   * Called when a tool returns a teaching error, before it is thrown (consent.ts: the D21 format
+   * upgrade modal, E_FORMAT_NEWER / E_READONLY messages). A Receipt it returns (a retry after the
+   * user agreed to upgrade) becomes the call's result; throwing replaces the error; undefined
+   * rethrows the original.
+   */
+  onToolError?: ToolErrorHandler;
 }
+
+/** Per-call options of `McpClient.call`. */
+export interface CallOptions {
+  /**
+   * false for background calls (on-save checks, previews, the tree's status refresh): the error
+   * handler must not open a modal for them (default true).
+   */
+  interactive?: boolean;
+  /** false skips `onToolError` entirely (the handler's own upgrade call and retry use it). */
+  handleErrors?: boolean;
+  /** Set on the retry after an upgrade the user agreed to: never ask twice for one call. */
+  afterConsent?: boolean;
+}
+
+export interface ToolErrorContext {
+  name: string;
+  args: Record<string, unknown>;
+  error: KiwrapError;
+  interactive: boolean;
+  afterConsent: boolean;
+  /** Another tool call on the same client (the handler's kw_project upgrade). */
+  call<T = Record<string, unknown>>(name: string, args: Record<string, unknown>, opts?: CallOptions): Promise<Receipt<T>>;
+  /** The original call again (once, marked `afterConsent`). */
+  retry(): Promise<Receipt<Record<string, unknown>>>;
+}
+
+export type ToolErrorHandler = (ctx: ToolErrorContext) => Promise<Receipt<Record<string, unknown>> | undefined>;
 
 interface ToolInfo {
   name: string;
@@ -267,9 +301,38 @@ export class McpClient {
   /**
    * Call a tool and return its Receipt. isError results throw `KiwrapError` with the server's
    * structured teaching error; a tool the server does not publish throws `E_NO_TOOL` without a
-   * round trip.
+   * round trip. A teaching error goes through `onToolError` first (unless `opts.handleErrors` is
+   * false), which may answer it with a Receipt (the retry after a consented format upgrade).
    */
-  async call<T = Record<string, unknown>>(name: string, args: Record<string, unknown> = {}): Promise<Receipt<T>> {
+  async call<T = Record<string, unknown>>(
+    name: string,
+    args: Record<string, unknown> = {},
+    opts: CallOptions = {},
+  ): Promise<Receipt<T>> {
+    try {
+      return await this.callOnce<T>(name, args);
+    } catch (err) {
+      const handler = this.opts.onToolError;
+      if (!handler || opts.handleErrors === false || !(err instanceof KiwrapError) || err.code === 'E_CLIENT' || err.code === 'E_NO_TOOL') {
+        throw err;
+      }
+      const replaced = await handler({
+        name,
+        args,
+        error: err,
+        interactive: opts.interactive !== false,
+        afterConsent: !!opts.afterConsent,
+        call: (n, a, o) => this.call(n, a, o),
+        retry: () => this.call(name, args, { ...opts, afterConsent: true }),
+      });
+      if (replaced) {
+        return replaced as Receipt<T>;
+      }
+      throw err;
+    }
+  }
+
+  private async callOnce<T>(name: string, args: Record<string, unknown>): Promise<Receipt<T>> {
     const client = await this.ensureConnected();
     if (!this.tools.has(name)) {
       throw new KiwrapError({

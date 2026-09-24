@@ -53,6 +53,11 @@ export class KiwrapError extends Error implements KiwrapErrorShape {
   candidates: string[];
   example: string | null;
   data: Record<string, unknown>;
+  /**
+   * True once the extension has already told the user about this error (the format-upgrade modal,
+   * the E_FORMAT_NEWER / E_READONLY messages in consent.ts): callers must not show a second popup.
+   */
+  handled = false;
   constructor(shape: KiwrapErrorShape) {
     super(`${shape.code}: ${shape.message}`);
     this.name = 'KiwrapError';
@@ -66,6 +71,22 @@ export class KiwrapError extends Error implements KiwrapErrorShape {
   get shortMessage(): string {
     return this.message.split('\n')[0];
   }
+}
+
+/** Whether an error was already shown to the user (`KiwrapError.handled`); duck-typed so it survives a command boundary. */
+export function isHandledError(err: unknown): boolean {
+  return !!err && typeof err === 'object' && (err as { handled?: unknown }).handled === true;
+}
+
+/** A KiwrapError-shaped value (the class, or the same object seen through `executeCommand`). */
+export function asKiwrapError(err: unknown): KiwrapError | null {
+  if (err instanceof KiwrapError) {
+    return err;
+  }
+  if (err && typeof err === 'object' && typeof (err as { code?: unknown }).code === 'string' && /^E_[A-Z_]+$/.test((err as { code: string }).code)) {
+    return err as KiwrapError;
+  }
+  return null;
 }
 
 // ---- kw_env ------------------------------------------------------------------------------------
@@ -111,7 +132,36 @@ export interface ProjectStatusData {
   snapshot_head: string | null;
   external_edit: { files: string[]; from: string; to: string } | null;
   history: Record<string, unknown>[];
+  /**
+   * D21 / review item 1 (B1): the install kiwrap uses for this project, i.e. the pinned target, else
+   * the newest point release whose formats equal the files' stamps, else the nearest newer epoch
+   * (read-only for writes). Added by the server's `effective_target()`; absent on older servers.
+   * `target_kicad_effective` is the review's spelling, read as a fallback.
+   */
+  target_effective?: string | null;
+  target_kicad_effective?: string | null;
+  /** Why that install: `pinned` | `file_epoch` | `file_epoch_newer_readonly` | `created`. */
+  target_source?: TargetSource | null;
+  /** Whether the effective target writes the files' own format (per kind when the server splits it). */
+  epoch_match?: boolean | Record<string, boolean | null> | null;
+  /** Format / target warnings kw_project status adds (a newer-epoch target, mixed sheet epochs, ...). */
+  warnings?: string[];
+  /**
+   * The KiCad line the files' format belongs to ("10.0"; null when the files mix formats or no known
+   * release writes theirs). kw_project status returns it (core/tools/project.py `target_status`); the
+   * proactive upgrade modal names it (fixer finding 3: without it the D21 headline case, a 10.0 project
+   * with only 10.99 installed, lost "KiCad 10.0" and the winget command).
+   */
+  project_kicad?: string | null;
+  /** How to install that line (`winget install KiCad.KiCad --version 10.0.6`); null when a matching install exists. */
+  install_hint?: string | null;
+  /** Every design file's stamp, sub-sheets in subdirectories included (`sch/x.kicad_sch`). */
+  file_epochs?: { path: string; kind: string; stamp: number | null }[];
+  /** Every installed KiCad the server considered: `matches` = it writes the files' own format. */
+  candidates?: { version: string; root?: string; formats?: Record<string, number>; reads?: boolean; matches?: boolean }[];
 }
+
+export type TargetSource = 'pinned' | 'file_epoch' | 'file_epoch_newer_readonly' | 'created' | (string & {});
 
 // ---- kw_sch_check / kw_pcb_drc -------------------------------------------------------------------
 

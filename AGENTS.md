@@ -216,10 +216,10 @@ engine) -> `cli` (kicad-cli exports). Read the receipt, not the version number:
 | tool | args | returns |
 |---|---|---|
 | `kw_env` | `refresh?` | installs (newest first), capabilities, engines, storage paths |
-| `kw_project` | `action: create\|status`, `dir`, `name`, `target_kicad?`, `board_size_mm?`, `project?` | paths, epochs, stage, next |
+| `kw_project` | `action: create\|status\|retarget\|upgrade`, create: `dir`, `name`, `target_kicad?`, `board_size_mm?`; status / retarget / upgrade: `project`; retarget: `target_kicad` (an install, or `'auto'` to unpin); upgrade: `to_kicad?`, `confirm?` (true only after the user agreed), `dry_run?` | paths, epochs, stage, next; status adds `target_effective`, `target_source`, `epoch_match`, `project_kicad`, `install_hint`, `file_epochs[]` (every sheet, sub-sheets in subdirectories too), `candidates`, `warnings`; upgrade: `data.upgrade{replaced, checks{before, after}, snapshot_before}`. create refuses a directory that already holds `.kicad_sch` / `.kicad_pcb` files |
 | `kw_snapshot` | `project`, `action: list\|diff\|create\|restore`, `ref?`, `to?`, `message?` | sha / files / diff |
 | `kw_job` | `job_id`, `action: status\|wait\|cancel\|list`, `wait_s?` | state, result |
-| `kw_help` | `topic: overview\|stages\|errors\|providers\|kw_*\|E_*` | markdown |
+| `kw_help` | `topic: overview\|stages\|errors\|providers\|formats\|readonly\|kw_*\|E_*` | markdown |
 | `kw_intent` | `project`, `action: set\|get\|diff\|clear`, `intent?{blocks, rails, interfaces, nets, constraints}`, `merge?` | intent, counts; `diff`: missing / wrong_pin / extra / unmatched |
 | `kw_sch_add_symbol` | `project`, `lib_id`, `at_mm`, `ref?`, `value?`, `rotation?`, `mirror?`, `unit?`, `fields?`, `footprint?`, `sheet?`, `erc?`, `provider?` | `uuid`, `ref`, `pins[]` (absolute mm), `erc`, `sheets` |
 | `kw_sch_connect` | `project`, `endpoints[{ref, pin} \| {at_mm}]`, `style?`, `net?`, `route?`, `sheet?`, `erc?`, `provider?` | resolved `endpoints`, `wires` / `junctions` / `split_wires` / `labels` / `power` uuids, `connected_pins`, `erc` |
@@ -241,15 +241,43 @@ engine) -> `cli` (kicad-cli exports). Read the receipt, not the version number:
 | `kw_pcb_fix` | `project`, `actions?`, `max_iterations?`, `passes?`, `timeout_s?`, `provider?`, `run_async?`, `force?` | `job_id` (default), else `must_fix{before, after}`, `iterations[]`, `nets_touched`, `unfixable[]`, `drc` |
 | `kw_pcb_get` | `project`, `kinds?`, `refs?`, `nets?`, `layers?`, `bbox_mm?`, `detail?`, `cursor?`, `limit?`, `provider?` | `data.items[]`, `data.outline`, `data.rules`, `data.connectivity` |
 | `kw_pcb_check` | `project`, `checks?`, `refs?`, `nets?`, `bbox_mm?`, `cursor?`, `limit?`, `provider?` | `ok`, `summary`, `drc_summary`, `items[]` with `fix` |
-| `kw_pcb_drc` | `project`, `schematic_parity?`, `refill_zones?`, `save_board?`, `severity?` | must_fix / review / cosmetic violations (mm) |
+| `kw_pcb_drc` | `project`, `action?` run (default) \| report; run: `schematic_parity?`, `refill_zones?`, `save_board?` (default **false**, D22: the refill stays in memory, the board file is untouched), `all_track_errors?` (default on where kicad-cli has it: every violation of each track, a short included), `severity?`; report (re-reads the stored result of the last run, no KiCad): `types?`, `classes?`, `refs?`, `nets?`, `bbox_mm?`, `severity?`, `cursor?`, `limit?` | must_fix / review / cosmetic violations (mm, each with its `class`); report: one filtered page + `next_cursor`, `E_STALE` when the board changed since the run |
 | `kw_pcb_render` | `project`, `view?`, `side?`, `layers?`, `max_px?` | PNG + summary (secondary) |
 | `kw_fab_bom` | `project`, `profile?`, `include_dnp?`, `fields?`, `write?` | `rows[]` (refs, qty, value, footprint, lcsc, dnp, mpn, cost/stock null), `missing_lcsc`, `dnp_refs` |
 | `kw_fab_export` | `project`, `targets?`, `profile?` generic\|jlcpcb, `include_dnp?`, `bom_fields?`, `out_dir?`, `clean?`, `force?`, `run_async?` | files per target (+ `bundle` zip), `positions.corrected[]`, `bom`, `dropped_options`, unsupported targets |
 | `kw_live` | `action` launch\|attach\|status\|screenshot\|detach\|raise, `project?`, `session_id?`, `editor?` pcb\|sch\|project, `mode?` view (default; hidden = experimental), `target_kicad?`, `helper?` {port, token, version}, `surface?`, `max_px?` | `session_id`, `pid`, `install`, `api_socket`, `token`, `editors[]`, `mode_used` (view), `cloaked`; screenshot: PNG + summary (for humans; secondary) |
 
-`kw_help(topic=<tool>)` has the long form of every row, including the item shapes. Library
+`kw_help(topic=<tool>)` has the long form of every row, including the item shapes. Every tool also
+takes `persist?`: `persist=false` makes that one call read-only (D23, below). Library
 tools (`kw_lib_search` / `kw_lib_info`) appear in `tools/list` when the library index component
 is present; use them before every `lib_id` / `fpid`.
+
+## File formats, upgrades and read-only mode (D21-D23)
+
+- **Which KiCad a project runs on** (`kw_help(topic="formats")`): the pinned one (`kw_project
+  create` pins, so do `retarget` / `upgrade`), else the newest installed KiCad that writes the
+  files' own format, else the nearest newer one for READS only. `kw_project(action="status")`
+  shows it: `target_effective`, `target_source`, `epoch_match` (that KiCad writes the files'
+  format), `project_kicad` / `install_hint` (the matching KiCad line and how to install it).
+- **A write that would save the files in a newer KiCad format stops** with
+  `E_FORMAT_UPGRADE_REQUIRED` (or an MCP elicitation prompt when the client supports it): the
+  older KiCad could no longer open the project. **Ask the user.** The error's `example` is the
+  non-committing `kw_project(action="upgrade", project=..., dry_run=true)` (converts a copy,
+  reports ERC/DRC before and after - show it to them). Only if they agree:
+  `kw_project(action="upgrade", project=..., confirm=true)`, then retry the call. If they would
+  rather keep the format: install the KiCad in `data.install_hint`, or
+  `kw_project(action="retarget", target_kicad=<a candidate that writes it>)`. Never work around it
+  (no hand edits, no other provider, no `confirm=true` without a yes).
+- **`kw_pcb_drc` does not save the board by default** (D22): zones are refilled in memory for the
+  check. `save_board=true` writes the refill, and only when the KiCad writes the board's format.
+- **Read-only mode** (`kw_help(topic="readonly")`): `kiwrap serve --readonly` (or
+  `KIWRAP_READONLY=1`) makes every call read-only; on a normal server `persist=false` does it for
+  one call. A read-only call writes nothing into the project (no snapshot, no `.kiwrap/` state, no
+  saved refill; reports and exports go to a temp directory under kiwrap's storage home or your
+  `out_dir`); a tool that would change design files refuses with `E_READONLY`. Reads, `kw_sch_check`,
+  `kw_pcb_drc`, `kw_fab_bom` / `kw_fab_export`, `kw_project(action="status")` and
+  `kw_project(action="upgrade", dry_run=true)` still run. `kw_project` is annotated destructive
+  (MCP hints are per tool, and `upgrade` replaces files) although `status` and the dry run only read.
 
 ## Hard rules
 
@@ -282,11 +310,16 @@ is present; use them before every `lib_id` / `fpid`.
 | `E_CANCELLED` | `kw_job(action="cancel")` reached a running job (state `cancelled`, no error payload) | run the tool again; `kw_snapshot restore` for the pre-call state if needed |
 | `E_TIMEOUT` | KiCad exceeded its time budget | `run_async=true` + `kw_job`, or filter/page the read |
 | `E_INTERNAL` | kiwrap bug or git failure | report `data.traceback`; restore a snapshot |
+| `E_FORMAT_UPGRADE_REQUIRED` | the call would save the project in a newer KiCad file format than its files (the older KiCad could no longer open them); nothing was written, or the stamp guard rolled the write back (`data.guard`) | **ask the user**; show `kw_project(action="upgrade", project=..., dry_run=true)`; if yes: `kw_project(action="upgrade", project=..., confirm=true)` and retry; else install the KiCad in `data.install_hint` or `retarget` to a `candidates` KiCad |
+| `E_FORMAT_NEWER` | the files are newer than every installed KiCad (or than the pinned one) | `retarget` to a KiCad in `candidates`, or install a newer KiCad; file-provider reads (`kw_pcb_get` / `kw_sch_get`) still answer |
+| `E_READONLY` | the call would write the project and runs read-only (`kiwrap serve --readonly`, `KIWRAP_READONLY=1` or `persist=false`) | on a read-only server tell the user the change needs a writable kiwrap; with `persist=false` drop the flag |
+| `E_STALE` | a stored result or a paging cursor belongs to an older file (`data.reason`: `no_result`, `board_changed`, `cursor_version`) | run `kw_pcb_drc` again before `action="report"`; restart paging without `cursor` |
 
 ## Where things are
 
 - Tool catalog + design: `docs/ARCHITECTURE.md` (§6 planner, §7 schematic writer rules, §8
   placement/routing, §9 agent surface, §10 catalog, §11 receipts/gates).
-- Decisions: `docs/DECISIONS.md` (D16 KiCad-11-first, D17 data-first, D18 Windows + VS Code).
+- Decisions: `docs/DECISIONS.md` (D16 KiCad-11-first, D17 data-first, D18 Windows + VS Code, D21 the
+  KiCad matching the files' format + upgrade consent, D22 `kw_pcb_drc` does not save, D23 read-only mode).
 - Verified KiCad facts: `docs/VERIFICATION.md`; the scripts behind them: `spikes/`.
 - The flow skill: `.claude/skills/kiwrap-flow/SKILL.md`.

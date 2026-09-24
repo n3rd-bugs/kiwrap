@@ -246,7 +246,9 @@ def test_read_schematic_shared_sheet_matches_kicad_cli(nightly, root, shared_she
     ipc_nodes = {
         n.name: frozenset((i.ref, i.pin) for i in n.pins if not i.ref.startswith("#")) for n in model.netlist
     }
-    assert {k: (sorted(cli_nodes[k]), sorted(ipc_nodes[k])) for k in cli_nodes if ipc_nodes.get(k) != cli_nodes[k]} == {}
+    assert {
+        k: (sorted(cli_nodes[k]), sorted(ipc_nodes[k])) for k in cli_nodes if ipc_nodes.get(k) != cli_nodes[k]
+    } == {}
     # one consistent, human-readable sheet path on every kind, one item per sheet INSTANCE
     sheets = {"/", "/ampli_ht_horizontal/", "/ampli_ht_vertical/"}
     assert {sy.sheet_path for sy in model.symbols} == sheets
@@ -295,8 +297,12 @@ def test_pool_reuses_the_server_and_release_project_drops_the_lock(nightly, root
     # the file changed on disk -> the pool never answers from the stale load
     with pooled_session(nightly, board, config_root=root) as s3:
         pid3 = s3.pid
-    board.write_text(board.read_text(encoding="utf-8").replace("(generator ", "(generator2 ", 1), encoding="utf-8")
-    board.write_text(board.read_text(encoding="utf-8").replace("(generator2 ", "(generator ", 1), encoding="utf-8")
+    board.write_text(
+        board.read_text(encoding="utf-8").replace("(generator ", "(generator2 ", 1), encoding="utf-8"
+    )
+    board.write_text(
+        board.read_text(encoding="utf-8").replace("(generator2 ", "(generator ", 1), encoding="utf-8"
+    )
     with pooled_session(nightly, board, config_root=root) as s4:
         assert s4.pid != pid3 and not s3.running
     close_all()

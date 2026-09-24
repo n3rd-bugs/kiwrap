@@ -14,6 +14,14 @@ rules and connectivity are singletons in `data.outline` / `data.rules` / `data.c
 Filters: `refs`, `nets`, `layers`, `bbox_mm` (an item passes when it intersects). `detail`:
 summary (position + identity), normal (+ bbox, uuid, pad counts), full (everything incl. pads
 and properties).
+
+Paging (requests/kiwrap-feature-requests.review.md item 6, B3): `data.items` and
+`connectivity.unrouted` share ONE composite cursor `i<offset>.u<offset>@<board sha8>` and one size
+budget (`_data.page_lanes`); the old shared-offset cursor skipped airwires whenever the two lists
+stopped at different offsets. A cursor from an older board is E_STALE; `next_cursor` is null only
+when both lists are exhausted, and the page is measured as the receipt text renders it, so the text
+is never cut. `out_path` / `format='ndjson'` write the COMPLETE result to a file in one call
+(never into the project unless the caller names such a path).
 """
 
 from __future__ import annotations
@@ -31,7 +39,7 @@ from kiwrap.core import planner
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
 from kiwrap.core.state.receipts import ReceiptOut
-from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, read_state
+from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, effective_target, read_state
 from kiwrap.core.tools._data import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
@@ -39,23 +47,29 @@ from kiwrap.core.tools._data import (
     PAD_TYPES,
     Detail,
     Filters,
+    Lane,
+    OutFormat,
     box_of,
     canonical,
-    chunk_by_budget,
     count_by,
     drill_mm,
     external_tags,
+    file_version,
     layer_sort_key,
     matches,
     mm,
     mm_pair,
     net_name,
+    page_lanes,
     pick,
     prune,
     rec,
     ref_key,
+    resolve_out_file,
+    singleton_budget,
     sorted_layers,
     str_list,
+    write_result_file,
 )
 
 BoardKind = Literal[
@@ -849,11 +863,32 @@ class PcbGetArgs(BaseModel):
         default="normal", description="summary | normal | full (full includes pads and properties)"
     )
     cursor: str | None = Field(
-        default=None, description="continue a chunked listing (the previous next_cursor)"
+        default=None,
+        description=(
+            "continue a chunked listing: the previous data.next_cursor, unchanged (one opaque cursor pages "
+            "items AND connectivity.unrouted; a cursor from before a board edit is E_STALE)"
+        ),
     )
-    limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="items per page")
+    limit: int = Field(
+        default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="entries per page, per list (items, airwires)"
+    )
     provider: ProviderArg = Field(
         default="auto", description="auto (ipc11 when the KiCad has ipc.headless, else file), or force one"
+    )
+    out_path: str | None = Field(
+        default=None,
+        description=(
+            "write the COMPLETE result (every matching item and airwire, no paging) to this absolute file "
+            "(.json/.ndjson/.jsonl/.txt) or existing directory; 'auto' = a file under the kiwrap storage home. "
+            "The receipt then carries data.out {path, bytes, sha256, counts} instead of items"
+        ),
+    )
+    format: OutFormat = Field(
+        default="json",
+        description=(
+            "file format with out_path: json (one document) or ndjson (a header line, then one JSON object per "
+            "item / airwire / singleton, each with `kind`); format='ndjson' without out_path writes to 'auto'"
+        ),
     )
 
 
@@ -866,11 +901,14 @@ class PcbGetData(BaseModel):
     counts: dict[str, int] = Field(description="items per kind BEFORE chunking (after filters)")
     total: int
     returned: int
-    next_cursor: str | None = None
+    next_cursor: str | None = Field(
+        default=None, description="null only when items AND connectivity.unrouted are exhausted"
+    )
     items: list[dict[str, Any]]
     outline: dict[str, Any] | None = None
     rules: dict[str, Any] | None = None
     connectivity: dict[str, Any] | None = None
+    out: dict[str, Any] | None = Field(default=None, description="the file written with out_path / ndjson")
     plan: dict[str, Any]
 
 
@@ -885,11 +923,12 @@ def pcb_get(ctx: ToolContext, args: PcbGetArgs) -> Receipt:
         raise KiwrapError(
             "E_PROJECT_NOT_FOUND", f"board {project.board.name} is missing", fix="kw_project create writes it"
         )
-    install = ctx.services.install(state.target_kicad)
+    install = effective_target(ctx, project, state, for_write=False, allow_newer=True).install
     caps = ctx.services.caps(install)
     config = ctx.services.config_root(install)
     filters = Filters.from_args(args)
     prefer = None if args.provider == "auto" else args.provider
+    version = file_version(project.board)  # the cursor's @<sha8>: a later board edit makes it E_STALE
 
     outcome = read_board(ctx, install, caps, config, project.board, prefer=prefer)
     model = outcome.value
@@ -909,39 +948,20 @@ def pcb_get(ctx: ToolContext, args: PcbGetArgs) -> Receipt:
         if kind in args.kinds:
             items.extend(it for it in lists[kind] if matches(it, filters))
     counts = count_by(items, "kind")
-    paged = chunk_by_budget(
-        items, args.cursor, args.limit, render=lambda it: prune(it, args.detail, KEEP[it["kind"]])
-    )
-    page, nxt = paged.items, paged.next_cursor
-    if paged.warning(args.limit):
-        warnings.append(paged.warning(args.limit) or "")
 
-    data: dict[str, Any] = {
-        "ok": True,
-        "board": project.board.name,
-        "kinds": list(args.kinds),
-        "filters": filters.to_dict(),
-        "detail": args.detail,
-        "counts": counts,
-        "total": len(items),
-        "returned": len(page),
-        "next_cursor": nxt,
-        "page_chars": paged.chars,
-        "items": page,
-        "outline": None,
-        "rules": None,
-        "connectivity": None,
-        "plan": outcome.plan.to_dict(),
-    }
     r = rec(model)
+    outline: dict[str, Any] | None = None
+    rules: dict[str, Any] | None = None
     if "outline" in args.kinds:
-        data["outline"] = norm_outline(r)
-        if data["outline"] is None:
+        outline = norm_outline(r)
+        if outline is None:
             warnings.append("no board outline (Edge.Cuts) found")
     if "rules" in args.kinds:
-        data["rules"] = norm_rules(r)
-        if data["rules"] is not None and not data["rules"].get("netclasses"):
-            data["rules"]["netclasses"] = project_netclasses(project.pro_path)
+        rules = norm_rules(r)
+        if rules is not None and not rules.get("netclasses"):
+            rules["netclasses"] = project_netclasses(project.pro_path)
+    unrouted: list[dict[str, Any]] | None = None
+    connectivity: dict[str, Any] | None = None
     if "connectivity" in args.kinds:
         conn = read_connectivity(
             ctx,
@@ -958,27 +978,99 @@ def pcb_get(ctx: ToolContext, args: PcbGetArgs) -> Receipt:
             for u in conn.value
             if matches({"kind": "unrouted", "net": u["net"], "refs": [u["a"]["ref"], u["b"]["ref"]]}, filters)
         ]
-        # the same cursor / limit page the airwires (finding 24: a cut list looked complete)
-        upage = chunk_by_budget(unrouted, args.cursor, args.limit)
-        data["connectivity"] = {
+        connectivity = {
             "provider": conn.provider_used(install),
-            "unrouted": upage.items,
             "unrouted_total": len(unrouted),
-            "unrouted_returned": len(upage.items),
-            "truncated": len(upage.items) < len(unrouted),
-            "next_cursor": upage.next_cursor,
             "nets_with_unrouted": sorted({u["net"] for u in unrouted if u["net"]}),
         }
-        if upage.next_cursor is not None:
-            data["next_cursor"] = data["next_cursor"] or upage.next_cursor
-            warnings.append(
-                f"connectivity.unrouted lists {len(upage.items)} of {len(unrouted)} airwires; continue with "
-                f"cursor={upage.next_cursor!r} (cursor/limit page items and airwires alike)"
-            )
         for d in conn.degraded:
             if d not in degraded:
                 degraded.append(d)
         warnings.extend(conn.warnings)
+
+    def render(it: dict[str, Any]) -> dict[str, Any]:
+        return prune(it, args.detail, KEEP[it["kind"]])
+
+    data: dict[str, Any] = {
+        "ok": True,
+        "board": project.board.name,
+        "kinds": list(args.kinds),
+        "filters": filters.to_dict(),
+        "detail": args.detail,
+        "counts": counts,
+        "total": len(items),
+        "returned": 0,
+        "next_cursor": None,
+        "page_chars": 0,
+        "items": [],
+        "outline": outline,
+        "rules": rules,
+        "connectivity": connectivity,
+        "plan": outcome.plan.to_dict(),
+    }
+    if args.out_path is not None or args.format == "ndjson":
+        # the complete result in one call (review item 6): nothing is paged, nothing is skipped
+        if args.cursor:
+            warnings.append("cursor ignored: out_path / format='ndjson' writes the complete result")
+        path = resolve_out_file(
+            args.out_path,
+            storage_home=ctx.services.storage_home,
+            project_dir=project.dir,
+            project_name=project.name,
+            stem=f"{project.name}-pcb_get",
+            fmt=args.format,
+        )
+        header = {
+            "tool": "kw_pcb_get",
+            "board": project.board.name,
+            "board_sha8": version,
+            "provider_used": outcome.provider_used(install),
+            "kinds": list(args.kinds),
+            "filters": filters.to_dict(),
+            "detail": args.detail,
+            "counts": counts,
+            "total": len(items),
+            "unrouted_total": None if unrouted is None else len(unrouted),
+        }
+        sections: dict[str, Any] = {"items": [render(it) for it in items]}
+        sections.update({"outline": outline, "rules": rules, "connectivity": connectivity})
+        if unrouted is not None:
+            sections["unrouted"] = unrouted
+        data["out"] = write_result_file(path, args.format, header, sections)
+        if connectivity is not None:
+            connectivity.update(
+                {"unrouted": [], "unrouted_returned": 0, "truncated": False, "next_cursor": None}
+            )
+    else:
+        lanes = [Lane("i", items, render)]
+        if unrouted is not None:
+            lanes.append(Lane("u", unrouted, depth=4))  # data > connectivity > unrouted > airwire
+        mp = page_lanes(
+            lanes, args.cursor, args.limit, version=version, budget_chars=singleton_budget(outline, rules)
+        )
+        data.update(
+            {
+                "returned": len(mp.pages["i"]),
+                "next_cursor": mp.next_cursor,
+                "page_chars": mp.chars,
+                "items": mp.pages["i"],
+            }
+        )
+        if connectivity is not None:
+            connectivity.update(
+                {
+                    "unrouted": mp.pages["u"],
+                    "unrouted_offset": mp.starts["u"],
+                    "unrouted_returned": len(mp.pages["u"]),
+                    "truncated": mp.more("u"),
+                    # the same composite cursor as data.next_cursor while airwires remain (never a
+                    # second, disagreeing cursor)
+                    "next_cursor": mp.next_cursor if mp.more("u") else None,
+                }
+            )
+        hint = mp.warning(args.limit, {"i": "items", "u": "connectivity.unrouted"})
+        if hint:
+            warnings.append(hint)
     return Receipt(
         provider_used=outcome.provider_used(install),
         degraded=degraded,

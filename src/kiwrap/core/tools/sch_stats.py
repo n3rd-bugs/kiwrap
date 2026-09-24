@@ -21,7 +21,7 @@ from kiwrap.core import planner
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
 from kiwrap.core.state.receipts import ReceiptOut
-from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, read_state
+from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, effective_target, read_state
 from kiwrap.core.tools._data import external_tags, mm, mm_pair, pick, rec, ref_key
 from kiwrap.core.tools.pcb_get import ProviderArg
 from kiwrap.core.tools.sch_get import read_netlist, read_schematic, schematic_items
@@ -121,7 +121,7 @@ def sch_stats(ctx: ToolContext, args: SchStatsArgs) -> Receipt:
             f"root schematic {project.root_sch.name} is missing",
             fix="kw_project create writes it",
         )
-    install = ctx.services.install(state.target_kicad)
+    install = effective_target(ctx, project, state, for_write=False, allow_newer=True).install
     caps = ctx.services.caps(install)
     config = ctx.services.config_root(install)
     prefer = None if args.provider == "auto" else args.provider

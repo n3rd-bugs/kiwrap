@@ -45,7 +45,7 @@ from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project, ProjectState
 from kiwrap.core.state.receipts import ReceiptOut
 from kiwrap.core.state.stages import sha256_file
-from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, read_state
+from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, effective_target, read_state
 from kiwrap.core.tools._data import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
@@ -276,7 +276,7 @@ def pcb_check(ctx: ToolContext, args: PcbCheckArgs) -> Receipt:
         raise KiwrapError(
             "E_PROJECT_NOT_FOUND", f"board {project.board.name} is missing", fix="kw_project create writes it"
         )
-    install = ctx.services.install(state.target_kicad)
+    install = effective_target(ctx, project, state, for_write=False, allow_newer=True).install
     caps = ctx.services.caps(install)
     config = ctx.services.config_root(install)
     filters = Filters.from_args(args)

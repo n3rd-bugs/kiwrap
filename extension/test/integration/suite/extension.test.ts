@@ -34,11 +34,21 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
   let api: KiwrapApi;
   const workspace = process.env.KIWRAP_IT_WORKSPACE ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
   const projectDir = path.join(workspace, 'ecc83');
+  /** D21 consent modals the server's errors raised during the suite (answered Cancel: a test host cannot click). */
+  const consentAsked: string[] = [];
 
   before(async () => {
     const ext = vscode.extensions.getExtension<KiwrapApi>(EXTENSION_ID);
     assert.ok(ext, `extension ${EXTENSION_ID} not found`);
     api = await ext.activate();
+    const real = api.session.consentUi;
+    api.session.consentUi = {
+      ...real,
+      modal: async (message) => {
+        consentAsked.push(message);
+        return undefined;
+      },
+    };
     await api.whenReady();
   });
 
@@ -68,11 +78,14 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
 
   it('kiwrap.runErc and kiwrap.runDrc fill the Problems panel', async () => {
     await vscode.commands.executeCommand('kiwrap.runErc');
-    assert.ok(api.session.lastErc, 'ERC did not record a result');
+    assert.ok(api.session.lastErc, `ERC did not record a result${consentAsked.length ? ` (consent asked: ${consentAsked.join(' | ')})` : ''}`);
     assert.equal(typeof api.session.lastErc.numbers.errors, 'number');
 
+    // D22: the explicit DRC does not save, so a project whose format an installed KiCad writes
+    // (the demo copy) never needs the D21 consent
     await vscode.commands.executeCommand('kiwrap.runDrc');
-    assert.ok(api.session.lastDrc, 'DRC did not record a result');
+    assert.ok(api.session.lastDrc, `DRC did not record a result${consentAsked.length ? ` (consent asked: ${consentAsked.join(' | ')})` : ''}`);
+    assert.deepEqual(consentAsked, [], 'no format consent for a project an installed KiCad writes');
     assert.equal(typeof api.session.lastDrc.numbers.must_fix, 'number');
 
     const diags = kiwrapDiagnostics();
@@ -95,7 +108,7 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
     assert.equal(counts.drc.errors + counts.drc.warnings + counts.drc.infos, drc.length);
   });
 
-  it('the tree shows server, installs (default marked), engines, project with stage + numbers, live', () => {
+  it('the tree shows server, installs (newest marked), engines, project with stage + numbers, live', () => {
     const roots = api.tree.roots();
     const labels = roots.map(label);
     assert.deepEqual(labels.slice(0, 3), ['Server', 'KiCad installs', 'Engines']);
@@ -107,8 +120,8 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
 
     const installs = roots[1];
     assert.ok(installs.children.length >= 2, `installs: ${installs.children.map(label).join(', ')}`);
-    const defaults = installs.children.filter((c) => /\bdefault\b/.test(String(c.description)));
-    assert.equal(defaults.length, 1, `exactly one row is the default (finding 18): ${installs.children.map((c) => `${label(c)} [${c.description}]`).join(', ')}`);
+    const newest = installs.children.filter((c) => /\bnewest\b/.test(String(c.description)));
+    assert.equal(newest.length, 1, `exactly one row is the newest (finding 18): ${installs.children.map((c) => `${label(c)} [${c.description}]`).join(', ')}`);
     assert.ok(!installs.children.some((c) => String(c.description).includes('$(')), 'no codicon syntax in descriptions');
     const perLabel = new Map<string, number>();
     for (const c of installs.children) { perLabel.set(label(c), (perLabel.get(label(c)) ?? 0) + 1); }
@@ -121,6 +134,9 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
     const project = roots[3];
     const fields = Object.fromEntries(project.children.map((c) => [label(c), String(c.description ?? '')]));
     assert.ok('stage' in fields, `fields: ${Object.keys(fields).join(', ')}`);
+    // D21: the effective target (or the pin / a note on a server without the fields) and the file format
+    assert.ok(fields['target KiCad'] && fields['target KiCad'].length > 0, `target KiCad: ${fields['target KiCad']}`);
+    assert.match(fields['file format'] ?? '', /(sch|pcb) \d{8}/);
     assert.notEqual(fields.stage, '?');
     assert.match(fields.ERC, /^(ok|FAIL) errors=\d+ warnings=\d+/);
     assert.match(fields.DRC, /^(ok|FAIL) must_fix=\d+ review=\d+ cosmetic=\d+ unconnected=\d+/);
@@ -129,6 +145,123 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
 
     const live = roots[4];
     assert.ok(String(live.description).length > 0);
+  });
+
+  it('an install row click reveals details and never changes kiwrap.kicadInstall; Select does (the one-click trap)', async () => {
+    const cfg = () => vscode.workspace.getConfiguration('kiwrap').get<string>('kicadInstall', '');
+    assert.equal(cfg(), '', "the integration workspace follows the project's format (D21)");
+    const installs = api.tree.roots()[1];
+    for (const row of installs.children) {
+      assert.equal(row.command, undefined, `${label(row)} has a click command`);
+      assert.equal(row.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed, `${label(row)} does not expand`);
+      assert.equal(row.contextValue, 'install');
+      const details = row.children.map(label);
+      assert.ok(details.includes('root') && details.includes('kicad-cli'), `${label(row)} details: ${details.join(', ')}`);
+    }
+    const stable = installs.children.find((c) => label(c).includes('10.0.6'));
+    assert.ok(stable);
+    try {
+      // the inline "Select" action and the context menu pass the tree element itself
+      await vscode.commands.executeCommand('kiwrap.selectInstall', stable);
+      assert.equal(cfg(), stable.value);
+      const again = api.tree.roots()[1].children.find((c) => label(c) === label(stable));
+      assert.match(String(again?.description), /\bselected\b/);
+      assert.equal((again?.iconPath as vscode.ThemeIcon | undefined)?.id, 'star-full');
+    } finally {
+      await vscode.commands.executeCommand('kiwrap.selectInstall', '');
+    }
+    assert.equal(cfg(), '');
+  });
+
+  it('Upgrade project file format asks with the D21 modal first (Cancel changes nothing)', async function () {
+    const st = await api.session.refreshProject();
+    const newest = api.session.env?.installs[0];
+    assert.ok(st && newest);
+    if (st.epochs.sch === newest.capabilities?.['formats.sch'] && st.epochs.pcb === newest.capabilities?.['formats.pcb']) {
+      this.skip(); // the demo copy is already in the newest format: the command only says so
+    }
+    const asked: { message: string; buttons: string[] }[] = [];
+    const saved = api.session.consentUi;
+    const pcb = path.join(projectDir, 'ecc83-pp.kicad_pcb');
+    const stamp = fs.statSync(pcb).mtimeMs;
+    api.session.consentUi = {
+      ...saved,
+      modal: async (message, _detail, buttons) => {
+        asked.push({ message, buttons });
+        return undefined; // Cancel
+      },
+    };
+    try {
+      await vscode.commands.executeCommand('kiwrap.upgradeProject');
+    } finally {
+      api.session.consentUi = saved;
+    }
+    assert.equal(asked.length, 1);
+    assert.match(asked[0].message, /^ecc83-pp is in KiCad .* format and .*(can|still) writes? it\. Upgrade the project files to KiCad .* format\? .* will no longer open them\.$/);
+    assert.equal(asked[0].buttons[0], 'Upgrade');
+    assert.match(asked[0].buttons[1], /^(Install|Use) KiCad/);
+    assert.equal(asked[0].buttons[2], 'Cancel');
+    assert.equal(fs.statSync(pcb).mtimeMs, stamp, 'Cancel wrote nothing');
+  });
+
+  it('review item 1 live: a 10.0 project pinned to 10.99 asks before a saving DRC; "Use KiCad 10.0.6" keeps its format', async function () {
+    // KiCad's own 10.0 demo (pic_programmer: pcb 20260206), copied at test time (CLAUDE.md corpus rule)
+    const stable = api.session.env?.installs.find((i) => i.version === '10.0.6');
+    const nightly = api.session.env?.installs.find((i) => i.version.startsWith('10.99'));
+    if (!stable || !nightly) {
+      this.skip();
+    }
+    const demo = path.join(stable!.share, 'demos', 'pic_programmer');
+    if (!fs.existsSync(path.join(demo, 'pic_programmer.kicad_pro'))) {
+      this.skip();
+    }
+    const dir = path.join(workspace, 'pic_programmer');
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.cpSync(demo, dir, { recursive: true });
+    const pro = path.join(dir, 'pic_programmer.kicad_pro');
+    const pcb = path.join(dir, 'pic_programmer.kicad_pcb');
+    const before = fs.readFileSync(pcb);
+    const server = await api.session.ready();
+    try {
+      await server.projectRetarget(pro, nightly!.root);
+    } catch (err) {
+      // a server without kw_project(action='retarget') (contract (c)) cannot build the scenario
+      console.log(`[it] retarget unavailable: ${(err as Error).message}`);
+      this.skip();
+    }
+    const saved = api.session.consentUi;
+    const asked: { message: string; buttons: string[] }[] = [];
+    let answer: (buttons: string[]) => string | undefined = () => undefined;
+    api.session.consentUi = {
+      ...saved,
+      modal: async (message, _detail, buttons) => {
+        asked.push({ message, buttons });
+        return answer(buttons);
+      },
+    };
+    try {
+      // Cancel: nothing is written, the error is the handled consent error
+      await assert.rejects(server.pcbDrc(pro, { save_board: true }), (err: unknown) => {
+        const e = err as { code?: string; handled?: boolean };
+        assert.equal(e.code, 'E_FORMAT_UPGRADE_REQUIRED', String(err));
+        assert.equal(e.handled, true);
+        return true;
+      });
+      assert.equal(asked.length, 1);
+      assert.match(asked[0].message, /^pic_programmer is in KiCad 10\.0 format and installed KiCad 10\.0\.6 still writes it\. Upgrade the project files to KiCad 10\.99 format\? KiCad 10\.0 will no longer open them\.$/);
+      assert.deepEqual(asked[0].buttons, ['Upgrade', 'Use KiCad 10.0.6', 'Cancel']);
+      assert.ok(fs.readFileSync(pcb).equals(before), 'Cancel left the board byte-identical');
+      // "Use KiCad 10.0.6": pinned back, the DRC is retried on 10.0.6 and the format stays 10.0
+      answer = (buttons) => buttons.find((b) => b.startsWith('Use KiCad'));
+      const r = await server.pcbDrc(pro, { save_board: true });
+      assert.equal(typeof r.data.must_fix, 'number');
+      assert.equal(asked.length, 2);
+      assert.match(fs.readFileSync(pcb, 'utf8').slice(0, 200), /\(version 20260206\)/, 'the board keeps the KiCad 10.0 format');
+      const st = await server.projectStatus(pro);
+      assert.equal(st.data.target_kicad, '10.0.6');
+    } finally {
+      api.session.consentUi = saved;
+    }
   });
 
   it('opens the read-only preview editor for the board', async () => {

@@ -45,7 +45,14 @@ from pydantic import BaseModel, Field, field_validator
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
 from kiwrap.core.state.receipts import png_size
-from kiwrap.core.tools._base import DESTRUCTIVE, ToolContext, ToolSpec, read_state, to_kiwrap_error
+from kiwrap.core.tools._base import (
+    DESTRUCTIVE,
+    ToolContext,
+    ToolSpec,
+    effective_target,
+    read_state,
+    to_kiwrap_error,
+)
 
 Action = Literal["launch", "attach", "status", "screenshot", "detach", "raise"]
 Editor = Literal["pcb", "sch", "project"]
@@ -123,7 +130,12 @@ class LiveArgs(BaseModel):
         ),
     )
     target_kicad: str | None = Field(
-        default=None, description="launch: install to use (default: the project's target KiCad)"
+        default=None,
+        description=(
+            "launch: install to use (default: the project's KiCad - the pinned target, else the one writing the "
+            "files' own format); a KiCad writing a newer format than the files is refused unless the user agrees "
+            "to upgrade the project"
+        ),
     )
     helper: HelperArg | None = Field(
         default=None, description="attach: the helper endpoint the extension started"
@@ -184,9 +196,13 @@ def _receipt(
 
 
 def _install_for(ctx: ToolContext, project: Project, args: LiveArgs) -> tuple[Any, Any, Any]:
+    """The GUI to launch: `target_kicad`, else the project's effective target (D21: the KiCad that
+    writes the files' own format - review item 1 (f): launch used to pick the newest GUI). The GUI
+    saves (the user's Ctrl+S, every ipc11 write through the bound session), so a GUI whose format
+    is newer than the files is a write: the user is asked to upgrade first, or E_FORMAT_UPGRADE_
+    REQUIRED names the matching KiCad to install."""
     state, _ = read_state(project)
-    spec = args.target_kicad or state.target_kicad
-    install = ctx.services.install(spec)
+    install = effective_target(ctx, project, state, for_write=True, prefer=args.target_kicad or None).install
     caps = ctx.services.caps(install)
     # the GUI needs the API flag in its seed; the tools' kicad-cli root is the same root, which
     # keeps the sandbox's per-install state (window layout, fp-info-cache) in one place

@@ -8,7 +8,10 @@
  *                        any earlier workspace, the checkout the VSIX was built from
  *  kiwrap.storageHome    kiwrap's state directory (`--storage-home`); empty = kiwrap's own default
  *                        (KIWRAP_HOME / %LOCALAPPDATA%\kiwrap), shared with the agent's server
- *  kiwrap.kicadInstall   the KiCad to target for new projects (a version spec kw_env lists); empty = newest
+ *  kiwrap.kicadInstall   the KiCad to use (a version spec kw_env lists, or an install root); empty or
+ *                        "project" = let kiwrap pick the KiCad matching the project's file format
+ *                        (D21, review item 1 fix layer 2: it used to mean "newest", which re-stamped
+ *                        a 10.0 project as 10.99 through the live launch)
  *  kiwrap.checkOnSave    re-run ERC / DRC when a .kicad_sch / .kicad_pcb is saved (default true)
  */
 import * as path from 'node:path';
@@ -16,6 +19,7 @@ import * as vscode from 'vscode';
 import { buildServerSpec, type LaunchSettings } from './kiwrapServer';
 import type { ServerSpec } from './mcpClient';
 import { type Candidate, type Checkout, firstCheckout, isKiwrapCheckout, readBuildOrigin } from './serverLocator';
+import { isProjectInstallSpec } from './status/installModel';
 
 export const SECTION = 'kiwrap';
 
@@ -115,9 +119,10 @@ export function serverSpec(): ServerSpec | undefined {
   return s ? buildServerSpec(s) : undefined;
 }
 
+/** The explicit install spec, or undefined when kiwrap should match the project's file format. */
 export function kicadInstallSetting(): string | undefined {
   const v = cfg<string>('kicadInstall', '').trim();
-  return v || undefined;
+  return isProjectInstallSpec(v) ? undefined : v;
 }
 
 export async function setKicadInstallSetting(value: string | undefined): Promise<void> {

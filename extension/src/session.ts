@@ -5,6 +5,8 @@
  */
 import { NOT_FOUND_FIX } from './serverLocator';
 import * as vscode from 'vscode';
+import { FormatConsent, type ConsentUi } from './consent';
+import { vscodeConsentUi } from './consentUi';
 import { KiwrapServer } from './kiwrapServer';
 import type { ClientState, ServerSpec } from './mcpClient';
 import { findProjects, type KicadProject } from './project';
@@ -45,10 +47,31 @@ export class KiwrapSession implements vscode.Disposable {
   lastDrc: ValidatorSummary | undefined;
   live: LiveState = { kind: 'idle' };
   busy = new Set<string>();
+  /**
+   * D21 consent (consent.ts): every call through the server's client gets the format-upgrade
+   * modal / E_FORMAT_NEWER / E_READONLY handling. `consentUi` is the window API it uses
+   * (replaceable by tests before the server is attached).
+   */
+  consentUi: ConsentUi;
+  readonly consent: FormatConsent;
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.output = vscode.window.createOutputChannel('KiCad (kiwrap)');
     context.subscriptions.push(this.output);
+    this.consentUi = vscodeConsentUi((line) => this.log(line));
+    // indirection so a replaced consentUi takes effect without re-creating the handler
+    const ui: ConsentUi = {
+      modal: (m, d, b) => this.consentUi.modal(m, d, b),
+      error: (m, b) => this.consentUi.error(m, b),
+      info: (m, b) => this.consentUi.info(m, b),
+      install: (h, v) => this.consentUi.install(h, v),
+      log: (l) => this.consentUi.log(l),
+    };
+    this.consent = new FormatConsent(ui, {
+      onProjectChanged: () => {
+        void this.refreshProject();
+      },
+    });
   }
 
   fire(): void {
@@ -85,6 +108,7 @@ export class KiwrapSession implements vscode.Disposable {
         this.fire();
       },
       clientInfo: { name: 'kiwrap-vscode', version: this.context.extension.packageJSON.version ?? '0.0.0' },
+      onToolError: this.consent.handle,
     });
     this.fire();
   }
@@ -152,7 +176,8 @@ export class KiwrapSession implements vscode.Disposable {
     try {
       const server = await this.ready();
       const r = await server.projectStatus(p.pro);
-      this.projectStatus = r.data;
+      // the format warnings of D21 live in data.warnings; an older server puts them on the receipt
+      this.projectStatus = { ...r.data, warnings: r.data.warnings ?? r.warnings ?? [] };
     } catch (err) {
       this.log(`kw_project status failed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -160,9 +185,19 @@ export class KiwrapSession implements vscode.Disposable {
     return this.projectStatus;
   }
 
-  /** The install the extension targets: the setting, else kw_env's default. */
-  selectedInstall(): string | undefined {
-    return kicadInstallSetting() ?? this.env?.default_install ?? undefined;
+  /** The install the user chose explicitly (kiwrap.kicadInstall), or undefined = match the project's format (D21). */
+  explicitInstall(): string | undefined {
+    return kicadInstallSetting();
+  }
+
+  /**
+   * The install kiwrap uses for the tracked project: the explicit setting, else the effective target
+   * `kw_project status` reports (target_effective, review item 1), else the pinned target.
+   * Undefined while the server has not said (kiwrap then picks by file format itself).
+   */
+  effectiveInstall(): string | undefined {
+    const st = this.projectStatus;
+    return kicadInstallSetting() ?? st?.target_effective ?? st?.target_kicad_effective ?? st?.target_kicad ?? undefined;
   }
 
   setBusy(key: string, on: boolean): void {

@@ -924,7 +924,8 @@ def test_pcb_get_chunking_is_deterministic(tmp_path: Path):
     h, _, project = harness(tmp_path)
     kinds = ["footprints", "pads", "tracks"]
     p1 = h.ok("kw_pcb_get", project=project, kinds=kinds, limit=5)["data"]
-    assert p1["total"] == 14 and p1["returned"] == 5 and p1["next_cursor"] == "5"
+    # the composite, board-versioned cursor (review item 6 / B3): `i<offset>@<board sha8>`
+    assert p1["total"] == 14 and p1["returned"] == 5 and p1["next_cursor"].startswith("i5@")
     p2 = h.ok("kw_pcb_get", project=project, kinds=kinds, limit=5, cursor=p1["next_cursor"])["data"]
     p3 = h.ok("kw_pcb_get", project=project, kinds=kinds, limit=5, cursor=p2["next_cursor"])["data"]
     assert p3["returned"] == 4 and p3["next_cursor"] is None

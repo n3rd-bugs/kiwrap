@@ -16,10 +16,22 @@ provider), `sheets` (sheet path or file name), `bbox_mm`. `detail`: summary (ide
 position), normal (+ pins with absolute endpoints and nets), full (+ fields/properties).
 Sheet paths are the human-readable instance paths (`/`, `/CH1/`) on both providers; a sheet file
 placed N times yields N items per wire/symbol, one per instance (reviewer findings 1/12).
+
+Paging (requests/kiwrap-feature-requests.review.md item 6, B3): `data.items` and `netlist.nets`
+share ONE composite cursor `i<offset>.n<offset>@<schematic sha8>` and one size budget
+(`_data.page_lanes`; the old shared offset skipped nets). `out_path` / `format='ndjson'` write the
+complete result to a file in one call.
+
+READ_ONLY is honest (review §3 small defects, theme T8): the kicad-cli netlist export writes into a
+throw-away folder under the storage home (`export_netlist_detached`), never `<root>.net` beside the
+schematic; `provider='cli'` selects the kicad-cli netlist (the schematic items are then read by the
+file provider: `schematic.read` has no cli provider, and a CLI request starts no api-server).
 """
 
 from __future__ import annotations
 
+import shutil
+import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal
@@ -30,26 +42,32 @@ from kiwrap.core import planner
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
 from kiwrap.core.state.receipts import ReceiptOut
-from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, read_state
+from kiwrap.core.tools._base import READ_ONLY, ToolContext, ToolSpec, effective_target, read_state
 from kiwrap.core.tools._data import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
     PIN_TYPES,
     Detail,
     Filters,
+    Lane,
+    OutFormat,
     canonical,
-    chunk_by_budget,
     count_by,
     external_tags,
+    file_version,
     matches,
     mm,
     mm_pair,
     net_name,
+    page_lanes,
     pick,
     prune,
     rec,
     ref_key,
+    resolve_out_file,
     sheet_key,
+    singleton_budget,
+    write_result_file,
 )
 from kiwrap.core.tools.pcb_get import ProviderArg, ipc_session
 
@@ -513,6 +531,18 @@ def read_schematic(
     )
 
 
+def export_netlist_detached(ctx: ToolContext, install: Any, config: Any, sch: Path) -> Any:
+    """kicad-cli's netlist export into a throw-away folder under the storage home, removed after
+    parsing. Without `out` the backend writes `<root>.net` beside the schematic: the review found a
+    319 KB `.net` left in the project by the READ_ONLY kw_sch_get (§3 small defects, item 2)."""
+    folder = Path(ctx.services.storage_home) / "tmp" / "netlist" / uuid.uuid4().hex[:12]
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        return ctx.services.export_netlist(install, config, sch, folder / f"{sch.stem}.net")
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
 def read_netlist(
     ctx: ToolContext, install: Any, caps: Any, config: Any, sch: Path, *, ipc_model: Any, prefer: str | None
 ) -> planner.Outcome[dict[str, Any]]:
@@ -532,7 +562,7 @@ def read_netlist(
         caps,
         {
             planner.IPC11: from_ipc,
-            planner.CLI: lambda: norm_netlist(ctx.services.export_netlist(install, config, sch)),
+            planner.CLI: lambda: norm_netlist(export_netlist_detached(ctx, install, config, sch)),
             planner.FILE: lambda: norm_netlist(
                 ctx.services.netlist_from_file(
                     ctx.services.file_read_schematic(sch),
@@ -570,10 +600,36 @@ class SchGetArgs(BaseModel):
         default=None, description="[x1, y1, x2, y2] in mm (sheet coordinates)"
     )
     detail: Detail = Field(default="normal", description="summary | normal (+ pins) | full (+ fields)")
-    cursor: str | None = Field(default=None, description="continue a chunked listing")
-    limit: int = Field(default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="items per page")
+    cursor: str | None = Field(
+        default=None,
+        description=(
+            "continue a chunked listing: the previous data.next_cursor, unchanged (one opaque cursor pages items "
+            "AND netlist.nets; a cursor from before a schematic edit is E_STALE)"
+        ),
+    )
+    limit: int = Field(
+        default=DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="entries per page, per list (items, nets)"
+    )
     provider: ProviderArg = Field(
-        default="auto", description="auto (ipc11 when available, else file), or force one"
+        default="auto",
+        description=(
+            "auto (ipc11 when available, else file), or force one; 'cli' forces the kicad-cli netlist (the "
+            "schematic items are then read by the file provider)"
+        ),
+    )
+    out_path: str | None = Field(
+        default=None,
+        description=(
+            "write the COMPLETE result (every matching item and net, no paging) to this absolute file "
+            "(.json/.ndjson/.jsonl/.txt) or existing directory; 'auto' = a file under the kiwrap storage home"
+        ),
+    )
+    format: OutFormat = Field(
+        default="json",
+        description=(
+            "file format with out_path: json (one document) or ndjson (a header line, then one JSON object per "
+            "item / net / singleton, each with `kind`); format='ndjson' without out_path writes to 'auto'"
+        ),
     )
 
 
@@ -586,10 +642,13 @@ class SchGetData(BaseModel):
     counts: dict[str, int]
     total: int
     returned: int
-    next_cursor: str | None = None
+    next_cursor: str | None = Field(
+        default=None, description="null only when items AND netlist.nets are exhausted"
+    )
     items: list[dict[str, Any]]
     hierarchy: dict[str, Any] | None = None
     netlist: dict[str, Any] | None = None
+    out: dict[str, Any] | None = Field(default=None, description="the file written with out_path / ndjson")
     plan: dict[str, Any]
 
 
@@ -606,13 +665,18 @@ def sch_get(ctx: ToolContext, args: SchGetArgs) -> Receipt:
             f"root schematic {project.root_sch.name} is missing",
             fix="kw_project create writes it; if you renamed files, keep the .kicad_pro stem",
         )
-    install = ctx.services.install(state.target_kicad)
+    install = effective_target(ctx, project, state, for_write=False, allow_newer=True).install
     caps = ctx.services.caps(install)
     config = ctx.services.config_root(install)
     filters = Filters.from_args(args)
     prefer = None if args.provider == "auto" else args.provider
+    # `schematic.read` has no cli provider: 'cli' forces the kicad-cli NETLIST, and the items come
+    # from the file reader (no api-server for a CLI request; review §3 small defects:
+    # kinds=['netlist'], provider='cli' was E_BAD_ARGS although the netlist op has one)
+    read_prefer = planner.FILE if prefer == planner.CLI else prefer
+    version = file_version(*project.schematic_files())  # the cursor's @<sha8>
 
-    outcome = read_schematic(ctx, install, caps, config, project.root_sch, prefer=prefer)
+    outcome = read_schematic(ctx, install, caps, config, project.root_sch, prefer=read_prefer)
     model = outcome.value
     degraded, warnings = external_tags(external) + list(outcome.degraded), list(outcome.warnings)
     lists = schematic_items(model)
@@ -665,12 +729,30 @@ def sch_get(ctx: ToolContext, args: SchGetArgs) -> Receipt:
         if kind in args.kinds:
             items.extend(it for it in lists[kind] if matches(it, filters))
     counts = count_by(items, "kind")
-    paged = chunk_by_budget(
-        items, args.cursor, args.limit, render=lambda it: prune(it, args.detail, KEEP[it["kind"]])
+    hierarchy = (
+        schematic_hierarchy(model, lists, project.name, project.root_sch.name)
+        if "hierarchy" in args.kinds
+        else None
     )
-    page, nxt = paged.items, paged.next_cursor
-    if paged.warning(args.limit):
-        warnings.append(paged.warning(args.limit) or "")
+    nets_all: list[dict[str, Any]] | None = None
+    netlist_out: dict[str, Any] | None = None
+    if "netlist" in args.kinds and netlist is not None and nl_outcome is not None:
+        netlist_out = dict(netlist)
+        nets_all = list(netlist_out["nets"])
+        if filters.nets or filters.refs:
+            nets_all = [
+                n
+                for n in nets_all
+                if (not filters.nets or n["name"] in filters.nets)
+                and (not filters.refs or any(x["ref"] in filters.refs for x in n["nodes"]))
+            ]
+        netlist_out["provider"] = nl_outcome.provider_used(install)
+        netlist_out["nets_total"] = len(nets_all)
+        netlist_out["nets"] = []
+
+    def render(it: dict[str, Any]) -> dict[str, Any]:
+        return prune(it, args.detail, KEEP[it["kind"]])
+
     data: dict[str, Any] = {
         "ok": True,
         "schematic": project.root_sch.name,
@@ -679,40 +761,75 @@ def sch_get(ctx: ToolContext, args: SchGetArgs) -> Receipt:
         "detail": args.detail,
         "counts": counts,
         "total": len(items),
-        "returned": len(page),
-        "next_cursor": nxt,
-        "page_chars": paged.chars,
-        "items": page,
-        "hierarchy": None,
-        "netlist": None,
+        "returned": 0,
+        "next_cursor": None,
+        "page_chars": 0,
+        "items": [],
+        "hierarchy": hierarchy,
+        "netlist": netlist_out,
         "plan": outcome.plan.to_dict(),
     }
-    if "hierarchy" in args.kinds:
-        data["hierarchy"] = schematic_hierarchy(model, lists, project.name, project.root_sch.name)
-    if "netlist" in args.kinds and netlist is not None and nl_outcome is not None:
-        nl = nl_outcome
-        netlist = dict(netlist)
-        if filters.nets or filters.refs:
-            netlist["nets"] = [
-                n
-                for n in netlist["nets"]
-                if (not filters.nets or n["name"] in filters.nets)
-                and (not filters.refs or any(x["ref"] in filters.refs for x in n["nodes"]))
-            ]
-        netlist["provider"] = nl.provider_used(install)
-        npage = chunk_by_budget(netlist["nets"], args.cursor, args.limit)
-        netlist["nets_total"] = len(netlist["nets"])
-        netlist["nets"] = npage.items
-        netlist["nets_returned"] = len(npage.items)
-        netlist["truncated"] = len(npage.items) < netlist["nets_total"]
-        netlist["next_cursor"] = npage.next_cursor
-        if npage.next_cursor is not None:
-            data["next_cursor"] = data["next_cursor"] or npage.next_cursor
-            warnings.append(
-                f"netlist.nets lists {len(npage.items)} of {netlist['nets_total']} nets; continue with "
-                f"cursor={npage.next_cursor!r} (cursor/limit page items and nets alike)"
+    if args.out_path is not None or args.format == "ndjson":
+        # the complete result in one call (review item 6): nothing is paged, nothing is skipped
+        if args.cursor:
+            warnings.append("cursor ignored: out_path / format='ndjson' writes the complete result")
+        path = resolve_out_file(
+            args.out_path,
+            storage_home=ctx.services.storage_home,
+            project_dir=project.dir,
+            project_name=project.name,
+            stem=f"{project.name}-sch_get",
+            fmt=args.format,
+        )
+        header = {
+            "tool": "kw_sch_get",
+            "schematic": project.root_sch.name,
+            "schematic_sha8": version,
+            "provider_used": outcome.provider_used(install),
+            "kinds": list(args.kinds),
+            "filters": filters.to_dict(),
+            "detail": args.detail,
+            "counts": counts,
+            "total": len(items),
+            "nets_total": None if nets_all is None else len(nets_all),
+        }
+        summary = None if netlist_out is None else {k: v for k, v in netlist_out.items() if k != "nets"}
+        sections: dict[str, Any] = {"items": [render(it) for it in items], "hierarchy": hierarchy}
+        sections["netlist"] = summary
+        if nets_all is not None:
+            sections["nets"] = nets_all
+        data["out"] = write_result_file(path, args.format, header, sections)
+        if netlist_out is not None:
+            netlist_out.update({"nets_returned": 0, "truncated": False, "next_cursor": None})
+    else:
+        lanes = [Lane("i", items, render)]
+        if nets_all is not None:
+            lanes.append(Lane("n", nets_all, depth=4))  # data > netlist > nets > net
+        summary = None if netlist_out is None else {k: v for k, v in netlist_out.items() if k != "nets"}
+        mp = page_lanes(
+            lanes, args.cursor, args.limit, version=version, budget_chars=singleton_budget(hierarchy, summary)
+        )
+        data.update(
+            {
+                "returned": len(mp.pages["i"]),
+                "next_cursor": mp.next_cursor,
+                "page_chars": mp.chars,
+                "items": mp.pages["i"],
+            }
+        )
+        if netlist_out is not None:
+            netlist_out.update(
+                {
+                    "nets": mp.pages["n"],
+                    "nets_offset": mp.starts["n"],
+                    "nets_returned": len(mp.pages["n"]),
+                    "truncated": mp.more("n"),
+                    "next_cursor": mp.next_cursor if mp.more("n") else None,
+                }
             )
-        data["netlist"] = netlist
+        hint = mp.warning(args.limit, {"i": "items", "n": "netlist.nets"})
+        if hint:
+            warnings.append(hint)
     return Receipt(
         provider_used=outcome.provider_used(install),
         degraded=degraded,

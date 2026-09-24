@@ -104,7 +104,9 @@ def test_return_minus_one_family_needs_an_input_file_or_a_marker(fake_install, f
         with pytest.raises(CliError) as ei:
             run_kicad_cli(fake_install, _args(code), config=fake_config)
         assert not isinstance(ei.value, CliLoadError)
-    assert runner.is_load_failure(255, ["kicad-cli", "pcb", "export", "svg"], "Unable to open this file", None)
+    assert runner.is_load_failure(
+        255, ["kicad-cli", "pcb", "export", "svg"], "Unable to open this file", None
+    )
     assert runner.is_load_failure(3, ["kicad-cli", "x"], "", None)
     assert not runner.is_load_failure(4, ["kicad-cli", "x"], "Unable to open this file", None)
     board = tmp_path / "proj" / "b.kicad_pcb"

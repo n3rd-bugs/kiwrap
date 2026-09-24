@@ -14,7 +14,7 @@ import { PreviewProvider } from './editors/previewProvider';
 import { activateLive, type LiveApi } from './live';
 import { KiwrapSession } from './session';
 import { NOT_FOUND_MESSAGE } from './serverLocator';
-import { initServerLocator, resolveServerCheckout, serverSpec } from './settings';
+import { initServerLocator, kicadInstallSetting, resolveServerCheckout, serverSpec } from './settings';
 import { KiwrapStatusBar } from './status/statusBar';
 import { KiwrapTree } from './status/tree';
 import type { LiveSessionData } from './types';
@@ -56,6 +56,8 @@ export function activate(context: vscode.ExtensionContext): KiwrapApi {
   const live = activateLive(context, {
     client: { callTool: (name, args) => session!.ready().then((s) => s.client.call(name, args)) },
     output: session.output,
+    // D21: empty kiwrap.kicadInstall = kw_live picks the project's effective target
+    targetKicad: () => kicadInstallSetting(),
   });
   context.subscriptions.push(
     live.sessions.onDidChange((state) => {

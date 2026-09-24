@@ -118,6 +118,7 @@ from kiwrap.core.tools._base import (
     Mutation,
     ToolContext,
     ToolSpec,
+    effective_target,
     mutation,
     read_state,
     to_kiwrap_error,
@@ -1378,6 +1379,9 @@ def prequeue_checks(
     _need_board(project)
     state, _external = read_state(project)
     check_gate(tool, state.stage, Force.parse(force))
+    # D21: the format question (consent prompt / E_FORMAT_UPGRADE_REQUIRED) is asked here, while the
+    # client is still in the call - a queued job has no one to ask
+    effective_target(ctx, project, state, for_write=True, kinds=("pcb",))
     engines_or_unsupported(ctx)
     if nets is not None or lock_refs:
         model = board_model(ctx, project)

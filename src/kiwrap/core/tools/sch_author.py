@@ -46,7 +46,15 @@ from kiwrap.core.tools._author import (
     schematic_writer,
     symbols_of,
 )
-from kiwrap.core.tools._base import DESTRUCTIVE, MUTATING, Mutation, ToolContext, ToolSpec, mutation
+from kiwrap.core.tools._base import (
+    DESTRUCTIVE,
+    MUTATING,
+    Mutation,
+    ToolContext,
+    ToolSpec,
+    effective_target,
+    mutation,
+)
 from kiwrap.core.tools._data import PIN_TYPES, canonical, mm, pick, rec, ref_key
 
 ProviderArg = Literal["auto", "ipc11", "file"]
@@ -90,7 +98,9 @@ def placement_dict(p: Any) -> dict[str, Any]:
 
 
 def _install(ctx: ToolContext, m: Mutation) -> tuple[Any, Any, Any]:
-    install = ctx.services.install(m.state.target_kicad)
+    """The install a schematic write runs on: it must write the sheets' own format (D21,
+    review item 1 (c)/(d)); else the user is asked to upgrade or E_FORMAT_UPGRADE_REQUIRED."""
+    install = effective_target(ctx, m.project, m.state, for_write=True, kinds=("sch",)).install
     return install, ctx.services.caps(install), ctx.services.config_root(install)
 
 

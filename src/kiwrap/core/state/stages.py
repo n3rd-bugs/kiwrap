@@ -10,6 +10,12 @@ Encodes docs/ARCHITECTURE.md §11:
 Which files feed a stage (`STAGE_INPUTS`): schematic-derived stages hash the `.kicad_sch` files,
 board-derived stages hash the `.kicad_pcb`. `created` and `sch_written` carry no validator
 result, so they never invalidate.
+
+Nothing here writes to disk: the functions change a `ProjectState` in memory and the caller saves
+it (`_base._finish` / `read_state`). Inside a non-persisting call (docs/DECISIONS.md D23) that
+state lives in `kiwrap.core.state.readonly`'s per-process store instead of `.kiwrap/state.json`, so
+a read-only session still advances and downgrades stages (a clean `kw_pcb_drc` opens the
+`kw_fab_export` gate) without writing the project.
 """
 
 from __future__ import annotations

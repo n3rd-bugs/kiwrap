@@ -151,9 +151,13 @@ class FakeServices:
     def gui_input_from_events(self, install: Any, caps: Any) -> bool:
         return False
 
-    # the generic services kw_live's launch uses
+    # the generic services kw_live's launch uses (effective_target, D21: the installs and their
+    # format epochs; these caps name none, so the fake install counts as writing any format)
     def install(self, spec: str | None) -> Any:
         return self.inst
+
+    def installs(self) -> list[Any]:
+        return [self.inst]
 
     class _Caps:
         def has(self, key: str) -> bool:

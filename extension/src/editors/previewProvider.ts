@@ -153,7 +153,7 @@ export class PreviewProvider implements vscode.CustomReadonlyEditorProvider<Prev
     let receipt: Receipt<RenderData>;
     if (kind === 'sch') {
       const sheet = this.sheetName(project, file);
-      receipt = await server.schRender(project.pro, { sheet, page: options.page, max_px: 1024 });
+      receipt = await server.schRender(project.pro, { sheet, page: options.page, max_px: 1024 }, { interactive: false });
     } else {
       if (path.basename(file).toLowerCase() !== `${project.name.toLowerCase()}.kicad_pcb`) {
         throw new KiwrapError({
@@ -162,7 +162,7 @@ export class PreviewProvider implements vscode.CustomReadonlyEditorProvider<Prev
           fix: 'kw_pcb_render renders the project board; open the .kicad_pcb that shares the .kicad_pro stem',
         });
       }
-      receipt = await server.pcbRender(project.pro, { view: options.view, side: options.side, max_px: 1024 });
+      receipt = await server.pcbRender(project.pro, { view: options.view, side: options.side, max_px: 1024 }, { interactive: false });
     }
     const d = receipt.data;
     const degraded = receipt.degraded.length ? ` degraded: ${receipt.degraded.join(', ')}` : '';

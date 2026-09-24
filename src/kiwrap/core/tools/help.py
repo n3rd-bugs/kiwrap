@@ -26,7 +26,7 @@ ERROR_PAGES: dict[str, str] = {
         "`oldest_kicad_with_it`; `candidates` lists the installed KiCads that have it, and `fix` is the "
         "`kw_project(action='create', target_kicad=...)` call that retargets. Examples: ERC/DRC via "
         "kicad-cli need `cli.has_erc`/`cli.has_drc`; 3D renders need `cli.has_render` (the tool then "
-        "returns the 2d layer plot itself); `kw_project upgrade` is a Phase 1 feature."
+        "returns the 2d layer plot itself); `kw_project upgrade` needs `cli.has_sch_pcb_upgrade` (KiCad 10+)."
     ),
     "E_PROJECT_NOT_FOUND": (
         "`project` must be an existing directory holding exactly one `.kicad_pro`, or the `.kicad_pro` path "
@@ -41,8 +41,9 @@ ERROR_PAGES: dict[str, str] = {
         "kicad-cli exited with an error. `data.stderr`/`data.returncode` carry the details. Exit codes "
         "(verified): 0 ok, 1 bad arguments, 2 unknown, 3 invalid input file (also: file written by a newer "
         "KiCad), 4 output conflict, 5 ERC/DRC violations with --exit-code-violations (handled, not an error), "
-        "6 jobset failed; 7/8 report a newer file as 127 / -1. Check `kw_project(action='status')`: the "
-        "`epochs` must not exceed what `target_kicad` writes."
+        "6 jobset failed; 7/8 report a newer file as 127 / -1. A file newer than the KiCad is normally caught "
+        "before KiCad runs (E_FORMAT_NEWER); `kw_project(action='status')` shows `epochs`, `target_effective` "
+        "and `epoch_match`."
     ),
     "E_FILE_LOCKED": (
         "Either KiCad holds a `~<file>.lck` next to a design file (close it in KiCad; kiwrap closes its own "
@@ -99,7 +100,118 @@ ERROR_PAGES: dict[str, str] = {
         "An unexpected exception inside kiwrap (git failure, unreadable state file, bug). `data.traceback` "
         "is included; report it. `kw_snapshot(action='restore')` undoes any half-applied change."
     ),
+    "E_FORMAT_UPGRADE_REQUIRED": (
+        "A write would save the project's schematic / board in a NEWER KiCad file format than the files have, "
+        "and the KiCad that wrote them could then no longer open the project (docs/DECISIONS.md D21). kiwrap "
+        "never does that without the user's consent: a client with MCP elicitation was asked (`data.answer` = "
+        "`decline` / `cancel` when they said no); otherwise nothing was written. `data`: `project`, "
+        "`files[{path, kind, stamp}]`, `project_epoch`, `project_kicad` (the KiCad line of the files, e.g. 10.0), "
+        "`candidates[{version, formats}]` (every installed KiCad), `upgrade_to` (the KiCad whose format the files "
+        "would get), `install_hint` (e.g. `winget install KiCad.KiCad --version 10.0.6`, when the release is known) "
+        "and - when the stamp guard rolled back a write that had already happened - `guard{files, restored, "
+        "snapshot, written_by}`, `mixed` (the files already mix KiCad formats: the message then names each file "
+        "that would be converted instead of one KiCad line). **Ask the user; never work around it** (no hand "
+        "edits, no other provider). The error's `example` is the non-committing "
+        "`kw_project(action='upgrade', project=..., dry_run=true)`: it converts a copy and reports the ERC/DRC "
+        "counts before and after, which you can show the user. Only if they agree: "
+        "`kw_project(action='upgrade', project=..., confirm=true)` (converted on a copy, ERC/DRC before / "
+        "after, a snapshot first, then the install is pinned) and retry the call; no -> install the KiCad in "
+        "`install_hint` (kiwrap then picks it by itself), or, when the error's `candidates` name an installed "
+        "KiCad that writes the files' format, `kw_project(action='retarget', target_kicad=<it>)`. Reads never "
+        "raise it. `kw_help(topic='formats')` has the policy."
+    ),
+    "E_FORMAT_NEWER": (
+        "The design files are newer than the KiCad the call would run on (KiCad refuses them: kicad-cli exits 3 "
+        "'created with a more recent version'). `data.needed_kicad` names the KiCad line of the files, "
+        "`candidates` the installed KiCads that read them, `data.install_hint` how to install one. Fix: "
+        "`kw_project(action='retarget', target_kicad=<a candidate>)` (or `'auto'` to follow the files' format), "
+        "or install a newer KiCad. Reads served by the file provider (`kw_pcb_get`, `kw_sch_get`, `kw_pcb_check`, "
+        "`kw_sch_stats` with provider auto / file) still answer."
+    ),
+    "E_STALE": (
+        "A stored result or a paging cursor belongs to an older version of the file. `data.reason`: `no_result` "
+        "(`kw_pcb_drc(action='report')` before any stored run - run `kw_pcb_drc` first), `board_changed` (the "
+        "board changed since the stored DRC - run `kw_pcb_drc` again, then report), `cursor_version` (the file "
+        "changed between two pages of `kw_pcb_get` / `kw_sch_get` / a DRC report - start again without `cursor`). "
+        "Pass cursors back verbatim; a malformed one is E_BAD_ARGS."
+    ),
+    "E_READONLY": (
+        "The call would write the project, and it runs read-only (D23): the server was started with "
+        "`kiwrap serve --readonly` / `KIWRAP_READONLY=1` (`data.mode='server'`), or the call passed "
+        "`persist=false` (`data.mode='call'`). `data.reason` says what would have been written. In a read-only "
+        "server tell the user the change needs a writable kiwrap - never work around it by editing files; with "
+        "`persist=false` drop the flag to make the change (it is snapshotted and undoable). What still works "
+        "read-only is in `candidates`; `kw_help(topic='readonly')` has the whole list."
+    ),
 }
+
+#: kw_help(topic='readonly'): D23 read-only mode (requests/kiwrap-feature-requests.review.md item 2)
+READONLY_PAGE = (
+    "# Read-only mode (D23)\n\n"
+    "A read-only call writes nothing into the project: no snapshot, no `.kiwrap/` directory or state, no saved "
+    "zone refill, no report or export inside the project directory, and the `.kicad_prl` KiCad rewrites is put "
+    "back. Use it to review a project you do not own.\n\n"
+    "**Turn it on:** `kiwrap serve --readonly` (or `KIWRAP_READONLY=1`) makes every call of that server read-only; "
+    "on a normal server pass `persist=false` to any single call (every tool has the argument). A read-only server "
+    "ignores `persist=true`.\n\n"
+    "**What runs:** every read tool (`kw_env`, `kw_sch_get`, `kw_sch_stats`, `kw_sch_diff`, `kw_pcb_get`, "
+    "`kw_pcb_check`, `kw_sch_render`, `kw_pcb_render`, `kw_lib_search`, `kw_lib_info`, `kw_help`, `kw_job`), the "
+    "validators `kw_sch_check` and `kw_pcb_drc` (zones are refilled in memory; `save_board=true` is refused), "
+    "`kw_fab_bom` and `kw_fab_export`, `kw_project(action='status')` and `kw_project(action='upgrade', "
+    "dry_run=true)`, `kw_snapshot(action='list'|'diff')`, `kw_intent(action='get'|'diff')` and "
+    "`kw_live(action='status'|'screenshot'|'raise'|'detach')`.\n\n"
+    "**Annotations:** MCP tool annotations are per tool, so `kw_project` is advertised `destructiveHint: true` "
+    "(its `upgrade` replaces design files) although `status` and `upgrade(dry_run=true)` only read; likewise "
+    "`kw_pcb_drc` (for `save_board=true`) and `kw_fab_export`. A client that confirms destructive tools asks for "
+    "those read-only actions too; the list above is what a read-only server really runs.\n\n"
+    "**What is refused (E_READONLY):** every authoring tool (`kw_sch_*` edits, `kw_pcb_setup`, `kw_pcb_sync`, "
+    "`kw_pcb_place`, `kw_pcb_zones`, `kw_pcb_route`, `kw_pcb_route_auto`, `kw_pcb_fix`), `kw_project` "
+    "create / retarget / upgrade, `kw_snapshot` create / restore, `kw_intent` set / clear, `kw_live` launch / "
+    "attach, `kw_pcb_drc(save_board=true)`.\n\n"
+    "**Where outputs go:** reports and exports go to a per-call directory under kiwrap's storage home, "
+    "`<storage>/results/<project>-<hash>/<time>-<id>/` (the newest 20 per project are kept, at most 24 h), or to "
+    "the absolute `out_dir` you pass. The receipt's `data.readonly` says `mode` (server | call), `results_dir`, "
+    "and anything the call's project guard had to undo: `relocated` (a file written into the project, moved to the "
+    "results directory - receipt paths point at the new place), `restored` (a changed file put back), `left` (a "
+    "change the guard did not undo because a KiCad editor or another kiwrap process was writing the project).\n\n"
+    "**Stages still work:** the stage, hashes and validator history of a read-only session live in the server's "
+    "memory - a clean `kw_pcb_drc` opens the `kw_fab_export` gate for that session - and are dropped when "
+    "`.kiwrap/state.json` changes on disk. The project lock is `.kiwrap/lock` when the project already has "
+    "`.kiwrap/`, else a lock file under the storage home. `snapshot` is null in every read-only receipt, and a "
+    "read-only server withholds a `next_suggested` it could not run (`data.readonly.next_suggested_withheld`)."
+)
+
+#: kw_help(topic='formats'): which KiCad a project runs on (D21, review item 1)
+FORMATS_PAGE = (
+    "# File formats and the KiCad a project runs on (D21)\n\n"
+    "Every `.kicad_sch` / `.kicad_pcb` carries a `(version N)` stamp; a KiCad refuses files stamped newer than "
+    "it writes, and every KiCad saves in its own (newest) format. So kiwrap picks, per call "
+    "(`kw_project(action='status')` shows it as `target_effective` + `target_source`):\n\n"
+    "1. the pinned KiCad (`target_source` `created` by `kw_project create`, `pinned` by `retarget` / `upgrade`);\n"
+    "2. else the newest installed point release that writes the files' own format (`file_epoch`) - a 10.0 "
+    "project runs on the newest 10.0.x even when 10.99 / 11 is installed;\n"
+    "3. else the nearest newer KiCad that reads them, for READS only (`file_epoch_newer_readonly`, `epoch_match: "
+    "false`, a warning names the missing KiCad and its `install_hint`).\n\n"
+    "**A write that would save the files in a newer format asks the user first** (MCP elicitation where the "
+    "client supports it; the VS Code extension shows a modal): 'Upgrade <project> from KiCad <x> format to "
+    "KiCad <y>? KiCad <x> will no longer open it. Alternatively install KiCad <x>.' Without a yes the call "
+    "fails with `E_FORMAT_UPGRADE_REQUIRED` and nothing is written. The only sanctioned conversion is "
+    "`kw_project(action='upgrade', project, to_kicad?, confirm=true)`: every sheet (the whole hierarchy, sub-sheets "
+    "in subdirectories such as `sch/` included) and the board are upgraded "
+    "with `kicad-cli sch/pcb upgrade` on a copy, ERC/DRC counted before and after, a snapshot taken, then the "
+    "files are replaced and the KiCad pinned (`dry_run=true` reports without replacing anything).\n\n"
+    "**Pins:** `kw_project(action='retarget', target_kicad='10.0')` pins an install without touching a file; "
+    "`target_kicad='auto'` unpins (follow the files). **Guards:** `kw_pcb_drc` never saves by default (D22); "
+    "a refill or an ipc11 write that would re-stamp the files falls back (`refill_not_saved_epoch`, "
+    "`ipc11_epoch_mismatch`); the file writers keep each file's stamp; and every mutation compares the stamps "
+    "before and after - a rise nobody consented to is rolled back from the call's snapshot "
+    "(`E_FORMAT_UPGRADE_REQUIRED` with `data.guard`; files the rolled-back call created are deleted, "
+    "`data.guard.removed`). A project whose sheets already mix KiCad formats (one re-saved by a newer KiCad) "
+    "belongs to no single KiCad line: the prompt names each file that would be converted, and the alternative "
+    "is a snapshot from before the mix, never an install. Files newer than every installed KiCad are "
+    "`E_FORMAT_NEWER`. Every mutation receipt carries `data.target {kicad, source, epoch_match}` and, when a "
+    "stamp changed, `data.epochs {before, after}`."
+)
 
 AUTHORING_RECEIPT = (
     " Receipt: `changed`, `validators[]` (before -> after), `provider_used` (`ipc11:<v>` = KiCad 11 headless "
@@ -299,8 +411,21 @@ TOOL_PAGES: dict[str, str] = {
     ),
     "kw_project": (
         "`create(dir, name, target_kicad?, board_size_mm?)` writes a minimal valid project in the target's "
-        "format and starts snapshots; `status(project)` returns stage/hashes/epochs/external edits; "
-        "`upgrade` is Phase 1."
+        "format, pins it (`target_source: created`) and starts snapshots; a `dir` that already holds a "
+        "`.kicad_sch` / `.kicad_pcb` is refused (E_BAD_ARGS) - an existing design is adopted with `status` on its "
+        "`.kicad_pro`, never re-created. `status(project)`: stage, hashes, "
+        "epochs, external edits, and which KiCad the project runs on - `target_effective`, `target_source` "
+        "(pinned | created | file_epoch | file_epoch_newer_readonly), `epoch_match` (that KiCad writes the files' "
+        "own format; `epoch_match_kinds` per kind), `project_kicad`, `install_hint`, `candidates`, `warnings`. "
+        "`retarget(project, target_kicad)`: pin an installed KiCad without touching any file (`'auto'` unpins). "
+        "`upgrade(project, to_kicad?, confirm, dry_run?)`: the ONLY sanctioned up-conversion (D21) - pass "
+        "`confirm=true` only after the user agreed (without it the user is asked, else E_FORMAT_UPGRADE_REQUIRED); "
+        "every sheet and the board are converted with kicad-cli on a copy, `data.upgrade.checks{before, after}` "
+        "holds the ERC / DRC counts, `snapshot_before` the pre-upgrade snapshot, then the files are replaced and the "
+        "KiCad pinned; `dry_run=true` converts the copy and reports only. Every sheet of the hierarchy is part of "
+        "it, sub-sheets in subdirectories (`sch/*.kicad_sch`) included; a replacement that fails puts the files "
+        "already replaced back (`data.upgrade_rollback`). `status` and `upgrade(dry_run=true)` are read-only even "
+        "though the tool is annotated destructive. `kw_help(topic='formats')` has the policy."
     ),
     "kw_snapshot": "`list` / `diff(ref, to?)` / `create(message?)` / `restore(ref)` over the project's git history.",
     "kw_job": (
@@ -320,7 +445,10 @@ TOOL_PAGES: dict[str, str] = {
         "session). The gate, unknown nets and missing engines are refused BEFORE a job is queued, as immediate "
         "errors. `list` returns every job of this server process."
     ),
-    "kw_help": "This page. Topics: `overview`, `stages`, `errors`, a tool name or an error code.",
+    "kw_help": (
+        "This page. Topics: `overview`, `stages`, `errors`, `providers`, `formats` (which KiCad a project runs on, "
+        "upgrade consent), `readonly` (read-only mode), a tool name or an error code."
+    ),
     "kw_sch_get": (
         "Structured schematic state in mm - the primary feedback after every schematic change. "
         "`kinds` (default symbols + hierarchy): symbols (ref, value, lib_id, unit, sheet, x_mm/y_mm, rotation, "
@@ -333,11 +461,16 @@ TOOL_PAGES: dict[str, str] = {
         "yields one item per instance with its own reference and nets. Filters `refs`, `nets`, `sheets` (a "
         "file stem `blinker`, a file name `blinker.kicad_sch` or an instance path `/blinker/`; an unknown sheet "
         "is E_BAD_ARGS with the hierarchy's paths as candidates, never an empty page), "
-        "`bbox_mm`; `detail` summary | normal | full; `cursor`/`limit` page `data.items` AND `data.netlist.nets` "
-        "(`next_cursor` null on the last page; a page closes early when it would exceed ~40 KB, "
-        "`page_chars` says how big it was). `provider_used` is `ipc11:<version>` (KiCad computed, needs "
-        "ipc.headless + ipc.schematic) or `file`; `degraded` lists `netlist_estimated` when the netlist came "
-        "from the file walk instead of KiCad, `<provider>_unavailable` when a forced provider could not serve."
+        "`bbox_mm`; `detail` summary | normal | full. Paging: ONE opaque cursor pages `data.items` AND "
+        "`data.netlist.nets` together (`i<n>.n<n>@<sha8>`; pass `data.next_cursor` back verbatim - it is null "
+        "only when every list is exhausted; `limit` applies per list; a page closes early at ~40 KB, `page_chars`; "
+        "a cursor from before a schematic edit is E_STALE). `out_path` (an absolute .json / .ndjson / .jsonl / "
+        ".txt file or directory, or 'auto' = under the storage home) with `format` json | ndjson writes the "
+        "COMPLETE result in one call (`data.out {path, bytes, sha256, counts}`). `provider_used` is "
+        "`ipc11:<version>` (KiCad computed, needs ipc.headless + ipc.schematic) or `file`; `provider='cli'` forces "
+        "KiCad's netlist (items then come from the file provider; the netlist export goes to a throw-away folder, "
+        "never into the project); `degraded` lists `netlist_estimated` when the netlist came from the file walk "
+        "instead of KiCad, `<provider>_unavailable` when a forced provider could not serve."
     ),
     "kw_sch_check": (
         "kicad-cli ERC (positions corrected to mm) + netlist export. Returns ok (zero errors), errors, "
@@ -368,8 +501,13 @@ TOOL_PAGES: dict[str, str] = {
         "provider, `netclass` from ipc11) -> `data.items`; outline (bbox_mm, closed), rules (min clearance/"
         "track width, netclasses) and connectivity (unrouted pad pairs with mm endpoints; paged by the same "
         "`cursor`/`limit`, `truncated` + `unrouted_total` say when more remain) -> `data.outline` / "
-        "`data.rules` / `data.connectivity`. Filters `refs`, `nets`, `layers`, `bbox_mm`; `detail`; "
-        "`cursor`/`limit` (a page closes early when it would exceed ~40 KB; `page_chars`). `data.plan` carries "
+        "`data.rules` / `data.connectivity`. Filters `refs`, `nets`, `layers`, `bbox_mm`; `detail`. Paging: ONE "
+        "opaque cursor pages `data.items` AND `connectivity.unrouted` together (`i<n>.u<n>@<sha8>`; pass "
+        "`data.next_cursor` back verbatim - it is null only when both lists are exhausted, so a routing check "
+        "never misses airwires; `limit` per list; a page closes early at ~40 KB, `page_chars`; a cursor from "
+        "before a board edit is E_STALE). `out_path` (absolute .json / .ndjson / .jsonl / .txt file or directory, "
+        "or 'auto') with `format` json | ndjson writes the COMPLETE result in one call instead of pages "
+        "(`data.out {path, bytes, sha256, lines, counts}`). `data.plan` carries "
         "`elapsed_s` of the provider that answered - on big boards ipc11 starts an api-server (kept alive for "
         "later calls), `provider='file'` answers in well under a second. `provider_used` `ipc11:<version>` "
         "(needs ipc.headless) or `file`; "
@@ -384,35 +522,50 @@ TOOL_PAGES: dict[str, str] = {
         "courtyard_bbox_mm + outside_by_mm - KiCad DRC has no rule for it, edge connectors do this by design), "
         "unrouted (ratsnest pairs, info) and drc_summary (the last kw_pcb_drc must_fix count from the project "
         "history with `fresh` = the board is unchanged since, and `capped` = violation types KiCad stopped "
-        "reporting at its limit). Each item: {check, severity, refs[], net, pos{x_mm,y_mm}, bbox_mm, "
+        "reporting at its limit; the violations themselves: kw_pcb_drc(action='report')). Each item: {check, severity, refs[], net, pos{x_mm,y_mm}, bbox_mm, "
         "description, fix}. `ok` = no must_fix off_board and no overlap, computed over the WHOLE board before "
         "the filters; `summary.matched` / `total` count what `refs` / `nets` (unrouted only) / `bbox_mm` kept. "
         "Paging as in kw_pcb_get. `next_suggested` is kw_pcb_drc, or kw_fab_export when the last DRC is fresh "
         "and clean. Cheap: call after every placement change; kw_pcb_drc remains the gate."
     ),
     "kw_pcb_drc": (
-        "kicad-cli DRC with optional `schematic_parity`; `refill_zones` defaults to true when the board has "
-        "copper zones and the KiCad can refill headless (cli.drc_refill_flags; the refilled board is saved and "
-        "re-hashed, not an external edit) - a check against a stale fill would report tracks added since the "
-        "last fill as clearance errors against the pour; without the capability `degraded` says `zones_stale` "
-        "and those items are review. Violations are classified must_fix / review / cosmetic (must_fix gates "
-        "fabrication). Passing sets stage `drc_clean`; on failure `next_suggested` names the tool that fixes "
-        "the first must_fix type (kw_pcb_route / kw_pcb_place / kw_pcb_sync / kw_pcb_zones). KiCad stops "
-        "reporting a violation type after 199 items (499 for clearance / unconnected_items): `data.capped` lists "
-        "the saturated types, `degraded` carries `drc_counts_capped` and the counts are lower bounds - fix and "
-        "re-run; kw_pcb_check's unrouted count is not capped."
+        "`action='run'` (default): kicad-cli DRC with optional `schematic_parity`. `refill_zones` defaults to "
+        "true when the board has copper zones and the KiCad can refill headless (cli.drc_refill_flags) - a check "
+        "against a stale fill would report tracks added since the last fill as clearance errors against the "
+        "pour; without the capability `degraded` says `zones_stale` and those items are review. The refill is "
+        "IN MEMORY: `save_board` defaults to false (D22) and the board file stays byte-identical; "
+        "`save_board=true` writes the refill back only when this KiCad writes the board's own format (D21). "
+        "`all_track_errors` (default on where kicad-cli has `--all-track-errors`) reports every violation of "
+        "each track, not just the first. Every violation carries `class` (must_fix / review / cosmetic; "
+        "must_fix gates fabrication) FIRST, then type, severity, description, pos, items[] (uuid, ref, net) and "
+        "`refs`; `excluded` counts KiCad's excluded markers, `violations_truncated` the listed ones beyond the "
+        "cap. `ignored_checks[{key, description, source: project | kicad_default}]` names the checks KiCad did "
+        "not run (on 8 / 9 only the project's own ignores: `ignored_checks_source='project_only'`). The COMPLETE "
+        "result is stored under the storage home (`data.result {stored, board_sha256, path, raw_json}`; nothing "
+        "is written into the project). `action='report'` re-reads that stored result WITHOUT running KiCad - "
+        "filters `types`, `classes`, `refs`, `nets`, `bbox_mm`, `severity`, paged by `cursor` / `limit`, with "
+        "`counts{class, type}` - and is E_STALE when the board changed since (or was never checked). Passing sets "
+        "stage `drc_clean`; on failure `next_suggested` names the tool that fixes the first must_fix type "
+        "(kw_pcb_route / kw_pcb_place / kw_pcb_sync / kw_pcb_zones). KiCad stops reporting a violation type "
+        "after 199 items (499 for clearance / unconnected_items): `data.capped` lists the saturated types, "
+        "`degraded` carries `drc_counts_capped` and the counts are lower bounds - fix and re-run; kw_pcb_check's "
+        "unrouted count is not capped. Read-only (`persist=false`): the run works, `save_board=true` is refused."
     ),
     "kw_sch_render": (
         "SECONDARY - prefer kw_sch_get / kw_sch_stats for feedback; renders are for human review. "
         "Schematic sheet as PNG (<= `max_px`, default 1024) via kicad-cli `sch export pdf` + pypdfium2. "
         "Args: `sheet` (file name; default the root schematic), `page` (1-based; hierarchical designs export one "
-        "page per sheet - an out-of-range page is E_BAD_ARGS with the valid range), `max_px`. Without the "
-        "`render` extra the receipt carries the PDF path and `degraded: ['render_unavailable']`."
+        "page per sheet - an out-of-range page is E_BAD_ARGS with the valid range), `max_px`, `out_path` (an "
+        "absolute .png the PNG is written to and kept). Without `out_path` every render gets its own directory "
+        "under the storage home (the newest 20 per project are kept for 24 h; the receipt's `kept_until`); "
+        "`png_sha256` identifies the image. Without the `render` extra the receipt carries the PDF path and "
+        "`degraded: ['render_unavailable']`."
     ),
     "kw_live": (
         "FOR HUMANS WATCHING, not for the agent's feedback loop (data-first, D17: keep reading `kw_pcb_get` / "
         "`kw_pcb_check` / `kw_sch_get`). `action=launch` starts a sandboxed KiCad GUI (`editor`: pcb = pcbnew, "
-        "sch = eeschema, project = the manager) on the project's target KiCad (or `target_kicad`) with its API "
+        "sch = eeschema, project = the manager) on the KiCad the project runs on (`target_effective`, D21; or "
+        "`target_kicad`) with its API "
         "server on its own pipe, never activated, tracked by PID + Job Object, ONE per agent; the session is "
         "BOUND to the project while it lives: the ipc11 provider of the tools for ITS document kind commits "
         "through that GUI (the edit appears in the VS Code Live KiCad view) and no headless api-server is "
@@ -424,6 +577,8 @@ TOOL_PAGES: dict[str, str] = {
         "VS Code tab; the person interacts with it natively (`raise`). hidden = experimental, parked (D20): the "
         "editor runs cloaked, only on a build carrying the `display-input` patch. Returns `{session_id, pid, "
         "install, api_socket, token, editors[], mode_used, cloaked}` (`mode_used` is `view`). "
+        "A GUI that would save the files in a newer format than they have asks the user first (the D21 consent; "
+        "E_FORMAT_UPGRADE_REQUIRED without it). "
         "`attach` registers the extension's display helper (`helper={port, token, version}`); `status` reports "
         "liveness + surfaces (hwnd, rect_px, dpi, cloaked); `screenshot` returns a PNG <= 1024 px (helper, else "
         "a PrintWindow capture of the frame, else a render of the SAVED file with `degraded: "
@@ -435,12 +590,19 @@ TOOL_PAGES: dict[str, str] = {
     ),
     "kw_pcb_render": (
         "SECONDARY - prefer kw_pcb_get / kw_pcb_check for feedback; renders are for human review. "
-        "Board as PNG (<= `max_px`, default 1024). `view='3d'` (default) uses kicad-cli `pcb render` where the "
-        "install has `cli.has_render` (sizes 1024x768 down to 480x360, or the request's own 4:3 size below "
-        "that, until the PNG is under ~100 KB); otherwise, or with `view='2d'`, the 2d layer plot "
-        "(`pcb export pdf` of `layers` + pypdfium2; default layers copper + silk + Edge.Cuts of `side`). "
-        "Args: `side` (top|bottom), `view`, `layers` (2d only; isolates layers - there is no region crop in "
-        "Phase 0), `max_px`. Without a rasteriser the receipt carries the SVG files and `degraded`."
+        "Board as PNG. `view='3d'` uses kicad-cli `pcb render` where the install has `cli.has_render` (sizes "
+        "1024x768 down to 480x360, or the request's own 4:3 size below that, until the PNG is under ~100 KB); "
+        "`view='2d'` is the layer plot (`pcb export pdf --scale 1` of `layers` + pypdfium2 cropped to the region, "
+        "never the whole sheet). Default view: 2d when `layers`, `bbox_mm`, `px_per_mm` or `mirror_bottom` is "
+        "given, else 3d. Args: `side` (top|bottom), `layers` (any of the board's: In1.Cu, F.Paste, F.Mask, ...; "
+        "default copper + silk + Edge.Cuts of `side`), `bbox_mm` [x0, y0, x1, y1] (default the Edge.Cuts outline + "
+        "1 mm), `px_per_mm` (<= 60), `mirror_bottom` (with side='bottom': the view from below), `max_px` (<= 1024; "
+        "`bbox_mm` + `px_per_mm` together may reach 4096 px), `out_path` (an absolute .png, kept). Receipt: "
+        "`region{bbox_mm, px_per_mm, width, height, capped}`, `blank` (the region holds no board content), "
+        "`png_sha256`, `kept_until` (per-call directory under the storage home, newest 20 kept for 24 h), "
+        "`inline=false` + the path when the image is over 2048 px or 1.5 MB. With an explicit `view='3d'` the 2d "
+        "arguments are ignored with a warning. Without a rasteriser the receipt carries the SVG files and "
+        "`degraded`."
     ),
     "kw_fab_export": (
         "Fabrication outputs: `targets` from gerbers, drill, pos, pdf, step, bom (plus svg/dxf/stats/ipc2581/odb "
@@ -456,7 +618,17 @@ TOOL_PAGES: dict[str, str] = {
         "names fitted parts without a part number; gerbers + drill are zipped into `<name>-jlcpcb-gerbers.zip` "
         "(`data.files.bundle`). Options a KiCad lacks are dropped and listed in `data.dropped_options`. "
         "`include_dnp` keeps DNP parts in BOM / CPL, `bom_fields` adds columns. Check every rotation in the vendor's "
-        "order preview: the table is a community table (`data.profile_notes`)."
+        "order preview: the table is a community table (`data.profile_notes`). For reviewers: `out_dir` is any "
+        "absolute directory (outside the project allowed; its parent must exist); `layers` limits gerbers (and "
+        "pdf / svg / dxf) to e.g. ['F.Paste', 'F.Mask'] (KiCad, standard or the board's own layer names; unknown "
+        "-> E_BAD_ARGS with the board's layers); `dry_run=true` returns the file plan (`data.plan`, `data.gate`) "
+        "without running KiCad or writing anything, and for `pos` a `positions_preview` = included refs, "
+        "`excluded[{ref, reason}]` (exclude_from_pos / attr_unspecified / tht / dnp / side), `flags` and "
+        "`bom_diff` against the schematic (`missing_from_cpl` / `extra_in_cpl`) - real pos runs report "
+        "`positions.excluded` / `flags` / `bom_diff` too. Zones: gerbers / pdf / svg / dxf / odb refill in memory "
+        "(`--check-zones`) where the KiCad can, else `degraded: zones_stale` (`data.zones` per target); the board "
+        "is never saved. Read-only (`persist=false`): outputs go to a results directory under the storage home "
+        "or `out_dir`."
     ),
     "kw_fab_bom": (
         "Bill of materials as data: `data.rows[]` = {refs, qty, value, footprint, package, lcsc, dnp, mpn, "
@@ -466,8 +638,9 @@ TOOL_PAGES: dict[str, str] = {
         "or kw_sch_edit. Source: kicad-cli `sch export bom --fields/--group-by` (KiCad 8+; `data.source` = cli), else "
         "the netlist (`degraded: bom_from_netlist`). `profile` generic (DNP rows kept, flagged) | jlcpcb (DNP "
         "dropped, `data.missing_lcsc` + a warning for fitted parts without a part number); `include_dnp` overrides; "
-        "`fields` adds symbol fields as columns; `write=true` writes the profile's CSV to <project>/fab/bom/. Not "
-        "gated; cost / stock stay null until the parts component fills them."
+        "`fields` adds symbol fields as columns; `write=true` writes the profile's CSV to <project>/fab/bom/ (or the "
+        "absolute `out_dir`; read-only: a results directory under the storage home). Not gated; cost / stock stay "
+        "null until the parts component fills them."
     ),
     "kw_intent": (
         "The design intent, declared BEFORE drawing (docs/ARCHITECTURE.md §3.3): `action='set'` stores `intent` = "
@@ -507,13 +680,17 @@ def overview() -> str:
         "schematics, `kw_pcb_get` / `kw_pcb_check` for boards - and act on refs + mm coordinates; never reason "
         "from an image when a structured query exists (renders are secondary). Topic `providers` lists which "
         "backend answers each operation (ipc11 -> file -> cli) and what `degraded` tags mean.\n\n"
+        "Formats (D21): a project runs on the installed KiCad that writes its files' own format; a save that "
+        "would upgrade the files asks the user first (`E_FORMAT_UPGRADE_REQUIRED` otherwise: ask, then "
+        "`kw_project(action='upgrade', confirm=true)`) - topic `formats`. Read-only (D23): `persist=false` on any "
+        "call, or `kiwrap serve --readonly`, writes nothing into the project - topic `readonly`.\n\n"
         "Rules: never edit `.kicad_*` files by hand (kiwrap re-hashes and downgrades the stage with "
         "`external_edit`); positions are millimetres; every mutating tool returns a Receipt "
         "(changed/validators/provider_used/degraded/snapshot/stage/next_suggested); errors are "
         "`isError` with `{code, message, why, fix, candidates, example}`; `kw_snapshot restore` is undo.\n\n"
         "Stages: " + " -> ".join(STAGES) + "\n\n"
         "Gates: " + "; ".join(f"{t} needs {s}" for t, s in GATES.items()) + "\n\n"
-        "Topics: " + ", ".join(["overview", "stages", "errors", "providers", *TOOL_PAGES, *ERROR_PAGES])
+        "Topics: " + ", ".join([*GENERAL_TOPICS, *TOOL_PAGES, *ERROR_PAGES])
     )
 
 
@@ -538,7 +715,7 @@ def providers_page() -> str:
     return "\n".join(lines)
 
 
-GENERAL_TOPICS = ("overview", "stages", "errors", "providers")
+GENERAL_TOPICS = ("overview", "stages", "errors", "providers", "formats", "readonly")
 
 
 def normalise_topic(topic: str) -> str | None:
@@ -561,6 +738,10 @@ def page(topic: str) -> tuple[str, list[str]]:
         ), []
     if key == "providers":
         return providers_page(), []
+    if key == "readonly":
+        return READONLY_PAGE, []
+    if key == "formats":
+        return FORMATS_PAGE, []
     if key == "errors":
         return "# Error codes\n\n" + "\n".join(f"## {c}\n{t}\n" for c, t in ERROR_PAGES.items()), []
     if key in ERROR_PAGES:
@@ -575,7 +756,9 @@ def page(topic: str) -> tuple[str, list[str]]:
 class HelpArgs(BaseModel):
     topic: str = Field(
         default="overview",
-        description="overview | stages | errors | providers | a tool name (kw_...) | an error code (E_...)",
+        description=(
+            "overview | stages | errors | providers | formats | readonly | a tool name (kw_...) | an error code (E_...)"
+        ),
     )
 
 
@@ -594,8 +777,8 @@ SPEC = ToolSpec(
     name="kw_help",
     title="Help",
     description=(
-        "Markdown help: the stage protocol (overview), stages, providers (which backend answers what), every "
-        "error code (E_...) and every tool (kw_...)."
+        "Markdown help: the stage protocol (overview), stages, providers (which backend answers what), file formats "
+        "and upgrade consent (formats), read-only mode (readonly), every error code (E_...) and every tool (kw_...)."
     ),
     input_model=HelpArgs,
     handler=run,

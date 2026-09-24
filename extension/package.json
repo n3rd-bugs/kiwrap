@@ -97,6 +97,12 @@
         "icon": "$(list-selection)"
       },
       {
+        "command": "kiwrap.upgradeProject",
+        "title": "Upgrade project file format...",
+        "category": "kiwrap",
+        "icon": "$(arrow-circle-up)"
+      },
+      {
         "command": "kiwrap.locateServer",
         "title": "Locate kiwrap checkout...",
         "category": "kiwrap"
@@ -232,6 +238,26 @@
           "group": "inline"
         },
         {
+          "command": "kiwrap.selectInstall",
+          "when": "view == kiwrap.status && viewItem == install",
+          "group": "1_select@1"
+        },
+        {
+          "command": "kiwrap.upgradeProject",
+          "when": "view == kiwrap.status && viewItem == projectFormatMismatch",
+          "group": "inline"
+        },
+        {
+          "command": "kiwrap.upgradeProject",
+          "when": "view == kiwrap.status && viewItem == projectFormatMismatch",
+          "group": "1_select@2"
+        },
+        {
+          "command": "kiwrap.selectInstall",
+          "when": "view == kiwrap.status && viewItem == projectTarget",
+          "group": "inline"
+        },
+        {
           "command": "kiwrap.runErc",
           "when": "view == kiwrap.status && viewItem == erc",
           "group": "inline"
@@ -349,7 +375,7 @@
           "kiwrap.kicadInstall": {
             "type": "string",
             "default": "",
-            "description": "The KiCad install to target: a version spec kw_env lists (10, 10.0, 10.0.6) or an install root. Empty: the newest installed."
+            "markdownDescription": "The KiCad install kiwrap uses for this workspace. **Empty (or `project`, recommended): match the project's file format** - kiwrap picks the installed KiCad whose file format equals the project files and asks before saving them in a newer format (D21). A version spec `kw_env` lists (`10`, `10.0`, `10.0.6`) or an install root selects one explicitly (the live view launches it). Set it with *kiwrap: Select KiCad install* or the inline *Select* action in the KiCad sidebar."
           },
           "kiwrap.checkOnSave": {
             "type": "boolean",

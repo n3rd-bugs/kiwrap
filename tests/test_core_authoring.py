@@ -1921,7 +1921,8 @@ def test_pcb_zones_without_refill_capability_warns(tmp_path: Path):
 def test_place_and_route_refill_stale_zones_before_drc(tmp_path: Path):
     """Tracks added after a zone fill are `clearance` errors against the stale pour unless the
     DRC refills first: kw_pcb_route / kw_pcb_place refill (and save) when the board has copper
-    zones, kw_pcb_drc does so by default, and the saved fill is not an external edit."""
+    zones, kw_pcb_drc refills in memory by default and saves only with save_board=true (D22),
+    and the saved fill is not an external edit."""
     h, backend, project = harness(tmp_path)
     place_all(h, project)
     drc_calls = [c for c in backend.calls if c[0] == "run_drc"]
@@ -1940,9 +1941,14 @@ def test_place_and_route_refill_stale_zones_before_drc(tmp_path: Path):
     assert [c for c in backend.calls if c[0] == "run_drc"][-1][1]["refill_zones"] is True
     sc = h.ok("kw_pcb_drc", project=project)
     call = [c for c in backend.calls if c[0] == "run_drc"][-1][1]
+    # D22: kw_pcb_drc refills in memory by default and never writes the board unless asked
+    assert call["refill_zones"] is True and call["save_board"] is False
+    assert sc["data"]["options"] == {"schematic_parity": False, "refill_zones": True, "save_board": False}
+    assert sc["stage"] == "drc_clean" and sc["changed"]["updated"] == []
+    sc = h.ok("kw_pcb_drc", project=project, save_board=True)
+    call = [c for c in backend.calls if c[0] == "run_drc"][-1][1]
     assert call["refill_zones"] is True and call["save_board"] is True
     assert sc["data"]["options"] == {"schematic_parity": False, "refill_zones": True, "save_board": True}
-    assert sc["stage"] == "drc_clean"
     status = h.ok("kw_project", action="status", project=project)
     assert status["data"]["stage"] == "drc_clean" and "external_edit" not in status["degraded"]
     sc = h.ok("kw_pcb_drc", project=project, refill_zones=False)

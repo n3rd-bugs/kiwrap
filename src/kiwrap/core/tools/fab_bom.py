@@ -10,8 +10,11 @@ KiCad's exporter on the CLI path and, on the netlist path, by reading the schema
 (`file_read_schematic`) when that reader is wired.
 
 Not gated (a BOM is useful long before DRC is clean) and never a mutation: with `write=true`
-the profile's CSV lands in `<project>/fab/bom/` (never snapshotted), and the intermediate
-kicad-cli output goes to `<project>/.kiwrap/tmp/`.
+the profile's CSV lands in `<project>/fab/bom/` (never snapshotted) or the caller's `out_dir`.
+The intermediate kicad-cli output goes to a per-call directory under the storage home, never into
+the project (`kiwrap.core.fab.outputs.scratch_dir`; review item 2 found `.kiwrap/tmp` left behind
+by read-only tools). In read-only mode (docs/DECISIONS.md D23) nothing is written into the project:
+the external-edit downgrade is not persisted and `write=true` goes to `out_dir` or the storage home.
 """
 
 from __future__ import annotations
@@ -24,10 +27,11 @@ from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
 
 from kiwrap.core.fab import BomTable, FabProfile, bom_from_cli_csv, bom_from_netlist, get_profile
+from kiwrap.core.fab.outputs import is_readonly, resolve_out_dir, scratch_dir
 from kiwrap.core.fab.profiles import PROFILE_NAMES
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
-from kiwrap.core.tools._base import ToolContext, ToolSpec, read_state, to_kiwrap_error
+from kiwrap.core.tools._base import ToolContext, ToolSpec, effective_target, read_state, to_kiwrap_error
 
 
 class FabBomArgs(BaseModel):
@@ -44,7 +48,12 @@ class FabBomArgs(BaseModel):
         default_factory=list,
         description="extra symbol fields to carry as columns (e.g. ['Datasheet', 'Tolerance'])",
     )
-    write: bool = Field(default=False, description="also write the profile's CSV to <project>/fab/bom/")
+    write: bool = Field(
+        default=False, description="also write the profile's CSV to <project>/fab/bom/ (or out_dir)"
+    )
+    out_dir: str | None = Field(
+        default=None, description="absolute directory for write=true (anywhere); default <project>/fab/bom"
+    )
 
 
 def has_subcommand(caps: Any, sub: str) -> bool:
@@ -135,14 +144,25 @@ def run(ctx: ToolContext, args: FabBomArgs) -> Receipt:
             f"root schematic {project.root_sch.name} is missing",
             fix="kw_project create writes it; if you renamed files, keep the .kicad_pro stem",
         )
-    state, external = read_state(project)
-    install = ctx.services.install(state.target_kicad)
+    readonly = is_readonly(ctx, args)
+    state, external = read_state(project)  # in memory only inside a non-persisting call (D23)
+    install = effective_target(ctx, project, state, for_write=False).install
     caps = ctx.services.caps(install)
     config = ctx.services.config_root(install)
-    workdir = project.state_dir / "tmp" / "bom"
-    table, degraded = bom_table(
-        ctx, install, config, caps, project, profile=profile, extra_fields=list(args.fields), workdir=workdir
-    )
+    workdir = scratch_dir(ctx, project, "bom")
+    try:
+        table, degraded = bom_table(
+            ctx,
+            install,
+            config,
+            caps,
+            project,
+            profile=profile,
+            extra_fields=list(args.fields),
+            workdir=workdir,
+        )
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
     rows = profile.bom_rows(table, include_dnp=args.include_dnp)
     receipt = Receipt(provider_used=ctx.services.provider(install), stage=state.stage)
     receipt.degraded.extend(degraded)
@@ -158,7 +178,9 @@ def run(ctx: ToolContext, args: FabBomArgs) -> Receipt:
         )
     file: str | None = None
     if args.write:
-        out_dir = project.dir / "fab" / "bom"
+        out_dir = resolve_out_dir(
+            ctx, project, args.out_dir, "bom", readonly_call=readonly, default=project.dir / "fab" / "bom"
+        ).path
         out_dir.mkdir(parents=True, exist_ok=True)
         name = profile.file_name("bom", project.name) or f"{project.name}-bom.csv"
         path = out_dir / name
@@ -168,7 +190,6 @@ def run(ctx: ToolContext, args: FabBomArgs) -> Receipt:
         )
         file = path.as_posix()
         receipt.changed["added"].append(file)
-    shutil.rmtree(workdir, ignore_errors=True)
     receipt.data = {
         "ok": True,
         "profile": profile.name,

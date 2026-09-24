@@ -129,11 +129,15 @@ def ok(server: Any, tool: str, **args: Any) -> dict[str, Any]:
     return sc
 
 
-def demo_project(live: dict[str, Any], name: str, *, layers: int | None = None, strip_every: int = 2) -> Path:
+def demo_project(
+    live: dict[str, Any], name: str, *, layers: int | None = None, strip_every: int = 2, target: Any = None
+) -> Path:
     """The ecc83 demo copied as a kiwrap project at stage `placed`, with every `strip_every`-th
     unlocked segment / via deleted (50 % of the copper by default) and, optionally, re-set up as
-    a `layers`-layer board."""
+    a `layers`-layer board. The board is re-saved by `target` (default the 10.0.x install) and the
+    project pinned to it (D21: a KiCad writing a newer format than the files needs consent)."""
     install = live["install"]
+    target = target or install
     demo = install.share / "demos" / "ecc83"
     if not (demo / "ecc83-pp.kicad_pcb").is_file():
         pytest.skip("ecc83 demo missing")
@@ -148,6 +152,7 @@ def demo_project(live: dict[str, Any], name: str, *, layers: int | None = None, 
     for extra in ("fp-lib-table", "sym-lib-table"):
         if (demo / extra).is_file():
             (d / extra).write_text((demo / extra).read_text(encoding="utf-8"), encoding="utf-8")
+    resave_board(live, target, d / f"{name}.kicad_pcb")
     ok(live["server"], "kw_project", action="status", project=str(d))  # adopts the project (.kiwrap state)
     model = BoardFile.load(d / f"{name}.kicad_pcb")
     w = BoardWriter(d, epoch={"pcb": model.stamp or 20260206}, lib_resolver=None)
@@ -162,10 +167,21 @@ def demo_project(live: dict[str, Any], name: str, *, layers: int | None = None, 
     w.save()
     project = Project.from_path(str(d))
     state = project.load_state()
-    state.target_kicad = install.version  # status adopted the newest install; this test targets 10.0.x
+    state.target_kicad = target.version  # pinned to the KiCad whose format the board now has
     record_stage(project, state, "placed")
     project.save_state(state)
     return d
+
+
+def resave_board(live: dict[str, Any], target: Any, board: Path) -> None:
+    """Re-save the scratch board with `target`'s kicad-cli (`pcb upgrade --force`, in place on the
+    copy), so the project is in the format of the KiCad the test pins. The ecc83 demo board is 9.0
+    format; pinning a newer KiCad by hand and writing makes every write a D21 up-conversion, which
+    kiwrap refuses without the user's consent (E_FORMAT_UPGRADE_REQUIRED, docs/DECISIONS.md D21)."""
+    from kiwrap.backends.cli.runner import run_kicad_cli
+
+    config = live["ctx"].services.config_root(target)
+    run_kicad_cli(target, ["pcb", "upgrade", "--force", str(board)], config=config, accept=(0,))
 
 
 def tracks_of(path: Path) -> tuple[int, int]:
@@ -350,13 +366,10 @@ def test_net_subset_routes_only_those_nets(live: dict[str, Any]):
 def test_kicad_11_preview_has_no_swig_provider(live: dict[str, Any], installs: Any):
     """On the nightly the `swig` provider is refused by its predicate; the codec (another
     component) answers when built, else the teaching error names kw_pcb_route as the fallback."""
-    nightly = next(i for i in installs if i.major_minor == "10.99")
-    d = demo_project(live, "ecc11")
-    ok(live["server"], "kw_project", action="status", project=str(d))
-    project = Project.from_path(str(d))
-    state = project.load_state()
-    state.target_kicad = nightly.version
-    project.save_state(state)
+    nightly = next(i for i in installs if i.major_minor == "10.99" and not i.is_bench_build)
+    d = demo_project(live, "ecc11", target=nightly)  # in the nightly's format and pinned to it (D21)
+    st = ok(live["server"], "kw_project", action="status", project=str(d))["data"]
+    assert st["target_effective"] == nightly.version and st["epoch_match"] is True, st
     err, sc = call(
         live["server"], "kw_pcb_route_auto", project=str(d), run_async=False, passes=60, timeout_s=300
     )

@@ -7,6 +7,8 @@ Shapes (docs/ARCHITECTURE.md §11, verified transport behaviour in docs/VERIFICA
 - a teaching error becomes `isError: true` with `KiwrapError.to_dict()` both as text and as
   `structured_content`, so the agent sees `code`, `why`, `fix`, `candidates`, `example` in either
   channel.
+- a non-persisting call (docs/DECISIONS.md D23) carries `data.readonly` {mode, persisted: false,
+  results_dir?, relocated?, restored?, ...} and says `read-only` on the summary line.
 
 The published `outputSchema` of every tool is `ReceiptOut` (pydantic), which mirrors `Receipt`.
 """
@@ -110,6 +112,10 @@ def _summary_line(tool: str, receipt: Receipt, ok: bool) -> str:
         bits.append(f"provider={receipt.provider_used}")
     if receipt.snapshot:
         bits.append(f"snapshot={receipt.snapshot[:12]}")
+    ro = receipt.data.get("readonly") if isinstance(receipt.data, dict) else None
+    if isinstance(ro, dict):
+        # D23: a non-persisting call says so on its first line (nothing was written to the project)
+        bits.append("read-only" + (f" results={ro['results_dir']}" if ro.get("results_dir") else ""))
     if receipt.degraded:
         bits.append("degraded=" + ",".join(receipt.degraded))
     if receipt.next_suggested:

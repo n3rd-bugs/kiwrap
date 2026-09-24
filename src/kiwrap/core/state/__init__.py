@@ -48,7 +48,12 @@ class KiwrapError(Exception):
     Codes (Phase 0): E_NO_KICAD, E_UNSUPPORTED, E_PROJECT_NOT_FOUND, E_BAD_ARGS, E_KICAD_FAILED,
     E_FILE_LOCKED (KiCad holds a `~*.lck`), E_BUSY (a kiwrap IPC read on the project is in flight),
     E_GATE (stage gate not satisfied), E_EXTERNAL_EDIT, E_TIMEOUT, E_CANCELLED (a background job
-    cancelled through kw_job), E_INTERNAL.
+    cancelled through kw_job), E_INTERNAL; the library tools add E_LIB_NOT_FOUND, E_LIB_UNSUPPORTED,
+    E_LIB. D21 (docs/DECISIONS.md, review item 1): E_FORMAT_UPGRADE_REQUIRED (a save would move the
+    files to a newer KiCad format and the user has not consented), E_FORMAT_NEWER (the files are
+    newer than the KiCad that would open them). D23: E_READONLY (the call would write the project in
+    read-only mode). Review item 3 / B3: E_STALE (a stored result or a paging cursor belongs to an
+    older file). Every code has a kw_help page (`kiwrap.core.tools.help.ERROR_PAGES`).
     """
 
     def __init__(

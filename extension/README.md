@@ -7,16 +7,18 @@ D13: Claude Code inside VS Code is the agent client). The extension is an MCP cl
 | feature | where |
 |---|---|
 | server process + MCP stdio client, typed wrappers (`kw_env`, `kw_project`, `kw_sch_check`, `kw_pcb_drc`, `kw_pcb_check`, `kw_sch_render`, `kw_pcb_render`, `kw_live`), reconnect / restart, stderr in the "KiCad (kiwrap)" output channel | `src/mcpClient.ts`, `src/kiwrapServer.ts` |
-| "KiCad (kiwrap)" view: server, installs (default + selected marked), engines, project (stage, target KiCad, last ERC / DRC numbers), live session | `src/status/tree.ts`, `src/status/statusBar.ts` |
+| "KiCad (kiwrap)" view: server, installs (selected / project / newest marked; a click expands the details, selecting is the inline *Select* action or the context menu), engines, project (stage, the effective target KiCad and its source, the file format and whether an installed KiCad writes it, format warnings, last ERC / DRC numbers), live session | `src/status/tree.ts`, `src/status/installModel.ts`, `src/status/statusBar.ts` |
+| format consent (D21): a call that would save the project in a newer KiCad format (`E_FORMAT_UPGRADE_REQUIRED`: Open Live KiCad, a saving DRC, ...) opens a modal - *Upgrade* (`kw_project(action='upgrade', confirm=true)`, then the call is retried), *Install KiCad <x>...* (the install hint typed into a terminal, or the download page), *Cancel*; `E_FORMAT_NEWER` names the KiCad needed, `E_READONLY` is an information message; background calls (on-save checks, previews) never ask. *kiwrap: Upgrade project file format...* asks proactively | `src/consent.ts`, `src/consentUi.ts` |
 | Problems panel: `kw_sch_check` / `kw_pcb_drc` violations as diagnostics on the `.kicad_sch` / `.kicad_pcb` line of the item's uuid (line 1 fallback), code = KiCad type, related information for the second item, refresh on save / on demand | `src/diagnostics/` |
 | `kiwrap.preview` read-only custom editor (priority `option`) for `*.kicad_sch` / `*.kicad_pcb`: `kw_*_render` PNG / SVG with zoom + pan, re-render on file change, "Open Live KiCad" | `src/editors/` |
 | **Live KiCad** (`kiwrap.live` custom editor): the real, sandboxed KiCad editor streamed live into the `.kicad_pcb` / `.kicad_sch` tab; an agent's edit shows up in the tab in well under a second; **Raise KiCad** (HUD button, double-click, command) brings the real window to the front to edit by hand | `src/live/`, `media/live/` |
-| commands: Configure Claude Code (`.mcp.json` + CLAUDE.md / AGENTS.md block + skill copy, diff preview), Run ERC, Run DRC, Open Live KiCad, Close Live KiCad, Live KiCad: Raise KiCad, Select KiCad install, Restart server | `src/commands/`, `src/live/index.ts` |
+| commands: Configure Claude Code (`.mcp.json` + CLAUDE.md / AGENTS.md block + skill copy, diff preview), Run ERC, Run DRC, Open Live KiCad, Close Live KiCad, Live KiCad: Raise KiCad, Select KiCad install (first entry: *match the project's file format (recommended)*; an explicit pick can also pin the project via `kw_project(action='retarget')`), Upgrade project file format, Restart server | `src/commands/`, `src/live/index.ts` |
 
 Settings: `kiwrap.uvPath`, `kiwrap.serverProject` (the kiwrap checkout; normally left empty - it is
 found in any workspace: an open folder that is the checkout, `KIWRAP_REPO`, the checkout remembered
 from an earlier workspace, or the one the VSIX was built from; otherwise *kiwrap: Locate kiwrap
-checkout...* picks it and writes the User setting), `kiwrap.storageHome`, `kiwrap.kicadInstall`, `kiwrap.checkOnSave`;
+checkout...* picks it and writes the User setting), `kiwrap.storageHome`, `kiwrap.kicadInstall` (empty or `project` = the KiCad matching the project's
+file format, D21; a version or install root = an explicit choice), `kiwrap.checkOnSave`;
 Live KiCad: `kiwrap.live.raiseOnDoubleClick` (default on), `kiwrap.live.fit`, `kiwrap.live.hud`,
 `kiwrap.live.helperPath`, `kiwrap.live.autoOpen3d`, and one EXPERIMENTAL knob, `kiwrap.live.inputMode`
 (see below).

@@ -998,6 +998,11 @@ class BoardWriter:
     `load(board_path)` reads an existing board or starts a fresh one when the file does not
     exist yet (a minimal skeleton in the epoch's dialect: general, paper, full layer table for
     the requested copper count, setup). `save()` writes only what changed.
+
+    An existing board keeps its own stamp and dialect whatever `epoch` says: the writer never
+    re-stamps a board upward (docs/DECISIONS.md D21, requests/kiwrap-feature-requests.review.md
+    item 1 (d) - verified there: "the board writer keeps the file's dialect"); converting a board
+    to a newer format is `kw_project upgrade`'s job (`kicad-cli pcb upgrade` on a copy).
     """
 
     def __init__(

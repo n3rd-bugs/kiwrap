@@ -73,7 +73,9 @@ def test_mutated_board_airwires_match_drc(installs, config_root, tmp_path, demo,
         copy = dst / name
         board = BoardFile.load(copy)
         rng = random.Random(SEED)
-        victims = [n for n in board.root.nodes if n.head in ("segment", "via", "arc") and rng.random() < FRACTION]
+        victims = [
+            n for n in board.root.nodes if n.head in ("segment", "via", "arc") and rng.random() < FRACTION
+        ]
         for n in victims:
             board.root.remove(n)
         dump(board.root, copy)

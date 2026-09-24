@@ -741,18 +741,32 @@ def _fixture(tmp_path: Path, name: str) -> Path:
     return tmp_path / ("top.kicad_sch" if name.startswith("hier") else "blink.kicad_sch")
 
 
-def test_older_file_is_restamped_on_save_and_newer_file_refused(tmp_path: Path):
+def test_older_file_keeps_its_stamp_unless_upgrading_and_newer_file_refused(tmp_path: Path):
+    """Review item 1 (d) / D21: an edit never moves a sheet to a newer format on its own; only a
+    sanctioned upgrade (`allow_upgrade=True`) re-stamps; a file newer than the epoch is refused."""
     root = _fixture(tmp_path, "blink_9")
     w = SchematicWriter(tmp_path, epoch=EPOCH_10, lib_resolver=FallbackLibResolver(symbol_dirs=[LIBS]))
     w.load(root)
+    assert w.dialect.sch_stamp == EPOCH_9["sch"]  # works in the file's own dialect
     assert w.save() == []  # untouched: the 9-era bytes stay
     assert SchematicFile.load(root).stamp == EPOCH_9["sch"]
     r1 = next(s for s in w.symbols() if s.ref == "R1")
     w.edit(r1.uuid, {"value": "1k"})
     w.save()
     sch = SchematicFile.load(root)
-    assert sch.stamp == EPOCH_10["sch"] and sch.generator_version == "10.0"
+    assert sch.stamp == EPOCH_9["sch"] and sch.generator_version == "9.0"
     assert sch.symbol("R1").value == "1k" and len(sch.symbols) == 7
+
+    up = SchematicWriter(
+        tmp_path, epoch=EPOCH_10, lib_resolver=FallbackLibResolver(symbol_dirs=[LIBS]), allow_upgrade=True
+    )
+    up.load(root)
+    r1 = next(s for s in up.symbols() if s.ref == "R1")
+    up.edit(r1.uuid, {"value": "2k2"})
+    up.save()
+    sch = SchematicFile.load(root)
+    assert sch.stamp == EPOCH_10["sch"] and sch.generator_version == "10.0"
+    assert sch.symbol("R1").value == "2k2" and len(sch.symbols) == 7
     w9 = SchematicWriter(tmp_path, epoch=EPOCH_9, lib_resolver=FallbackLibResolver(symbol_dirs=[LIBS]))
     with pytest.raises(WriterError) as e:
         w9.load(root)

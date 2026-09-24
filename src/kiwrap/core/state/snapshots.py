@@ -17,6 +17,12 @@ flags, never a `.git` in the project directory:
 
 Every git call runs with an explicit identity, `core.autocrlf=false` (restores are byte-exact)
 and `core.hooksPath` inside the store (a user's global hooks never run for kiwrap commits).
+
+Read-only mode (docs/DECISIONS.md D23, requests/kiwrap-feature-requests.review.md item 2): inside a
+non-persisting call (`readonly.current()`) `create`, `restore` and `ensure_repo` refuse with
+E_READONLY (belt and braces: the tools that reach them are refused before their handler runs),
+`diff` against the working tree does not stage anything, and every git call runs with
+`GIT_OPTIONAL_LOCKS=0` so not even git's opportunistic index refresh writes into the store.
 """
 
 from __future__ import annotations
@@ -28,7 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from kiwrap.core.state import KiwrapError
+from kiwrap.core.state import KiwrapError, readonly
 
 STORE_DIRNAME = "snapshots.git"
 STATE_DIRNAME = ".kiwrap"
@@ -105,10 +111,14 @@ def _git(
     """Run one git command against the project's store (never against an enclosing repository)."""
     project_dir = Path(project_dir)
     argv = [*_git_base(project_dir), *args]
+    env = None
+    if readonly.current() is not None:
+        env = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}  # D23: no index refresh written by a read
     try:
         proc = subprocess.run(
             argv,
             cwd=str(project_dir),
+            env=env,
             input=stdin,
             capture_output=True,
             text=True,
@@ -190,6 +200,7 @@ def ensure_repo(project_dir: Path) -> bool:
     project_dir = Path(project_dir)
     if has_store(project_dir):
         return False
+    readonly.refuse_writes("creates the snapshot store <project>/.kiwrap/snapshots.git")
     store = store_dir(project_dir)
     store.parent.mkdir(parents=True, exist_ok=True)
     ignore = store.parent / ".gitignore"
@@ -238,7 +249,9 @@ def is_dirty(project_dir: Path) -> bool:
 
 
 def create(project_dir: Path, message: str) -> str | None:
-    """Stage the owned files and commit (returns the new sha), or the current HEAD when nothing changed."""
+    """Stage the owned files and commit (returns the new sha), or the current HEAD when nothing changed.
+    E_READONLY inside a non-persisting call (D23)."""
+    readonly.refuse_writes("takes a snapshot")
     project_dir = Path(project_dir)
     ensure_repo(project_dir)
     _stage_owned(project_dir)
@@ -292,6 +305,7 @@ def _assert_store_is_ours(project_dir: Path) -> None:
 def restore(project_dir: Path, ref: str, *, tool: str = "kw_snapshot", commit: bool = True) -> str | None:
     """Put the owned files back to `ref` (universal undo) and, unless `commit=False` (the caller
     commits), record that as a new snapshot."""
+    readonly.refuse_writes("restores files from a snapshot")
     project_dir = Path(project_dir)
     sha = resolve(project_dir, ref)
     _assert_store_is_ours(project_dir)
@@ -312,8 +326,10 @@ def diff(project_dir: Path, a: str, b: str | None = None) -> dict[str, Any]:
     project_dir = Path(project_dir)
     sha_a = resolve(project_dir, a)
     sha_b = resolve(project_dir, b) if b else None
-    if sha_b is None:
-        _stage_owned(project_dir)  # so files added since `a` show up in the worktree diff
+    if sha_b is None and readonly.current() is None:
+        # so files added since `a` show up in the worktree diff (a read-only call stages nothing:
+        # files never snapshotted are then left out of the diff)
+        _stage_owned(project_dir)
     args_names = ["diff", "--name-status", sha_a] + ([sha_b] if sha_b else [])
     args_stat = ["diff", "--stat", sha_a] + ([sha_b] if sha_b else [])
     names = _git(project_dir, *args_names).stdout.splitlines()

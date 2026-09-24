@@ -47,7 +47,15 @@ from kiwrap.core.tools._author import (
     run_write,
     settle_placed,
 )
-from kiwrap.core.tools._base import DESTRUCTIVE, MUTATING, Mutation, ToolContext, ToolSpec, mutation
+from kiwrap.core.tools._base import (
+    DESTRUCTIVE,
+    MUTATING,
+    Mutation,
+    ToolContext,
+    ToolSpec,
+    effective_target,
+    mutation,
+)
 from kiwrap.core.tools._data import pick, rec, ref_key
 from kiwrap.core.tools.pcb_get import norm_footprint, norm_rules, project_netclasses
 
@@ -61,7 +69,10 @@ OFF_BOARD_NOTE = "new footprints are placed off-board in a grid: kw_pcb_place mo
 
 
 def _install(ctx: ToolContext, m: Mutation) -> tuple[Any, Any, Any]:
-    install = ctx.services.install(m.state.target_kicad)
+    """The install a board write runs on (every kw_pcb_* authoring tool, kw_pcb_route_auto,
+    kw_pcb_fix): it must write the board's own format (D21, review item 1 (b)/(c)/(e)); else the
+    user is asked to upgrade the project or the call fails with E_FORMAT_UPGRADE_REQUIRED."""
+    install = effective_target(ctx, m.project, m.state, for_write=True, kinds=("pcb",)).install
     return install, ctx.services.caps(install), ctx.services.config_root(install)
 
 

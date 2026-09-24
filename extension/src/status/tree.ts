@@ -1,11 +1,28 @@
 /**
- * The "KiCad (kiwrap)" view: server, installs (kw_env; default marked), engines, the current
- * project (stage, target KiCad, last validator numbers) and the live session state.
+ * The "KiCad (kiwrap)" view: server, installs (kw_env; the selected / project / newest rows
+ * marked), engines, the current project (stage, the effective target KiCad and its source, the file
+ * format, last validator numbers) and the live session state.
+ *
+ * An install row's click only expands its details: selecting an install is the inline "Select"
+ * action, the context menu or the picker (a one-click selection used to rewrite kiwrap.kicadInstall
+ * by accident). The project's target follows D21 (installModel.ts).
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { KiwrapSession, ValidatorSummary } from '../session';
 import type { InstallRow } from '../types';
+import {
+  effectiveTarget,
+  formatField,
+  installDetails,
+  installLabel,
+  installRoles,
+  installSpec,
+  rolesText,
+  targetField,
+} from './installModel';
+
+export { installLabel, installSpec, matchesSpec } from './installModel';
 
 export type NodeKind =
   | 'server'
@@ -20,6 +37,8 @@ export type NodeKind =
   | 'validatorField'
   | 'live'
   | 'liveField'
+  | 'installField'
+  | 'projectWarning'
   | 'info';
 
 export class KiwrapNode extends vscode.TreeItem {
@@ -157,29 +176,40 @@ export class KiwrapTree implements vscode.TreeDataProvider<KiwrapNode>, vscode.D
 
   private installsNode(): KiwrapNode {
     const s = this.session;
-    const selected = s.selectedInstall();
     const rows = s.env?.installs ?? [];
-    // kw_env lists newest first and `find()` takes the first prefix match, so one row is selected;
-    // the default is likewise the FIRST row of kw_env's default version, not every row sharing it
-    // (six bench builds of one nightly are six rows - reviewer finding 18)
-    const selectedRow = selected !== undefined ? rows.find((r) => matchesSpec(r, selected)) : undefined;
-    const defaultRow = s.env?.default_install ? rows.find((r) => r.version === s.env?.default_install) : undefined;
+    const explicit = s.explicitInstall();
+    const roles = installRoles(rows, {
+      explicit,
+      effective: effectiveTarget(s.projectStatus) ?? s.projectStatus?.target_kicad ?? null,
+      newest: s.env?.default_install ?? null,
+    });
+    // the row the extension's own launches use: the explicit choice, else the project's target
+    const using = rows.find((r) => (explicit ? roles.get(r)?.selected : roles.get(r)?.project));
     const children = rows.map((row) => {
-      const isDefault = row === defaultRow;
-      const isSelected = row === selectedRow;
       const spec = installSpec(row, rows);
-      return new KiwrapNode('install', installLabel(row, rows), [], {
-        // TreeItem.description renders no codicons: plain words (the star icon marks the selection)
-        description: [isSelected ? 'selected' : '', isDefault ? 'default' : '', capBadges(row)].filter(Boolean).join(' '),
-        tooltip: `${row.root}\n${row.kicad_cli}\nsource: ${row.source}${row.capabilities_error ? `\ncapabilities: ${row.capabilities_error.message}` : ''}`,
-        icon: isSelected ? 'star-full' : 'circuit-board',
+      const r = roles.get(row);
+      const details = installDetails(row).map(
+        ([k, v]) => new KiwrapNode('installField', k, [], { description: v, tooltip: `${k}: ${v}` }),
+      );
+      return new KiwrapNode('install', installLabel(row, rows), details, {
+        description: [rolesText(r), capBadges(row)].filter(Boolean).join(' '),
+        tooltip:
+          `${row.root}\n${row.kicad_cli}\nsource: ${row.source}` +
+          `${row.capabilities_error ? `\ncapabilities: ${row.capabilities_error.message}` : ''}` +
+          '\n\nClick shows the details; "Select" (inline or right-click) makes kiwrap.kicadInstall use this install.',
+        icon: row === using ? 'star-full' : 'circuit-board',
         contextValue: 'install',
         value: spec,
-        command: { command: 'kiwrap.selectInstall', title: 'Select', arguments: [spec] },
+        collapsed: true,
+        // no command: a click expands the details instead of changing kiwrap.kicadInstall
       });
     });
+    const following = explicit ? `using ${explicit}` : "matching the project's format";
     return new KiwrapNode('installs', 'KiCad installs', children, {
-      description: s.envError ?? (rows.length ? `${rows.length}` : s.env ? 'none' : ''),
+      description: s.envError ?? (rows.length ? `${rows.length} - ${following}` : s.env ? 'none' : ''),
+      tooltip: explicit
+        ? `kiwrap.kicadInstall = ${explicit}. Select "match the project's file format" to let kiwrap pick (D21).`
+        : "kiwrap.kicadInstall is empty: kiwrap uses the KiCad that matches the project's file format (D21).",
       icon: 'library',
       collapsed: false,
     });
@@ -217,9 +247,41 @@ export class KiwrapTree implements vscode.TreeDataProvider<KiwrapNode>, vscode.D
     const fields: KiwrapNode[] = [
       new KiwrapNode('projectField', 'path', [], { description: path.relative(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? p.dir, p.pro) || p.pro, tooltip: p.pro }),
       new KiwrapNode('projectField', 'stage', [], { description: st?.stage ?? '?', icon: 'milestone' }),
-      new KiwrapNode('projectField', 'target KiCad', [], { description: st?.target_kicad ?? (s.env?.default_install ? `${s.env.default_install} (newest)` : 'newest') }),
-      new KiwrapNode('projectField', 'next', [], { description: st?.next_suggested ?? '' }),
     ];
+    const target = targetField(st, s.explicitInstall());
+    fields.push(
+      new KiwrapNode('projectField', 'target KiCad', [], {
+        description: target.description,
+        tooltip: target.tooltip,
+        icon: target.icon,
+        contextValue: 'projectTarget',
+      }),
+    );
+    const format = formatField(st, s.env);
+    if (format) {
+      fields.push(
+        new KiwrapNode('projectField', 'file format', [], {
+          description: format.description,
+          tooltip: format.tooltip,
+          icon: format.icon,
+          // a format no installed KiCad writes offers the (consented) upgrade inline
+          contextValue: format.icon === 'warning' ? 'projectFormatMismatch' : 'projectFormat',
+        }),
+      );
+    }
+    const explicit = s.explicitInstall();
+    if (explicit && explicit !== effectiveTarget(st)) {
+      fields.push(
+        new KiwrapNode('projectField', 'live KiCad', [], {
+          description: `${explicit} (kiwrap.kicadInstall)`,
+          tooltip: 'The extension launches this install for the live view; clear kiwrap.kicadInstall to follow the project.',
+        }),
+      );
+    }
+    for (const w of st?.warnings ?? []) {
+      fields.push(new KiwrapNode('projectWarning', 'warning', [], { description: w, tooltip: w, icon: 'warning' }));
+    }
+    fields.push(new KiwrapNode('projectField', 'next', [], { description: st?.next_suggested ?? '' }));
     if (st?.external_edit) {
       fields.push(new KiwrapNode('projectField', 'external edit', [], { description: st.external_edit.files.join(', '), icon: 'warning' }));
     }
@@ -291,37 +353,4 @@ export class KiwrapTree implements vscode.TreeDataProvider<KiwrapNode>, vscode.D
     this.sub.dispose();
     this.changed.dispose();
   }
-}
-
-/** Whether several kw_env rows share this row's version (bench builds of one nightly). */
-function sharesVersion(row: InstallRow, rows: InstallRow[]): boolean {
-  return rows.filter((r) => r.version === row.version).length > 1;
-}
-
-/**
- * The row's label: `KiCad <version>`, plus the install root's basename for an explicitly registered
- * install or when several rows share the version, so the user can tell `KiCad 10.99.0 (6dd893f7d1-7)`
- * from the stock `KiCad 10.99.0`.
- */
-export function installLabel(row: InstallRow, rows: InstallRow[]): string {
-  if (row.source === 'explicit' || sharesVersion(row, rows)) {
-    const base = row.root.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || row.root;
-    return `KiCad ${row.version} (${base})`;
-  }
-  return `KiCad ${row.version}`;
-}
-
-/** The spec `kiwrap.kicadInstall` needs to select exactly this row: its root when the version is ambiguous. */
-export function installSpec(row: InstallRow, rows: InstallRow[]): string {
-  return row.source === 'explicit' || sharesVersion(row, rows) ? row.root : row.version;
-}
-
-/** Does a version spec ("10", "10.0", "10.0.6" or a path) match this install row? */
-export function matchesSpec(row: InstallRow, spec: string): boolean {
-  const s = spec.trim();
-  if (/^\d+(\.\d+){0,2}$/.test(s)) {
-    return row.version === s || row.version.startsWith(s + '.');
-  }
-  const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
-  return norm(row.root) === norm(s) || norm(row.kicad_cli) === norm(s);
 }

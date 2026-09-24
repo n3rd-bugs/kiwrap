@@ -36,7 +36,15 @@ from pydantic import BaseModel, Field
 
 from kiwrap.core.state import KiwrapError, Receipt
 from kiwrap.core.state.project import Project
-from kiwrap.core.tools._base import MUTATING, ToolContext, ToolSpec, read_state, to_kiwrap_error
+from kiwrap.core.tools._base import (
+    MUTATING,
+    ToolContext,
+    ToolSpec,
+    effective_target,
+    read_state,
+    scratch_folder,
+    to_kiwrap_error,
+)
 
 INTENT_FILENAME = "intent.json"
 INTENT_FORMAT_VERSION = 1
@@ -442,10 +450,15 @@ def run(ctx: ToolContext, args: IntentArgs) -> Receipt:
         )
     if not project.root_sch.exists():
         raise KiwrapError("E_PROJECT_NOT_FOUND", f"root schematic {project.root_sch.name} is missing")
-    install = ctx.services.install(state.target_kicad)
+    install = effective_target(ctx, project, state, for_write=False).install
     config = ctx.services.config_root(install)
     try:
-        nl = ctx.services.export_netlist(install, config, project.root_sch)
+        # into a throw-away folder: the backend's default `<root>.net` would be left in the project
+        # (review §3 small defects, item 2)
+        with scratch_folder(ctx, "netlist") as folder:
+            nl = ctx.services.export_netlist(
+                install, config, project.root_sch, folder / f"{project.root_sch.stem}.net"
+            )
     except Exception as exc:  # noqa: BLE001 - map to the teaching error
         raise to_kiwrap_error(exc) from exc
     diff = intent_diff(stored, nl)

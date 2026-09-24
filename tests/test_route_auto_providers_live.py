@@ -115,6 +115,9 @@ def demo_project(
     for extra in ("fp-lib-table", "sym-lib-table"):
         if (demo / extra).is_file():
             (d / extra).write_text((demo / extra).read_text(encoding="utf-8"), encoding="utf-8")
+    # in `target`'s own format before it is pinned (D21: a newer KiCad writing the 9.0 demo board
+    # would be an up-conversion that needs the user's consent)
+    resave_board(live, target, d / f"{name}.kicad_pcb")
     ok(live["server"], "kw_project", action="status", project=str(d))
     model = BoardFile.load(d / f"{name}.kicad_pcb")
     w = BoardWriter(d, epoch={"pcb": model.stamp or 20260206}, lib_resolver=None)
@@ -131,6 +134,17 @@ def demo_project(
     record_stage(project, state, "placed")
     project.save_state(state)
     return d
+
+
+def resave_board(live: dict[str, Any], target: Any, board: Path) -> None:
+    """Re-save the scratch board with `target`'s kicad-cli (`pcb upgrade --force`, in place on the
+    copy), so the project is in the format of the KiCad the test pins. The ecc83 demo board is 9.0
+    format; pinning a newer KiCad by hand and writing makes every write a D21 up-conversion, which
+    kiwrap refuses without the user's consent (E_FORMAT_UPGRADE_REQUIRED, docs/DECISIONS.md D21)."""
+    from kiwrap.backends.cli.runner import run_kicad_cli
+
+    config = live["ctx"].services.config_root(target)
+    run_kicad_cli(target, ["pcb", "upgrade", "--force", str(board)], config=config, accept=(0,))
 
 
 def route(live: dict[str, Any], d: Path, **args: Any) -> dict[str, Any]:

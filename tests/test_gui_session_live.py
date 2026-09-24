@@ -330,9 +330,7 @@ def test_one_gui_at_a_time(gui_install, storage_home, tmp_path, _hygiene):
 def test_kw_live_tool_round_trip(gui_install, storage_home, tmp_path, monkeypatch, _hygiene):
     project = _scratch_ecc83(gui_install, tmp_path)
     ctx = _ctx(storage_home)
-    launched = live_tool.run(
-        ctx, live_tool.LiveArgs(action="launch", project=str(project.dir), editor="pcb")
-    )
+    launched = live_tool.run(ctx, live_tool.LiveArgs(action="launch", project=str(project.dir), editor="pcb"))
     sid = launched.data["session_id"]
     try:
         assert launched.data["ok"] and launched.data["pid"] and launched.data["api_socket"]

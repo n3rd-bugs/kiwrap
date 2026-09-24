@@ -304,7 +304,7 @@ parentheses.
 | `kiwrap.serverProject` (auto) | the kiwrap checkout (uv project) to run `uv run --project <path> kiwrap serve` from; empty = resolved in any workspace (section 2: open folder, `%KIWRAP_REPO%`, extension parent, remembered, VSIX build origin), else *Locate kiwrap checkout...* |
 | `kiwrap.uvPath` (`uv`) | the `uv` executable; `scripts/bootstrap.ps1` installs a private one under `<storage>/uv` when PATH has none |
 | `kiwrap.storageHome` (see §6) | passed as `--storage-home` to the server and exported to the helper; the contract says "unset = kiwrap's own default" so that the agent's server and the extension's share one home |
-| `kiwrap.kicadInstall` (newest) | the KiCad to target, a version spec `kw_env` lists ("Select KiCad" writes it) |
+| `kiwrap.kicadInstall` (empty = match the project's file format, D21) | the KiCad to target. Empty (or `project`, the recommended default): kiwrap picks the installed KiCad whose file format equals the project files (the server's `effective_target`) and asks before saving them in a newer format. A version spec `kw_env` lists (`10`, `10.0`, `10.0.6`) or an install root selects one explicitly - it is also the KiCad the live view launches. Written only by *Select KiCad install* (the picker, or an install row's inline *Select* action); clicking an install row in the sidebar just expands its details and never changes the setting. The pre-D21 default `newest` re-stamped 10.0 projects as 10.99 |
 | `kiwrap.checkOnSave` (`true`) | re-run ERC / DRC when a `.kicad_sch` / `.kicad_pcb` is saved |
 | `kiwrap.live.raiseOnDoubleClick` (`true`) | a double-click on the live picture raises the real KiCad window (the same as the tab's "Raise KiCad" button); a single click only focuses the tab |
 | `kiwrap.live.inputMode` (`none`) | EXPERIMENTAL, unsupported: `none` (the live view) / `mirror` / `hybrid` / `events` (§5); the only thing that arms the keybinding shield |
@@ -317,7 +317,11 @@ parentheses.
 Commands contributed by `package.json` (2026-09-20): `kiwrap.configureClaude` (Configure Claude
 Code; `commands/configurePlan.ts` computes the edits: `.mcp.json`, a managed block in
 `CLAUDE.md`/`AGENTS.md`, `.claude/skills/kiwrap-flow/`), `kiwrap.selectInstall` (Select KiCad
-install), `kiwrap.pickProject`, `kiwrap.runErc` / `kiwrap.runDrc` / `kiwrap.runChecks`,
+install: *Match the project's file format* or one install; with an existing project it also offers
+to pin it with `kw_project(action='retarget')`, which never touches the files),
+`kiwrap.upgradeProject` (Upgrade project file format...: the inline action of the sidebar's "file
+format" row when no installed KiCad writes the project's format; it opens the consent modal below
+proactively), `kiwrap.pickProject`, `kiwrap.runErc` / `kiwrap.runDrc` / `kiwrap.runChecks`,
 `kiwrap.openPreview` (the `kiwrap.preview` custom editor, `priority: option`, on `*.kicad_sch` /
 `*.kicad_pcb`), `kiwrap.openLive` / `kiwrap.closeLive`, `kiwrap.restartServer`, `kiwrap.refresh`,
 `kiwrap.showOutput`, `kiwrap.showProblems`; the view `kiwrap.status` ("KiCad (kiwrap)": tracked
@@ -328,6 +332,29 @@ webview, `kiwrap.live.open` / `openSurface` / `close` / `status` / `raise` ("Rai
 keys `kiwrap.live.shield`, `kiwrap.live.shieldPalette`, `kiwrap.live.input` (an input mode
 injects), `kiwrap.live.active`. No command title, setting label or walkthrough text names the
 hidden / mirror modes.
+
+**The D21 consent modal** (`src/consent.ts`, bound to the window API by `src/consentUi.ts`). Any
+interactive call that fails with `E_FORMAT_UPGRADE_REQUIRED` (ERC / DRC, the live launch,
+`kiwrap.core.callTool`) and the proactive `kiwrap.upgradeProject` open one modal per project:
+"<project> is in KiCad <x> format and no installed KiCad <x> can write it. Upgrade the project files
+to KiCad <y> format? KiCad <x> will no longer open them." The detail lists the files that would be
+converted, the installed KiCads with their formats, and the alternative (the `install_hint`, e.g.
+`winget install KiCad.KiCad --version 10.0.6`). Buttons:
+
+- **Upgrade** - `kw_project(action='upgrade', confirm=true)` (converted on a copy, snapshot first,
+  ERC/DRC before and after), then the original call is retried once;
+- **Install KiCad <x>...** - the install command is put in a terminal (not run: the user presses
+  Enter), or the KiCad download page opens when there is no hint; nothing is converted;
+- **Use KiCad <v>** - instead of Install when an installed KiCad does write the files' format:
+  `kw_project(action='retarget', target_kicad=<v>)` pins it (files untouched) and the call is
+  retried;
+- **Cancel** - nothing changes; the error is not shown a second time.
+
+Background calls (on-save checks, previews, the status refresh) never open the modal.
+`E_FORMAT_NEWER` becomes an error naming the KiCad that is needed (with *Use KiCad <v>* when an
+installed one reads the files), `E_READONLY` (D23) an information message. The proactive command
+takes `project_kicad`, `install_hint`, `file_epochs` and `candidates` from `kw_project status`, so
+it names "KiCad 10.0" and the winget command even when no installed KiCad writes the format.
 
 ## 9. Repo layout and build
 

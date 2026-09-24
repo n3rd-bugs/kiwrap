@@ -24,6 +24,13 @@ contract modules named below (the integrator reconciles names if the real module
     netlist_from_file (schematic) -> kiwrap.formats.analysis
     export_stats / export_stackup / export_ratsnest (install, config, board) and sch_diff
     (install, config, a, b) -> kiwrap.backends.cli.structured (parsed JSON dicts)
+    copy_project(project_dir, design_files, work_dir) / upgrade_project(install, config,
+    project_dir, design_files, work_dir, caps=) / format_releases() ->
+    kiwrap.backends.cli.upgrade (kw_project upgrade and the D21 target resolution)
+
+The installs are listed newest first (`installation.discover`); `install(spec)` finds one by
+spec, but which install a PROJECT runs on is `kiwrap.core.tools._base.effective_target`'s answer
+(its files' format, docs/DECISIONS.md D21), never "the newest" by default.
 """
 
 from __future__ import annotations
@@ -109,7 +116,11 @@ DATA_BACKENDS: dict[str, tuple[str, str, str]] = {
     "ipc_session": ("kiwrap.backends.ipc.sessions", "pooled_session", "the headless IPC session"),
     # the mutating tools' prologue: close kiwrap's own pooled servers on the project (they hold
     # KiCad's ~<name>.kicad_pro.lck) and learn about reads still in flight
-    "ipc_release_project": ("kiwrap.backends.ipc.sessions", "release_project", "the headless IPC session pool"),
+    "ipc_release_project": (
+        "kiwrap.backends.ipc.sessions",
+        "release_project",
+        "the headless IPC session pool",
+    ),
     "ipc_read_board": ("kiwrap.backends.ipc.readers", "read_board", "the IPC board reader"),
     "ipc_read_schematic": ("kiwrap.backends.ipc.readers", "read_schematic", "the IPC schematic reader"),
     "ipc_ratsnest": ("kiwrap.backends.ipc.queries", "ratsnest", "the IPC connectivity / ratsnest query"),
@@ -126,7 +137,17 @@ DATA_BACKENDS: dict[str, tuple[str, str, str]] = {
     # kiwrap fork patch ratsnest-export (docs/UPSTREAM.md G1): KiCad's airwires as JSON
     "export_ratsnest": ("kiwrap.backends.cli.structured", "export_ratsnest", "kicad-cli pcb export ratsnest"),
     "sch_diff": ("kiwrap.backends.cli.structured", "sch_diff", "kicad-cli sch diff"),
+    # D21 (review item 1): kw_project upgrade converts a COPY of the project (every sheet and the
+    # board, `sch/pcb upgrade --force`) and the core names KiCad lines from the version matrix
+    "copy_project": ("kiwrap.backends.cli.upgrade", "copy_project", "the project copy for upgrades"),
+    "upgrade_project": ("kiwrap.backends.cli.upgrade", "upgrade_project_copy", "kicad-cli sch/pcb upgrade"),
+    "format_releases": ("kiwrap.backends.cli.upgrade", "format_releases", "the KiCad release table"),
+    # the matrix seed of one version (no process started): `install_formats` reads formats.* from it
+    "format_seed": ("kiwrap.capability", "seed_for", "the version matrix seed"),
 }
+
+#: the capability keys naming the file-format stamps an install writes
+FORMAT_KEYS: tuple[str, ...] = ("sch", "pcb", "sym", "pro")
 
 
 @dataclass
@@ -164,6 +185,10 @@ class Services:
     export_stackup: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     export_ratsnest: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     sch_diff: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    copy_project: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    upgrade_project: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    format_releases: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
+    format_seed: Callable[..., Any] = None  # type: ignore[assignment]  # __post_init__ fills it
     # caches (per server process)
     _installs: list[Install] | None = field(default=None, repr=False)
     _caps: dict[str, Caps] = field(default_factory=dict, repr=False)
@@ -260,6 +285,30 @@ class Services:
         if refresh or key not in self._caps:
             self._caps[key] = self.capabilities_for(install, refresh=refresh)
         return self._caps[key]
+
+    def install_formats(self, install: Install) -> dict[str, int]:
+        """`{kind: formats.<kind>}` of an install WITHOUT probing it: the capability record when
+        this process already holds it, else the version matrix seed (the `formats.*` keys are
+        seed-only; no probe changes them), else the record (probed now). `effective_target` asks
+        this for every install on every call - probing all of them cold took ~2 min on the
+        development machine (9 installs, 2026-09-24), the seed takes microseconds."""
+        values: Any = self._caps.get(install.key())
+        if values is None:
+            try:
+                values = self.format_seed(install.version)[1]
+            except (KiwrapError, ValueError, TypeError, IndexError):
+                values = None
+        if values is None:
+            values = self.caps(install)
+        out: dict[str, int] = {}
+        for kind in FORMAT_KEYS:
+            try:
+                val = values[f"formats.{kind}"]
+            except (KeyError, TypeError):
+                continue
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                out[kind] = int(val)
+        return out
 
     def config_root(self, install: Install) -> ConfigRoot:
         key = install.key()

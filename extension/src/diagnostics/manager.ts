@@ -4,13 +4,15 @@
  * on the line of its first item's uuid (mapping.ts). Refreshed on demand (the commands) and on
  * save of a design file (kiwrap.checkOnSave), debounced because kicad-cli runs take seconds.
  * A run's own rewrite of the board (the DRC refill save) is recognised by its file stamp
- * (selfWrite.ts) and never counts as a change, and on-save DRC runs pass save_board: false.
+ * (selfWrite.ts) and never counts as a change, and DRC runs pass save_board: false (D22; with an
+ * older server that still saved by default, the refill save is what re-stamped a KiCad 10.0 board
+ * as 10.99 - review item 1 path (a)).
  */
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import { boardFile, projectForFile, schematicFiles, type KicadProject } from '../project';
 import type { KiwrapSession, ValidatorSummary } from '../session';
-import { KiwrapError, type PcbDrcData, type SchCheckData } from '../types';
+import { KiwrapError, isHandledError, type PcbDrcData, type SchCheckData } from '../types';
 import { countBySeverity, mapViolations, type MappedDiagnostic, type MappedSeverity } from './mapping';
 import { SelfWriteGuard } from './selfWrite';
 
@@ -147,7 +149,8 @@ export class DiagnosticsManager implements vscode.Disposable {
       this.session.setBusy('erc', true);
       try {
         const server = await this.session.ready();
-        const receipt = await server.schCheck(project.pro);
+        // on-save runs are background calls: no consent modal (consent.ts), the log says why
+        const receipt = await server.schCheck(project.pro, {}, { interactive: !opts.silent });
         const data = receipt.data as SchCheckData;
         const files = schematicFiles(project);
         this.selfWrites.record(files);
@@ -190,12 +193,14 @@ export class DiagnosticsManager implements vscode.Disposable {
       this.session.setBusy('drc', true);
       try {
         const server = await this.session.ready();
-        // an automatic (on-save) check never rewrites the board: the refill stays in kicad-cli's
-        // memory for the check (save_board: false); the explicit command keeps the server default
-        const receipt = await server.pcbDrc(project.pro, {
-          schematic_parity: opts.parity ?? false,
-          save_board: opts.silent ? false : undefined,
-        });
+        // a check never rewrites the board: the refill stays in kicad-cli's memory for the check
+        // (save_board: false, D22) - explicit here too, so an older server that defaulted to saving
+        // cannot up-convert the board's format (review item 1 path (a))
+        const receipt = await server.pcbDrc(
+          project.pro,
+          { schematic_parity: opts.parity ?? false, save_board: false },
+          { interactive: !opts.silent },
+        );
         const data = receipt.data as PcbDrcData;
         const files = [boardFile(project)];
         this.selfWrites.record(files);
@@ -238,7 +243,8 @@ export class DiagnosticsManager implements vscode.Disposable {
     const msg = err instanceof KiwrapError ? `${err.code}: ${err.message.replace(/^E_[A-Z_]+:\s*/, '')}` : String(err);
     const fix = err instanceof KiwrapError && err.fix ? ` Fix: ${err.fix}` : '';
     this.session.log(`${what} failed: ${msg}${fix}`);
-    if (!silent) {
+    // the consent flow already told the user (upgrade modal, E_FORMAT_NEWER, E_READONLY)
+    if (!silent && !isHandledError(err)) {
       void vscode.window.showErrorMessage(`kiwrap ${what} failed: ${msg}${fix}`, 'Show output').then((choice) => {
         if (choice) {
           this.session.output.show(true);

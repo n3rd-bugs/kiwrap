@@ -59,7 +59,7 @@ from kiwrap.core.state.stages import (
     stage_at_least,
     stage_index,
 )
-from kiwrap.core.tools._base import Mutation, ToolContext, to_kiwrap_error
+from kiwrap.core.tools._base import Mutation, ToolContext, saves_in_format, scratch_folder, to_kiwrap_error
 from kiwrap.core.tools._data import pick, rec
 from kiwrap.core.tools.checks import (
     DRC_COSMETIC_PREFIX,
@@ -161,9 +161,13 @@ def call_with_accepted(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any
 # ---- epochs / writers -------------------------------------------------------------------------------
 
 
-def epoch_for(caps: Any) -> dict[str, int]:
-    """The format stamps the target KiCad writes (`formats.*` capability keys - never a version
-    number; docs/ARCHITECTURE.md §6)."""
+def epoch_for(caps: Any, project: Project | None = None) -> dict[str, int]:
+    """The format stamps a writer uses: the target KiCad's (`formats.*` capability keys - never a
+    version number; docs/ARCHITECTURE.md §6), lowered to the project's own stamp per design kind
+    when the files are older (review item 1 (d): a writer never re-stamps a file upward; only
+    `kw_project upgrade` does, with the user's consent - D21). `effective_target` already picks an
+    install writing the files' generation, so this only keeps an in-generation older stamp
+    (the 10.0 demos' `(version 20260101)` schematics stay 20260101 instead of becoming 20260306)."""
     out: dict[str, int] = {}
     for kind in ("sch", "sym", "pcb", "pro"):
         try:
@@ -180,6 +184,10 @@ def epoch_for(caps: Any) -> dict[str, int]:
             fix="kw_env(refresh=true) re-probes the install; else retarget with kw_project",
             data={"capability": "formats.sch"},
         )
+    if project is not None:
+        for kind, stamp in project.project_epochs().items():
+            if kind in out and stamp < out[kind]:
+                out[kind] = stamp
     return out
 
 
@@ -188,18 +196,18 @@ def lib_resolver(ctx: ToolContext, install: Any, config: Any, project: Project) 
 
 
 def schematic_writer(ctx: ToolContext, install: Any, caps: Any, config: Any, project: Project) -> Any:
-    """A loaded `SchematicWriter` on the project's root sheet."""
+    """A loaded `SchematicWriter` on the project's root sheet, in the files' own format epoch."""
     writer = backend(ctx, "schematic_writer")(
-        project.dir, epoch=epoch_for(caps), lib_resolver=lib_resolver(ctx, install, config, project)
+        project.dir, epoch=epoch_for(caps, project), lib_resolver=lib_resolver(ctx, install, config, project)
     )
     writer.load(project.root_sch)
     return writer
 
 
 def board_writer(ctx: ToolContext, install: Any, caps: Any, config: Any, project: Project) -> Any:
-    """A loaded `BoardWriter` on the project's board."""
+    """A loaded `BoardWriter` on the project's board, in the file's own format epoch."""
     writer = backend(ctx, "board_writer")(
-        project.dir, epoch=epoch_for(caps), lib_resolver=lib_resolver(ctx, install, config, project)
+        project.dir, epoch=epoch_for(caps, project), lib_resolver=lib_resolver(ctx, install, config, project)
     )
     writer.load(project.board)
     return writer
@@ -535,7 +543,16 @@ def erc_validator(
         downgrade_below(m.state, "erc_clean")
         return None
     try:
-        report = ctx.services.run_erc(install, config, project.root_sch, severity="all", units="mm")
+        # the JSON goes to a throw-away folder, never `<root>.erc.json` beside the sheet (review item 2)
+        with scratch_folder(ctx, "erc") as folder:
+            report = ctx.services.run_erc(
+                install,
+                config,
+                project.root_sch,
+                severity="all",
+                units="mm",
+                out_json=folder / f"{project.root_sch.stem}.erc.json",
+            )
     except KiwrapError as err:
         if err.code not in ("E_UNSUPPORTED", "E_KICAD_FAILED", "E_TIMEOUT"):
             raise
@@ -675,16 +692,27 @@ def drc_validator(
             "the refilled zones were not written back to the board: a live KiCad session (kw_live) holds it; "
             "refill in the GUI or after kw_live detach (kw_pcb_drc refill_zones=true)"
         )
-    try:
-        report = ctx.services.run_drc(
-            install,
-            config,
-            project.board,
-            schematic_parity=parity,
-            refill_zones=do_refill,
-            save_board=save_refill,
-            severity="all",
+    if save_refill and not saves_in_format(install, caps, project, "pcb", m):
+        # review item 1 (b): `--save-board` would write the board in this KiCad's newer format
+        save_refill = False
+        m.receipt.degraded.append("refill_not_saved_epoch")
+        m.receipt.warnings.append(
+            f"the zones were refilled for the check only: saving them with KiCad {getattr(install, 'version', '?')} "
+            "would move the board to a newer file format (D21)"
         )
+    try:
+        # the JSON goes to a throw-away folder, never `<board>.drc.json` beside the board (review item 2)
+        with scratch_folder(ctx, "drc") as folder:
+            report = ctx.services.run_drc(
+                install,
+                config,
+                project.board,
+                schematic_parity=parity,
+                refill_zones=do_refill,
+                save_board=save_refill,
+                severity="all",
+                out_json=folder / f"{project.board.stem}.drc.json",
+            )
     except KiwrapError as err:
         if err.code not in ("E_UNSUPPORTED", "E_KICAD_FAILED", "E_TIMEOUT"):
             raise

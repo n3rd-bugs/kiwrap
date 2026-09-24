@@ -10,6 +10,11 @@ Token sources, in order: `--token-file <path>` (read, stripped), the `KIWRAP_HTT
 environment variable, `--token <value>` (kept for convenience, with a warning: every local
 process can read another process's command line), else a fresh `secrets.token_urlsafe(32)`
 printed once.
+
+`kiwrap serve --readonly` (or `KIWRAP_READONLY=1` in the environment) runs every call
+non-persisting (docs/DECISIONS.md D23, requests/kiwrap-feature-requests.review.md item 2): nothing
+is written into a project, outputs go under `<storage>/results/`, and the tools that would change
+a project refuse with E_READONLY (`kiwrap.core.state.readonly`).
 """
 
 from __future__ import annotations
@@ -76,6 +81,12 @@ def bearer_guard(app: ASGIApp, token: str) -> ASGIApp:
 def cmd_serve(args: argparse.Namespace) -> int:
     from kiwrap.core.server import build_server, install_shutdown_hooks, shutdown_jobs
 
+    if apply_readonly(args):
+        print(
+            "kiwrap: read-only mode (D23) - nothing is written into projects; outputs go to "
+            "<storage>/results/, mutating tools refuse with E_READONLY",
+            file=sys.stderr,
+        )
     mcp = build_server(Path(args.storage_home) if args.storage_home else None)
     install_shutdown_hooks(mcp)
     if not args.http:
@@ -113,6 +124,16 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 
 TOKEN_ENV = "KIWRAP_HTTP_TOKEN"
+
+
+def apply_readonly(args: argparse.Namespace) -> bool:
+    """`--readonly` switches the process to read-only (`KIWRAP_READONLY=1`, inherited by every
+    tool call); returns whether the server runs read-only (flag or environment)."""
+    from kiwrap.core.state import readonly
+
+    if getattr(args, "readonly", False):
+        readonly.enable_server_readonly()
+    return readonly.server_readonly()
 
 
 def resolve_http_token(
@@ -242,6 +263,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--token-file; default: generated and printed once)",
     )
     s.add_argument("--token-file", help="file holding the bearer token (read once, whitespace stripped)")
+    s.add_argument(
+        "--readonly",
+        action="store_true",
+        help="read-only mode (D23; also KIWRAP_READONLY=1): no snapshots, no .kiwrap state, no files written "
+        "into projects (outputs go to <storage>/results/); mutating tools refuse with E_READONLY",
+    )
     s.set_defaults(func=cmd_serve)
 
     e = sub.add_parser("env", help="print installed KiCads and their capabilities as JSON")

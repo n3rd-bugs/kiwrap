@@ -37,6 +37,16 @@ and falls through to the next one when the attempt reports the provider UNAVAILA
 `E_KICAD_FAILED` for the ipc11 provider, whose server may fail to start). Any other error is
 the caller's problem and propagates. Each fall-through adds a warning and, when a later provider
 is used, its `degraded` tags.
+
+Format precondition of the ipc11 WRITES (docs/DECISIONS.md D21, requests/kiwrap-feature-requests.
+review.md item 1 (c)): every ipc11 write ends in KiCad's SaveDocument, which re-saves the document
+- for a schematic every sheet, touched or not - in the api-server's own format. The review
+reproduced a 10.0 board and both sheets of a 10.0 schematic re-stamped 10.99 by a no-op
+`kw_pcb_place(provider='ipc11')` / `kw_sch_edit(provider='ipc11')`. So an authoring operation
+(`WRITE_KINDS`) attempts ipc11 only when that install saving the document keeps every file of the
+kind in its KiCad line (`_base.saves_in_format` over the running mutation); otherwise it falls
+through to the file writer (which keeps each file's own stamp) with degraded
+`ipc11_epoch_mismatch`, also when ipc11 was forced.
 """
 
 from __future__ import annotations
@@ -47,7 +57,7 @@ from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
 from kiwrap.core.state import KiwrapError
-from kiwrap.core.tools._base import to_kiwrap_error
+from kiwrap.core.tools._base import current_mutation, saves_in_format, to_kiwrap_error
 
 T = TypeVar("T")
 
@@ -325,6 +335,33 @@ OPERATIONS: dict[str, Operation] = {
 }
 
 
+#: authoring operations -> the design-file kind an ipc11 attempt saves (SaveDocument)
+WRITE_KINDS: dict[str, str] = {
+    "schematic.write": "sch",
+    "board.sync": "pcb",
+    "board.place": "pcb",
+    "board.zones": "pcb",
+    "board.route_primitives": "pcb",
+}
+EPOCH_MISMATCH_TAG = "ipc11_epoch_mismatch"
+
+
+def ipc_write_epoch_mismatch(op_name: str, caps: Any, install: Any) -> str | None:
+    """Why ipc11 must not write for `op_name` in the running mutation (None: it may): the
+    api-server would save the document in a newer format than the project's files."""
+    kind = WRITE_KINDS.get(op_name)
+    running = current_mutation()
+    if kind is None or running is None or install is None:
+        return None
+    if saves_in_format(install, caps, running.project, kind, running):
+        return None
+    version = getattr(install, "version", "?")
+    return (
+        f"ipc11 skipped: KiCad {version}'s api-server would save the {kind} document(s) in a newer file format "
+        "than the project's (D21); the file engine answered and kept every file's own format"
+    )
+
+
 def operation(name: str) -> Operation:
     try:
         return OPERATIONS[name]
@@ -451,6 +488,15 @@ def run(
     warnings: list[str] = []
     errors: list[tuple[str, KiwrapError]] = []
     forced_unavailable: list[str] = []
+    epoch_tags: list[str] = []
+    if IPC11 in attempts and any(c.name == IPC11 for c in plan_.candidates):
+        mismatch = ipc_write_epoch_mismatch(plan_.operation.name, caps, install)
+        if mismatch is not None:
+            attempts = {k: v for k, v in attempts.items() if k != IPC11}
+            plan_.candidates = [c for c in plan_.candidates if c.name != IPC11]
+            plan_.skipped.append((IPC11, mismatch))
+            warnings.append(mismatch)
+            epoch_tags.append(EPOCH_MISMATCH_TAG)
     if plan_.preferred:
         # A forced provider that this KiCad cannot serve is never silently swapped for another
         # (finding 22: provider='ipc11' on 10.0 answered from the file engine with degraded=[]).
@@ -484,6 +530,9 @@ def run(
             if tag not in degraded:
                 degraded.insert(0, tag)
         for tag in forced_unavailable:
+            if tag not in degraded:
+                degraded.insert(0, tag)
+        for tag in epoch_tags:
             if tag not in degraded:
                 degraded.insert(0, tag)
         plan_.elapsed_s = round(time.perf_counter() - started, 3)

@@ -37,8 +37,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from kiwrap.formats.epoch_dialects import SchDialect, convert_lib_symbol, dialect_for
-from kiwrap.formats.epochs import read_stamp, set_stamp
+from kiwrap.formats.epoch_dialects import SchDialect, convert_lib_symbol, dialect_for, dialect_for_stamp
+from kiwrap.formats.epochs import read_generator, read_stamp, set_stamp
 from kiwrap.formats.fileio import atomic_write_text
 from kiwrap.formats.geometry import Vec2
 from kiwrap.formats.schematic import LibPin, pin_sheet_position, unit_letter
@@ -287,7 +287,14 @@ class SchematicWriter:
     the capability record of the target install reports as `formats.sch` / `formats.sym` /
     `formats.pro`. `lib_resolver` is any object with `symbol(lib_id) -> obj` where `obj.node` is
     the flattened library symbol (`kiwrap.formats.libs.LibResolver` or
-    `schematic_writer.FallbackLibResolver`)."""
+    `schematic_writer.FallbackLibResolver`).
+
+    The writer never moves a file to a newer format on its own (docs/DECISIONS.md D21,
+    requests/kiwrap-feature-requests.review.md item 1 (d): re-stamping the touched root upward left
+    a mixed-epoch project KiCad 10.0 could not load): when the loaded sheets are older than
+    `epoch`, the writer works in the sheets' own dialect and keeps their stamps. Only
+    `allow_upgrade=True` (a sanctioned upgrade) restores the old "re-stamp touched sheets to
+    `epoch`" behaviour. Sheets of different stamps are refused (E_EPOCH) unless upgrading."""
 
     def __init__(
         self,
@@ -298,10 +305,13 @@ class SchematicWriter:
         project_name: str | None = None,
         generator_version: str | None = None,
         paper: str = "A4",
+        allow_upgrade: bool = False,
     ) -> None:
         self.project_dir = Path(project_dir)
         self.epoch = dict(epoch)
+        self.allow_upgrade = allow_upgrade
         self.dialect: SchDialect = dialect_for(epoch, generator_version=generator_version)
+        self._requested_dialect = self.dialect
         if not hasattr(lib_resolver, "symbol"):
             raise TypeError("lib_resolver must provide symbol(lib_id)")
         self.libs = lib_resolver
@@ -350,6 +360,7 @@ class SchematicWriter:
             path = self.project_dir / path
         self._docs.clear()
         self._missing.clear()
+        self.dialect = self._requested_dialect
         if path.is_file():
             root = _Doc("", path, load(path), is_root=True)
             if root.root.head != "kicad_sch":
@@ -363,6 +374,38 @@ class SchematicWriter:
         self._root = root
         self._docs[""] = root
         self._load_children(root, ())
+        self._keep_file_epoch()
+
+    def _keep_file_epoch(self) -> None:
+        """Work in the loaded sheets' own dialect when they are older than the requested epoch
+        (never re-stamp upward, see the class docstring); refuse a project whose sheets carry
+        different stamps (an older KiCad cannot load it as a whole) unless upgrading."""
+        if self.allow_upgrade:
+            return
+        stamped: list[tuple[int, _Doc]] = []
+        for doc in self._docs.values():
+            if doc.touched and not doc.path.is_file():
+                continue  # a new root this load created: stamped in the requested dialect
+            try:
+                stamped.append((read_stamp(doc.root), doc))
+            except ValueError:
+                continue
+        if not stamped:
+            return
+        low = min(s for s, _ in stamped)
+        high = max(s for s, _ in stamped)
+        if low < self.dialect.sch_stamp:
+            root = self._require_root()
+            _gen, root_gv = read_generator(root.root)
+            self.dialect = dialect_for_stamp(low, None, root_gv)
+        if _era(high) != _era(low):
+            names = ", ".join(f"{d.path.name} ({s})" for s, d in sorted(stamped, key=lambda x: x[0]))
+            raise WriterError(
+                "E_EPOCH",
+                f"the sheets are in different KiCad file-format eras: {names}",
+                fix="make them uniform with kw_project(action='upgrade') (or restore the snapshot before the mix); "
+                "an older KiCad cannot load a project whose sheets are newer than its own format",
+            )
 
     def _load_children(self, doc: _Doc, chain: tuple[Path, ...]) -> None:
         for sh in doc.items("sheet"):
@@ -1528,7 +1571,9 @@ class SchematicWriter:
                 old_stamp = read_stamp(doc.root)
             except ValueError:
                 old_stamp = 0
-            if old_stamp < self.dialect.sch_stamp:
+            # an older sheet is re-stamped only by a sanctioned upgrade (`allow_upgrade`); without
+            # it `_keep_file_epoch` already moved the dialect down to the sheets' own stamp
+            if old_stamp < self.dialect.sch_stamp and (self.allow_upgrade or old_stamp == 0):
                 set_stamp(doc.root, self.dialect.sch_stamp, "eeschema", self.dialect.generator_version)
             dump(doc.root, doc.path)
             doc.touched = False
@@ -1574,6 +1619,11 @@ class SchematicWriter:
             "sheets": sheets,
             "text_variables": {},
         }
+
+
+def _era(sch_stamp: int) -> str:
+    """The dialect era a schematic stamp belongs to (`SchDialect.name`: "7" … "11")."""
+    return dialect_for_stamp(sch_stamp).name
 
 
 def _hidden(node: Node) -> bool:
