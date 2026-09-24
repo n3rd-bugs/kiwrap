@@ -38,10 +38,11 @@ PATCH_DIR = REPO / "patches" / "kicad-python"
 REPRO = REPO / "patches" / "repro" / "g13_repro.py"
 HANG_KEY = "ipc.schematic_update_shared_lib_symbol_hangs"
 
-# Lines the KiCad tool-generated-content policy rejects in commit messages (docs/dev/upstream-workflow.md
-# section 2): only a human-written `Assisted-by:` trailer is allowed, never an AI co-author.
+# Trailers the patch headers must not carry: KiCad's tool-generated-content policy rejects AI
+# co-authors (docs/dev/upstream-workflow.md section 2), and kiwrap's own norm is no AI-attribution
+# trailer at all (DECISIONS.md D19 as amended 2026-09-24; `Assisted-by:` is decided on submission).
 _FORBIDDEN_TRAILERS = re.compile(
-    r"^(Co-Authored-By|Generated-by|Signed-off-by):", re.IGNORECASE | re.MULTILINE
+    r"^(Co-Authored-By|Assisted-by|Generated-by|Signed-off-by):", re.IGNORECASE | re.MULTILINE
 )
 
 

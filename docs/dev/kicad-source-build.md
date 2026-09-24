@@ -50,7 +50,7 @@ and built as `kiwrap-build/6dd893f7d1-4` = `C:\kiwrap-builds\6dd893f7d1-4` (§5)
    pristine `base/6dd893f7d1` checkout and re-accepted (T5 EQUAL, T4 tree identical to the stock
    nightly's). The Debug tree (`msvc-win64-debug`, prefix `-1`) was never affected.
 3. **The install metadata records the BUILT commit.** `commit` in `kiwrap-install.json` is the
-   source tree's HEAD when the tree was built (`4a04900fd2` for `-4`, the integration branch's
+   source tree's HEAD when the tree was built (`638d03a55e` for `-4`, the integration branch's
    sha), `base` is the upstream commit (`6dd893f7d1`); T4/T5 snapshots are named
    `<version>+<built commit>[.debug].json` (`KiCadInstallation.snapshot_name`), so a pristine and
    a patched build of one base never share a file. The first `-3` install had recorded the base as
@@ -162,7 +162,7 @@ on this machine (the Debug `-1` is on disk but not registered — wx asserts wed
 ```
 version  source                 root                           python  share
 10.99.0  registry               C:\Program Files\KiCad\10.99   -       C:\Program Files\KiCad\10.99\share\kicad
-10.99.0  explicit (4a04900fd2)  C:\kiwrap-builds\6dd893f7d1-4  -       C:\kiwrap-builds\6dd893f7d1-4\share\kicad
+10.99.0  explicit (638d03a55e)  C:\kiwrap-builds\6dd893f7d1-4  -       C:\kiwrap-builds\6dd893f7d1-4\share\kicad
 10.99.0  explicit (6dd893f7d1)  C:\kiwrap-builds\6dd893f7d1-2  -       C:\kiwrap-builds\6dd893f7d1-2\share\kicad
 10.0.6   registry               C:\Program Files\KiCad\10.0    ...
 ```
@@ -187,7 +187,7 @@ manifest patch lists may differ):
 | Build | Snapshot | Result |
 |---|---|---|
 | RelWithDebInfo `6dd893f7d1-2` (pristine, reinstalled) | `10.99.0+6dd893f7d1.json` | **EQUAL** to `10.99.0.json` — pcb handled 67 / bad_request 37 / unhandled 25; schematic 34 / 26 / 69 (after the G6 probe fix; 52/37/40 and 28/25/76 before); 57 s |
-| RelWithDebInfo `6dd893f7d1-4` (integration, `4a04900fd2`) | `10.99.0+4a04900fd2.json` | **EQUAL** to `10.99.0.json` (the inventory cannot see `GetRatsnest` until kicad-python is regenerated, so equality proves the patch changed nothing else) |
+| RelWithDebInfo `6dd893f7d1-4` (integration, `638d03a55e`) | `10.99.0+638d03a55e.json` | **EQUAL** to `10.99.0.json` (the inventory cannot see `GetRatsnest` until kicad-python is regenerated, so equality proves the patch changed nothing else) |
 | Debug `6dd893f7d1-1` | `10.99.0+6dd893f7d1.debug.json` | one row: `SetBoardDesignRules [pcb]: handled -> timeout` (the Debug assert above); 118 s |
 
 **The bench acceptance test (UPSTREAM §4.2) passes on the RelWithDebInfo build.** The Debug build
@@ -204,7 +204,7 @@ failures the first runs had are fixed:
 | `tests/test_installation.py::TestFind::test_no_match_raises_with_found_list` | `find("<missing path>")` probes `discover([path])`, which now also lists the registered roots, and accepted the bench as "the explicit install" | fixed in `installation.find()`: a probed install counts only when its root / kicad-cli IS the spec |
 | `tests/test_cli_integration.py::test_every_install_end_to_end` | scratch dir `tmp_path / install.major_minor` collided for two 10.99 installs (`FileExistsError`) | fixed: `tmp_path / install.root.name` |
 | `conformance/tests/t5_ipc_handlers.py::test_t5_ipc_handler_snapshot` | same collision, and a bench build was compared against the stock `10.99.0.json` | fixed: scratch dir by root name, snapshot `<version>+<built commit>[.debug].json` (`KiCadInstallation.snapshot_name`); the root `conftest.py` parametrises `install` with ids `<version>@<root name>` |
-| `conformance/tests/t4_cli_help_snapshot.py` | `-2` and `-3` (both `commit: 6dd893f7d1`) shared one snapshot file and failed each other (`pcb export ratsnest` removed/added) | fixed by recording the built commit: `10.99.0+6dd893f7d1.json` (pristine) and `10.99.0+4a04900fd2.json` (patched) |
+| `conformance/tests/t4_cli_help_snapshot.py` | `-2` and `-3` (both `commit: 6dd893f7d1`) shared one snapshot file and failed each other (`pcb export ratsnest` removed/added) | fixed by recording the built commit: `10.99.0+6dd893f7d1.json` (pristine) and `10.99.0+638d03a55e.json` (patched) |
 
 Every live test that ran on the bench install (CLI adapters, sandbox, structured exports, IPC
 sessions, T1–T9 where parametrised over `installs`) passed with the same outcomes as on the stock
@@ -240,13 +240,13 @@ and every CMake reconfigure, see the top of this file).
 | Ref | Points at | Pushed |
 |---|---|---|
 | tag `base/6dd893f7d1` | `6dd893f7d1` | yes |
-| branch `mr/g6-headless-jobs` | `517c0ccfea` = base + the `ApiJobs/ExportBoardStats` e2e case | yes |
-| branch `mr/g1-ratsnest` | base + `5d40bcb51c` (job + CLI + schema + qa_pcbnew/qa_cli) + `f2f299b687` (proto + handler + qa_api), both with `Assisted-by: Claude Code` | yes (force-pushed after the review rework) |
-| branch `kiwrap/6dd893f7d1` | `4a04900fd2` = base + merge `mr/g6-headless-jobs` + merge `mr/g1-ratsnest` | yes (force-pushed) |
+| branch `mr/g6-headless-jobs` | `4589ac04b6` = base + the `ApiJobs/ExportBoardStats` e2e case | yes |
+| branch `mr/g1-ratsnest` | base + `8f5b175459` (job + CLI + schema + qa_pcbnew/qa_cli) + `f474f77212` (proto + handler + qa_api) | yes (force-pushed after the review rework) |
+| branch `kiwrap/6dd893f7d1` | `638d03a55e` = base + merge `mr/g6-headless-jobs` + merge `mr/g1-ratsnest` | yes (force-pushed) |
 | tag `kiwrap-build/6dd893f7d1-1` | `6dd893f7d1`, the Debug install | yes |
 | tag `kiwrap-build/6dd893f7d1-2` | `6dd893f7d1`, the RelWithDebInfo pristine install (acceptance build) | yes |
-| tag `kiwrap-build/6dd893f7d1-3` | `c7cb37b80a`, the first integration install (superseded, uninstalled) | yes |
-| tag `kiwrap-build/6dd893f7d1-4` | `4a04900fd2`, the RelWithDebInfo integration install | yes |
+| tag `kiwrap-build/6dd893f7d1-3` | `0595fba8db`, the first integration install (superseded, uninstalled) | yes |
+| tag `kiwrap-build/6dd893f7d1-4` | `638d03a55e`, the RelWithDebInfo integration install | yes |
 
 `master` was not touched; the checkout is on `kiwrap/6dd893f7d1` with the release tree built from
 it (= the installed `-4`).
@@ -254,7 +254,7 @@ it (= the installed `-4`).
 **State of the mirror on 2026-09-19 22:25 local (17:25Z):** the GitHub events API shows eight
 `DeleteEvent`s by the `n3rd-bugs` account (17:24:52Z-17:25:10Z) removing every kiwrap ref listed
 above — the three branches and the five tags — 30 minutes after the fixer's force-pushes of
-`mr/g1-ratsnest` (`f2f299b687`) and `kiwrap/6dd893f7d1` (`4a04900fd2`) at 16:55Z; the mirror now
+`mr/g1-ratsnest` (`f474f77212`) and `kiwrap/6dd893f7d1` (`638d03a55e`) at 16:55Z; the mirror now
 carries `master` only. The fixer did not re-push (an unexplained deliberate deletion is not
 something to fight). Every ref is intact in `C:\src\kicad`; to restore the mirror once the owner
 confirms it should carry them:
@@ -265,11 +265,14 @@ git push public base/6dd893f7d1 kiwrap-build/6dd893f7d1-1 kiwrap-build/6dd893f7d
 git push public mr/g6-headless-jobs mr/g1-ratsnest kiwrap/6dd893f7d1
 ```
 
+2026-09-24: every fork commit was rewritten without its `Assisted-by:` trailer (DECISIONS.md D19 as
+amended; message-only, trees identical) and force-pushed; the hashes above are the rewritten ones.
+
 ### 5. Rebuilding after a patch change (the loop that works)
 
 ```powershell
 $env:KICAD_BUILD_PRESET = 'msvc-win64-release'; . C:\src\kicad-env.ps1
-cd C:\src\kicad; git checkout mr/g1-ratsnest            # edit, amend (Assisted-by trailer), clang-format --dry-run
+cd C:\src\kicad; git checkout mr/g1-ratsnest            # edit, amend (no AI trailer, D19), clang-format --dry-run
 git checkout -B kiwrap/6dd893f7d1 base/6dd893f7d1; git merge --no-ff mr/g6-headless-jobs; git merge --no-ff mr/g1-ratsnest
 cmake --build C:\src\kicad\build\msvc-win64-release --parallel 22      # 2-3 min incremental
 .\scripts\dev\run_qa_api.ps1 -BuildDir C:\src\kicad\build\msvc-win64-release   # expect 108/110

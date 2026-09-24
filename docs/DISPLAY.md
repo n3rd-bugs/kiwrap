@@ -122,7 +122,7 @@ even with an `LD_PRELOAD` shim there is no GL at all (wsl-linux §3, survey §2.
 | wsl-linux | WSL2 Ubuntu 24.04, KiCad 10.0.6 PPA: GTK Broadway, xpra 6.5.3 + xpra-html5, Xvfb + x11vnc + noVNC, x11vnc on WSLg; CDP-screencast latency/fps | [wsl-linux.md](research/display/wsl-linux.md) | [prototypes/display/xpra-wsl](../prototypes/display/xpra-wsl/README.md) |
 | vscode-shell | VS Code 1.138 Extension Development Host: WebviewPanel + custom editor in probe/iframe/canvas modes, 178 rescue keybindings, 215-chord matrices A-E, DPI/clipboard/pointer-lock/fullscreen | [vscode-shell.md](research/display/vscode-shell.md), [vscode-shell-keys.md](research/display/vscode-shell-keys.md) | [prototypes/display/vscode-shell](../prototypes/display/vscode-shell/README.md) |
 | win-multi (follow-up, 2026-09-20) | Windows: a *project* session (`kicad.exe` + schematic + PCB + 3D viewer + dialogs/chooser = one pid); TightVNC `-shareapp` vs WGC per-frame surfaces (event hook) into two VS Code custom-editor tabs + a 3D panel; "hybrid" injector (posted input, borrowed cursor) that leaves VS Code the foreground | [win-multi.md](research/display/win-multi.md) | winstream `bench/multi/`, vscode-shell `media/live.html` + `tools/drive_live.ps1` |
-| win-input-patch (follow-up, 2026-09-20) | Windows: KiCad built from the fork branch `mr/display-input` (`KICAD_INPUT_FROM_EVENTS=1\|cloak`, 25 files, commit `d70b0af290`, private origin only); pcbnew covered by an opaque window, cloaked with `DWMWA_CLOAK`, or fully off-screen; driven with `PostMessage` only through a new events injector; WGC capture; Playwright + raw-WebSocket drivers | [win-input-patch.md](research/display/win-input-patch.md), upstream draft [display-input-mr.md](upstream/drafts/display-input-mr.md) | winstream `run_events.py`, `winstream/inject_events.py`, `bench/actions/events_*.json`; `C:/src/kicad` on `mr/display-input` |
+| win-input-patch (follow-up, 2026-09-20) | Windows: KiCad built from the fork branch `mr/display-input` (`KICAD_INPUT_FROM_EVENTS=1\|cloak`, 25 files, commit `67ceff363d`, private origin only); pcbnew covered by an opaque window, cloaked with `DWMWA_CLOAK`, or fully off-screen; driven with `PostMessage` only through a new events injector; WGC capture; Playwright + raw-WebSocket drivers | [win-input-patch.md](research/display/win-input-patch.md), upstream draft [display-input-mr.md](upstream/drafts/display-input-mr.md) | winstream `run_events.py`, `winstream/inject_events.py`, `bench/actions/events_*.json`; `C:/src/kicad` on `mr/display-input` |
 
 Every GUI ran with a kiwrap-seeded sandbox root (`KICAD_CONFIG_HOME` etc.) on scratch copies of the
 ecc83 demo; `%APPDATA%\kicad` hash `a90607a5…6d9d` was unchanged after the 2026-09-19 spikes; during
@@ -624,8 +624,8 @@ measurements (win-input-patch §1): `WX_VIEW_CONTROLS` / `TOOL_MANAGER` read `wx
 `Esc` never reaches `wxDialog`/`DIALOG_SHIM`); wxMSW's `GenerateMouseLeave` builds LEAVE events from the
 real cursor; `center_on_zoom` (default on) warps the physical cursor on every wheel step.
 
-The patch (fork branch `mr/display-input` = `base/6dd893f7d1` + commit `d70b0af290`, 25 files
-+534 -48, `Assisted-by: Claude Code` trailer, pushed to the **private** origin only, nothing posted,
+The patch (fork branch `mr/display-input` = `base/6dd893f7d1` + commit `67ceff363d`, 25 files
++534 -48, pushed to the **private** origin only, nothing posted,
 D19): an env-var-gated mode `KICAD_INPUT_FROM_EVENTS=1|cloak`, invisible while unset, GTK/macOS stubs.
 `KIPLATFORM::UI::GetMousePosition/GetMouseState/IsKeyDown` return event-derived state, `WarpPointer`
 moves only the reported pointer, a process-wide `wxEventFilter` installed by `PGM_BASE::InitPgm` records

@@ -43,6 +43,8 @@ scripts/               bootstrap.ps1 / bootstrap.sh, seed_config_root.py, ci hel
 - Scratch/temporary files go under `Platform.temp_dir` or pytest's `tmp_path`, never the repo.
 - Style: ruff (line length 110), type hints everywhere, dataclasses over dicts, docstrings that say
   which verified fact a piece of code encodes (cite `docs/VERIFICATION.md` claim numbers).
+- No AI-attribution trailers (`Co-Authored-By:`, `Assisted-by:`) on any commit, kiwrap or the KiCad
+  fork (DECISIONS.md D19).
 - Do not commit; the orchestrating session commits. Do not edit files outside your assigned paths;
   if a contract in `src/kiwrap/**/__init__.py`, `installation.py`, `capability.py`, `sandbox.py`
   or `core/state/__init__.py` is wrong for you, implement against it anyway and report the change

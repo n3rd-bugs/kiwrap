@@ -1,4 +1,4 @@
-# MR draft: `pcb export specctra` (commit `9cf760954d` of `mr/specctra-jobs`; NOT opened, branch pushed to the private fork only, 2026-09-20)
+# MR draft: `pcb export specctra` (commit `9fe37dff4d` of `mr/specctra-jobs`; NOT opened, branch pushed to the private fork only, 2026-09-20)
 
 Branch `mr/specctra-jobs` on `n3rd-bugs/kicad-fork` (private; never pushed to `public` or
 GitLab) = `base/6dd893f7d1` (nightly 10.99.0-4083) + two commits, one per command
@@ -8,7 +8,7 @@ landed (it only shares the `kicad_cli.cpp` registration block and the QA files).
 
 | Commit | Subject | Files |
 |---|---|---|
-| `9cf760954d` | ADDED: Export a board as Specctra DSN (pcb export specctra) | 11 files, +502: `common/jobs/job_export_pcb_specctra.{h,cpp}` (JOB "specctra", `SetDefaultOutputPath` -> `<board>.dsn`, `REGISTER_JOB( pcb_export_specctra, "PCB: Export Specctra DSN" )`), `kicad/cli/command_pcb_export_specctra.{h,cpp}` (a `PCB_EXPORT_BASE_COMMAND( "specctra" )`, `-o` only), `kicad/kicad_cli.cpp` (+3), `pcbnew/pcbnew_jobs_handler.{h,cpp}` (+55: `JobExportSpecctra`, registered without a settings dialog), 2 CMakeLists, `qa/tests/pcbnew/test_specctra_export.cpp` (+94, 1 case in the existing `SpecctraExport` suite), `qa/tests/cli/test_pcb_specctra.py` (+168, 2 cases) |
+| `9fe37dff4d` | ADDED: Export a board as Specctra DSN (pcb export specctra) | 11 files, +502: `common/jobs/job_export_pcb_specctra.{h,cpp}` (JOB "specctra", `SetDefaultOutputPath` -> `<board>.dsn`, `REGISTER_JOB( pcb_export_specctra, "PCB: Export Specctra DSN" )`), `kicad/cli/command_pcb_export_specctra.{h,cpp}` (a `PCB_EXPORT_BASE_COMMAND( "specctra" )`, `-o` only), `kicad/kicad_cli.cpp` (+3), `pcbnew/pcbnew_jobs_handler.{h,cpp}` (+55: `JobExportSpecctra`, registered without a settings dialog), 2 CMakeLists, `qa/tests/pcbnew/test_specctra_export.cpp` (+94, 1 case in the existing `SpecctraExport` suite), `qa/tests/cli/test_pcb_specctra.py` (+168, 2 cases) |
 
 ## What the job does and does not do
 
@@ -35,7 +35,7 @@ landed (it only shares the `kicad_cli.cpp` registration block and the QA files).
   `SpecctraExportCarriesBoardContents`: on a routed board the DSN has every copper layer in
   order, every footprint as a `place` with its side and rotation, every net with its pins, and
   one two-point `wire` per track segment; re-run 2026-09-20 on the integration commit
-  `dfd50b8639`, "No errors detected").
+  `acdc6a3061`, "No errors detected").
 - `qa_cli` `test_pcb_export_specctra` (same contents check through the command; the default
   output name `<board>.dsn`; exit 0) and `test_pcb_export_specctra_missing_board` (exit
   `ERR_INVALID_INPUT_FILE`, no file written); 5/5 for the file (with the import cases of the
@@ -96,6 +96,5 @@ polygons), and Freerouting 2.4.1 routes it.
 
 A follow-up MR adds the matching import (`pcb import-ses`).
 
-Tool disclosure: the code was written with an LLM assistant (Claude Code; the commit carries the
-`Assisted-by:` trailer) driving the build and the QA runs; the design, the review of every line
+Tool disclosure: the code was written with an LLM assistant (Claude Code) driving the build and the QA runs; the design, the review of every line
 and the verification above are mine.

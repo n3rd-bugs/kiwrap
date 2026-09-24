@@ -6,13 +6,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 13,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.AddEmbeddedFiles",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -25,7 +25,7 @@
    "proto_file": "common/commands/library_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.AddLibraryTableEntry",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -44,13 +44,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "AddToSelection is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "AddToSelection is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -69,7 +69,7 @@
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "'' is not a usable new variant name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -88,7 +88,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to BeginCommit",
      "outcome": "handled",
      "status": "AS_OK"
@@ -107,7 +107,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.BoardLayers",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -126,7 +126,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.CheckPadstackPresenceOnLayers",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -139,7 +139,7 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "ClearSelection is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -158,7 +158,7 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 18,
+     "elapsed_ms": 17,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -183,7 +183,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 17,
+     "elapsed_ms": 18,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -196,13 +196,13 @@
    "proto_file": "common/commands/variant_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "'' is not a valid variant name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "'' is not a valid variant name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -215,13 +215,13 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Only PCB and schematic documents can be created",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Only PCB and schematic documents can be created",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -234,13 +234,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to CreateItems",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to CreateItems",
      "outcome": "handled",
      "status": "AS_OK"
@@ -272,13 +272,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no valid items to delete were given",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no valid items to delete were given",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -297,7 +297,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.DeleteLibraryTableEntry",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -310,13 +310,13 @@
    "proto_file": "common/commands/variant_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "'' is not a valid variant name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "'' is not a valid variant name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -330,13 +330,13 @@
    "results": {
     "pcb": {
      "elapsed_ms": 15,
-     "message": "the client kiwrap-82936-ee4851 does not has a commit in progress",
+     "message": "the client kiwrap-31900-afb89f does not has a commit in progress",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 16,
-     "message": "the client kiwrap-82936-6d89a3 does not has a commit in progress",
+     "elapsed_ms": 15,
+     "message": "the client kiwrap-31900-c63456 does not has a commit in progress",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     }
@@ -354,7 +354,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to ExpandTextVariables",
      "outcome": "handled",
      "status": "AS_OK"
@@ -367,13 +367,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to FlipItems",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.FlipItems",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -392,7 +392,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.FocusOnItem",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -411,7 +411,7 @@
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetActiveLayer",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -430,7 +430,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetBoardDesignRules",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -443,7 +443,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 16,
      "message": "GetBoardEditorAppearanceSettings is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -468,7 +468,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.GetBoardEnabledLayers",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -500,13 +500,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetBoardLayerName",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.GetBoardLayerName",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -519,7 +519,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Unexpected origin type",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -538,7 +538,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to GetBoardPlotSettings",
      "outcome": "handled",
      "status": "AS_OK"
@@ -563,7 +563,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetBoardStackup",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -595,7 +595,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "none of the requested IDs were found or valid connected items",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -639,7 +639,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetCustomDesignRules",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -658,7 +658,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to GetDocumentModifiedState",
      "outcome": "handled",
      "status": "AS_OK"
@@ -677,7 +677,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetEmbeddedFiles",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -696,7 +696,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetGraphicsDefaults",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -747,13 +747,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to GetItemsByNet",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.GetItemsByNet",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -772,7 +772,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.GetItemsByNetClass",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -785,7 +785,7 @@
    "proto_file": "common/commands/library_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.GetItemsFromLibrary",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -804,7 +804,7 @@
    "proto_file": "common/commands/base_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetKiCadBinaryPath",
      "outcome": "handled",
      "status": "AS_OK"
@@ -829,7 +829,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.GetLibraryItems",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -842,7 +842,7 @@
    "proto_file": "common/commands/library_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "unknown library table scope",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -880,7 +880,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetNetClassForNets",
      "outcome": "handled",
      "status": "AS_OK"
@@ -899,13 +899,13 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetNetClasses",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 17,
      "message": "Failed to unpack Empty from the response to GetNetClasses",
      "outcome": "handled",
      "status": "AS_OK"
@@ -937,13 +937,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.GetOpenDocuments",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.GetOpenDocuments",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -962,7 +962,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.GetPadShapeAsPolygon",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -975,13 +975,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetPageSettings",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to GetPageSettings",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1013,7 +1013,7 @@
    "proto_file": "common/commands/base_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "plugin identifier is missing",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -1032,13 +1032,13 @@
    "proto_file": "schematic/schematic_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.schematic.commands.GetSchematicHierarchy",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to GetSchematicHierarchy",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1057,7 +1057,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 18,
+     "elapsed_ms": 17,
      "message": "Failed to unpack Empty from the response to GetSchematicNetlist",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1076,7 +1076,7 @@
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "GetSelection is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -1095,7 +1095,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetTextAsShapes",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1108,7 +1108,7 @@
    "proto_file": "common/commands/base_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 46,
+     "elapsed_ms": 48,
      "message": "Failed to unpack Empty from the response to GetTextExtents",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1127,13 +1127,13 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.common.commands.GetTextVariables",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.common.commands.GetTextVariables",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1152,7 +1152,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetTitleBlockInfo",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1184,13 +1184,13 @@
    "proto_file": "common/commands/base_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to GetVersion",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 16,
      "message": "Failed to unpack Empty from the response to GetVersion",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1209,7 +1209,7 @@
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.GetVisibleLayers",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1222,13 +1222,13 @@
    "proto_file": "common/commands/cross_probe_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "HighlightNets is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 16,
      "message": "HighlightNets is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -1241,13 +1241,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "the requested item ID is not present in the given document",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 17,
      "message": "the requested item ID is not present in the given document",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -1266,7 +1266,7 @@
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 8,
      "message": "no handler available for request of type kiapi.board.commands.ImportNetlist",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1279,13 +1279,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Failed to unpack Empty from the response to InjectDrcError",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.board.commands.InjectDrcError",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1298,7 +1298,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "InteractiveMoveItems is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -1323,7 +1323,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 34,
+     "elapsed_ms": 33,
      "message": "Failed to unpack Empty from the response to LoadAllLibraries",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1336,13 +1336,13 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "Only PCB, schematic, footprint, and project document types are supported",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "Only PCB, schematic, footprint, and project document types are supported",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -1355,13 +1355,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.OpenLibraryItem",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.OpenLibraryItem",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1380,7 +1380,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.ParseAndCreateItemsFromString",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1399,7 +1399,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1412,13 +1412,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "lib_id must specify both a library nickname and an entry name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.board.commands.PlaceFootprintFromLibrary",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1450,13 +1450,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 109,
+     "elapsed_ms": 106,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.board.commands.RefillZones",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1469,7 +1469,7 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.RefreshEditor",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1507,7 +1507,7 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "RemoveFromSelection is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -1526,7 +1526,7 @@
    "proto_file": "common/commands/variant_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "'' is not a valid variant name",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -1545,7 +1545,7 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 25,
+     "elapsed_ms": 24,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1564,13 +1564,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "RunAction is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.RunAction",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1608,7 +1608,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.jobs.RunBoardJobExportDrill",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1621,7 +1621,7 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 23,
+     "elapsed_ms": 22,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportDxf",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1640,7 +1640,7 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 55,
+     "elapsed_ms": 54,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportGencad",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1659,7 +1659,7 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 185,
+     "elapsed_ms": 182,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportGerbers",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1678,13 +1678,13 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 120,
+     "elapsed_ms": 122,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportIpc2581",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.jobs.RunBoardJobExportIpc2581",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1716,7 +1716,7 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 390,
+     "elapsed_ms": 410,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportODB",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1735,13 +1735,13 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 24,
+     "elapsed_ms": 23,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportPdf",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.jobs.RunBoardJobExportPdf",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1754,7 +1754,7 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 24,
+     "elapsed_ms": 23,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportPng",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1779,7 +1779,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.jobs.RunBoardJobExportPosition",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1798,7 +1798,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.jobs.RunBoardJobExportPs",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1830,7 +1830,7 @@
    "proto_file": "board/board_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 27,
+     "elapsed_ms": 28,
      "message": "Failed to unpack Empty from the response to RunBoardJobExportStats",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1868,13 +1868,13 @@
    "proto_file": "schematic/schematic_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.schematic.jobs.RunSchematicJobExportBOM",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 26,
+     "elapsed_ms": 25,
      "message": "Failed to unpack Empty from the response to RunSchematicJobExportBOM",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1887,13 +1887,13 @@
    "proto_file": "schematic/schematic_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.schematic.jobs.RunSchematicJobExportDxf",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 47,
+     "elapsed_ms": 48,
      "message": "Failed to unpack Empty from the response to RunSchematicJobExportDxf",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1912,7 +1912,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "RunSchematicJobExportNetlist requires a valid format",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -1925,13 +1925,13 @@
    "proto_file": "schematic/schematic_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.schematic.jobs.RunSchematicJobExportPdf",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 95,
+     "elapsed_ms": 96,
      "message": "Failed to unpack Empty from the response to RunSchematicJobExportPdf",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1950,7 +1950,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 230,
+     "elapsed_ms": 231,
      "message": "Failed to unpack Empty from the response to RunSchematicJobExportPng",
      "outcome": "handled",
      "status": "AS_OK"
@@ -1963,7 +1963,7 @@
    "proto_file": "schematic/schematic_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.schematic.jobs.RunSchematicJobExportPs",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -1982,13 +1982,13 @@
    "proto_file": "schematic/schematic_jobs.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.schematic.jobs.RunSchematicJobExportSvg",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 33,
+     "elapsed_ms": 31,
      "message": "Failed to unpack Empty from the response to RunSchematicJobExportSvg",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2020,13 +2020,13 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 28,
+     "elapsed_ms": 27,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 25,
+     "elapsed_ms": 24,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2039,7 +2039,7 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 19,
+     "elapsed_ms": 18,
      "message": "Failed to unpack Empty from the response to SaveDocumentToString",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2058,13 +2058,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "SaveSelectionToString is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "SaveSelectionToString is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -2077,13 +2077,13 @@
    "proto_file": "common/commands/library_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.SearchLibraries",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 16,
      "message": "no handler available for request of type kiapi.common.commands.SearchLibraries",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2096,7 +2096,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "SetActiveLayer is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -2121,7 +2121,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.SetBoardDesignRules",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2153,7 +2153,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to SetBoardEnabledLayers",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2172,13 +2172,13 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "Unexpected origin type",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.board.commands.SetBoardOrigin",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2191,7 +2191,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2235,7 +2235,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.SetCustomDesignRules",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2248,7 +2248,7 @@
    "proto_file": "board/board_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2273,7 +2273,7 @@
      "status": "AS_OK"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2286,13 +2286,13 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "SetPageSettings requires page_settings",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "SetPageSettings requires page_settings",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -2305,7 +2305,7 @@
    "proto_file": "common/commands/project_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 16,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.SetTextVariables",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2330,7 +2330,7 @@
      "status": "AS_BAD_REQUEST"
     },
     "schematic": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "SetTitleBlockInfo requires title_block",
      "outcome": "bad_request",
      "status": "AS_BAD_REQUEST"
@@ -2368,7 +2368,7 @@
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.SetVisibleLayers",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2387,7 +2387,7 @@
      "status": "AS_UNIMPLEMENTED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "SyncSelection is not available in headless mode",
      "outcome": "bad_request",
      "status": "AS_UNIMPLEMENTED"
@@ -2406,7 +2406,7 @@
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.board.commands.UpdateBoardStackup",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2419,7 +2419,7 @@
    "proto_file": "common/commands/editor_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "Failed to unpack Empty from the response to UpdateItems",
      "outcome": "handled",
      "status": "AS_OK"
@@ -2438,13 +2438,13 @@
    "proto_file": "common/commands/library_commands.proto",
    "results": {
     "pcb": {
-     "elapsed_ms": 14,
+     "elapsed_ms": 15,
      "message": "no handler available for request of type kiapi.common.commands.UpdateLibraryTableEntry",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
     },
     "schematic": {
-     "elapsed_ms": 15,
+     "elapsed_ms": 14,
      "message": "no handler available for request of type kiapi.common.commands.UpdateLibraryTableEntry",
      "outcome": "unhandled",
      "status": "AS_UNHANDLED"
@@ -2456,7 +2456,7 @@
  "kicad": "10.99.0",
  "notes": [
   "minimal instance = empty message + document fields (top-level, ItemHeader.document, RunJobSettings.document) set to the open document; stateful commands run in a fresh server each",
-  "bench build C:\\kiwrap-builds\\6dd893f7d1-5: commit dfd50b8639, RelWithDebInfo build"
+  "bench build C:\\kiwrap-builds\\6dd893f7d1-6: commit 0cdfa41cb6, RelWithDebInfo build"
  ],
  "schema": 1,
  "summary": {

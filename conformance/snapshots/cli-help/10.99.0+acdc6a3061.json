@@ -1,9 +1,8 @@
 {
- "commit": "2225917b49",
+ "commit": "acdc6a3061",
  "kiwrap_patches": [
   "ratsnest-export",
-  "specctra-jobs",
-  "specctra-fp-zone-frame"
+  "specctra-jobs"
  ],
  "schema": 1,
  "tree": {

@@ -119,7 +119,9 @@ commits did.
   `Fixes https://gitlab.com/kicad/code/kicad/-/issues/NNNN` line per issue, and
   `Assisted-by: <tool>` when an LLM produced a substantial part of the code. No DCO/CLA:
   KiCad has no sign-off or contributor agreement; contributions are GPL-3.0-or-later (KiCad) or
-  MIT (kicad-python) by submission.
+  MIT (kicad-python) by submission. kiwrap's own norm (DECISIONS.md D19 as amended 2026-09-24):
+  our commits carry no AI-attribution trailer; the owner decides the policy's `Assisted-by:` on
+  the day of submission.
 - Write the MR description, commit message and every code comment yourself. Reviewers reject
   AI-sounding prose outright and deprioritise the author afterwards. Include the tool disclosure
   (tools, prompts summary, how tested) in the MR description when tools were used.

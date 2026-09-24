@@ -3,7 +3,7 @@
  "_about": "Manifest of the kiwrap patch series carried by the fork (docs/UPSTREAM.md 3.2-3.3). `patches[]`: id, gap (G-card), branch mr/<issue>-<slug>, issue, mr, status (local|issue-open|in-review|merged|upstream-fixed-differently|abandoned), parked (true = carried in the fork but not on any product path nor registered build: docs/DECISIONS.md D20), keys (capability keys that must ALL probe true for kiwrap.patches to list the id), commands (IPC commands whose T5 outcome may differ from the stock snapshot). `builds[]`: kiwrap-build/* tags (lightweight: annotated tags break git describe and every CMake reconfigure) that were built, T5-snapshotted and installed; `commit` is the BUILT commit (the integration branch's sha, what <prefix>/kiwrap-install.json records), `base` the upstream commit it was built on; kiwrap.patched_build is true for an install whose commit matches one. The data/ package is the only place besides backends/ allowed to name versions and commits.",
  "base": "6dd893f7d1",
  "base_version": "10.99.0",
- "fork": "https://github.com/n3rd-bugs/kicad-source-mirror",
+ "fork": "https://github.com/n3rd-bugs/kicad-fork",
  "patches": [
   {
    "id": "ratsnest-export",
@@ -73,7 +73,7 @@
   },
   {
    "tag": "kiwrap-build/6dd893f7d1-3",
-   "commit": "c7cb37b80a",
+   "commit": "0595fba8db",
    "base": "6dd893f7d1",
    "branch": "kiwrap/6dd893f7d1",
    "preset": "msvc-win64-release",
@@ -85,19 +85,19 @@
   },
   {
    "tag": "kiwrap-build/6dd893f7d1-4",
-   "commit": "4a04900fd2",
+   "commit": "638d03a55e",
    "base": "6dd893f7d1",
    "branch": "kiwrap/6dd893f7d1",
    "preset": "msvc-win64-release",
    "patches": [
     "ratsnest-export"
    ],
-   "snapshot": "10.99.0+4a04900fd2.json",
-   "note": "2026-09-19 RelWithDebInfo integration build = base + mr/g6-headless-jobs (test only) + mr/g1-ratsnest (reworked: excluded flag, shared-layer rule, no --format, Assisted-by trailers); qa_api 108/110 (the two known test-side failures), qa_pcbnew RatsnestReport 5/5, qa_cli ratsnest 2/2; T5 EQUAL to 10.99.0.json"
+   "snapshot": "10.99.0+638d03a55e.json",
+   "note": "2026-09-19 RelWithDebInfo integration build = base + mr/g6-headless-jobs (test only) + mr/g1-ratsnest (reworked: excluded flag, shared-layer rule, no --format); qa_api 108/110 (the two known test-side failures), qa_pcbnew RatsnestReport 5/5, qa_cli ratsnest 2/2; T5 EQUAL to 10.99.0.json"
   },
   {
    "tag": "kiwrap-build/6dd893f7d1-5",
-   "commit": "dfd50b8639",
+   "commit": "acdc6a3061",
    "base": "6dd893f7d1",
    "branch": "kiwrap/6dd893f7d1",
    "preset": "msvc-win64-release",
@@ -105,12 +105,12 @@
     "ratsnest-export",
     "specctra-jobs"
    ],
-   "snapshot": "10.99.0+dfd50b8639.json",
+   "snapshot": "10.99.0+acdc6a3061.json",
    "note": "2026-09-20 RelWithDebInfo integration build = -4 (base + mr/g6-headless-jobs + mr/g1-ratsnest) + mr/specctra-jobs (pcb export specctra, pcb import-ses); qa_api 108/110 (the two known test-side failures), qa_pcbnew SpecctraExport*/SpecctraImport* 6/6 + RatsnestReport 5/5, qa_cli test_pcb_specctra.py 5/5 + test_pcb.py 15/15; T4 tree = -4's + the two commands, T5 EQUAL to 10.99.0.json"
   },
   {
    "tag": "kiwrap-build/6dd893f7d1-6",
-   "commit": "2225917b49",
+   "commit": "0cdfa41cb6",
    "base": "6dd893f7d1",
    "branch": "kiwrap/6dd893f7d1",
    "preset": "msvc-win64-release",
@@ -119,12 +119,12 @@
     "specctra-jobs",
     "specctra-fp-zone-frame"
    ],
-   "snapshot": "10.99.0+2225917b49.json",
+   "snapshot": "10.99.0+0cdfa41cb6.json",
    "note": "2026-09-20 RelWithDebInfo integration build = -5 + mr/specctra-fp-zone-frame (a bug fix in pcbnew's Specctra exporter, no CLI / IPC surface to probe, hence no `patches[]` entry: makeIMAGE() exported a footprint's rule areas from the LIBRARY-frame outline as if it were board geometry, un-rotating it about the footprint position and subtracting the position, so a placed part's keepout landed tens of millimetres away and the router routed through the real one; the fix iterates ZONE::GetLibraryOutline() as the image geometry; docs/upstream/drafts/specctra-fp-zone-frame-mr.md); qa_pcbnew SpecctraExport* 4/4 (new case SpecctraExportFootprintRuleAreaInImageFrame), qa_api re-run; T4 tree = -5's, T5 EQUAL to 10.99.0.json"
   },
   {
    "tag": "kiwrap-build/6dd893f7d1-7",
-   "commit": "918923a346",
+   "commit": "099d84cca3",
    "base": "6dd893f7d1",
    "branch": "kiwrap/6dd893f7d1+display",
    "preset": "msvc-win64-release",

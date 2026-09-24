@@ -77,6 +77,11 @@ Cloud routers excluded.
 **Alternatives:** generic first; another vendor first.
 **Consequence:** JLC capability rules preset, Gerber naming, CPL/BOM with `LCSC Part #`, JLC
 rotation corrections, and the LCSC parts search/import path are Phase 1 deliverables.
+**Clarified (owner, 2026-09-24, with D29):** "default" means the first vendor profile kiwrap builds,
+not the tool's default argument. `kw_fab_export` keeps `profile='generic'` when the argument is
+omitted. Agents following the kiwrap-flow skill pass `profile='jlcpcb'`, which also runs the D29
+fab-limits gate, so a board that doesn't target JLCPCB (e.g. jetson's 0.1 mm vias) is not blocked by
+default.
 
 ## D10 — Schematic scope: hierarchy + multi-unit in v1, buses Phase 2
 
@@ -177,8 +182,12 @@ until the end-to-end flow works. Upstream contributions are prepared as drafts u
 `n3rd-bugs/kicad-fork` (GitHub forks of public repos cannot be made private, so the public fork
 `n3rd-bugs/kicad-source-mirror` was stripped of every kiwrap ref and is now only a stale mirror).
 **Consequence:** `origin` of `C:\src\kicad` is the private repo; `public` is the read-only mirror
-remote; nothing is pushed to gitlab.com. The KiCad-side commits keep the `Assisted-by:` trailer
-KiCad's contribution policy requires, ready for the day they are submitted.
+remote; nothing is pushed to gitlab.com. **Amended (owner, 2026-09-24):** no AI-attribution trailer on any of our commits, the private
+fork included. The 14 fork commits that carried `Assisted-by: Claude Code` were rewritten without
+it (message-only, code trees identical; the new hashes are in `src/kiwrap/data/kiwrap_patches.json`)
+and force-pushed to the private origin; the `public` remote's push URL is `DISABLED`. KiCad's
+tool-generated-content policy §4.2 asks for `Assisted-by: <tool>` on a submitted contribution that
+is substantially tool-generated; the owner decides that on the day of submission.
 
 ## D20 — Live view without hidden KiCad (resolves DISPLAY.md §12.8 decision 1)
 
@@ -302,8 +311,8 @@ It is the first change after Phase 0+1.
 - **Submission.** The owner rewrites the submitted prose (KiCad tool-generated-content policy §4.3).
 - **Push guard.** The fork's `public` remote push URL is now `DISABLED` (D19).
 
-Whether the private fork keeps its `Assisted-by: Claude Code` trailers is open for the owner: KiCad
-policy §4.2 requires the trailer for substantially tool-generated contributions.
+The fork's commits carry no AI trailer (D19 as amended 2026-09-24); the `Assisted-by:` trailer
+KiCad's policy §4.2 asks for on submission is the owner's call on the day of submission.
 
 ## D28 — Stackup sublayers: summed thickness, KiCad's thickness-weighted mean, sublayers kept
 

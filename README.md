@@ -87,7 +87,7 @@ writes `<project>/.kiwrap/e2e-out.json` and `e2e-log.json` with `provider_used` 
 | ESP32-S3 reference board | 10.0.6 | file | codec | 4 passes, 39.8 s, 217 tracks + 28 vias, 70 -> 0 (full-suite run); or 18 passes, 12.3 s, 204 + 38, 70 -> 1 and `kw_pcb_fix` 1 round -> 0 | ERC 0, intent diff 0, parity 0, DRC 0/0, grade passed, 18 files, 202 tool calls, 2.1 min |
 | blinker, 11 parts / 8 nets, autorouted | 10.99.0-4083 | ipc11 | codec | 2 passes, 3.2 s, 37-38 tracks + 5-6 vias, 21 -> 0 unrouted, no fix needed | DRC 0 must_fix / 0 unconnected (1 review: the nightly's own `lib_footprint_mismatch` on import), gerbers + drill + pos, 2.8 min |
 | blinker, autorouted | 10.0.6 | file | codec | 2 passes, 3.2 s, 36-37 tracks + 5-6 vias, 21 -> 0 unrouted, no fix needed | DRC 0/0, gerbers + drill + pos, 56 s |
-| ecc83 demo stripped to 0 copper (2 and 4 layers), `tests/test_route_auto_providers_live.py` | bench 10.99.0+dfd50b8639 | file | `cli:10.99.0+specctra-jobs` (patched kicad-cli); the codec's DSN == the CLI's | 0 unrouted | DRC 0/0 on both, `kw_pcb_fix` closes two stripped nets through the same chain |
+| ecc83 demo stripped to 0 copper (2 and 4 layers), `tests/test_route_auto_providers_live.py` | bench 10.99.0+acdc6a3061 | file | `cli:10.99.0+specctra-jobs` (patched kicad-cli); the codec's DSN == the CLI's | 0 unrouted | DRC 0/0 on both, `kw_pcb_fix` closes two stripped nets through the same chain |
 
 Unrouted is always KiCad's `unconnected_items` count after `pcb drc --refill-zones --save-board`,
 never Freerouting's own score. Pour order matters for the router: the B.Cu GND plane before
@@ -148,8 +148,8 @@ DRC) and is the only schematic path on ≤ 10. ERC/DRC/exports come exclusively 
 KiCad is the judge. Routing will be Freerouting 2.4.1 over DSN/SES (managed JRE 25). Every tool
 answers in millimetres with its provider (`ipc11`, `file`, `cli`) and any degradation named; stage
 gates (ERC → sync → place → route → DRC → fab) are server-enforced. Where KiCad exposes no
-structured surface (ratsnest export, DRC/ERC over the API, headless jobs) the fork at
-`n3rd-bugs/kicad-source-mirror` carries the additions until they are merged upstream.
+structured surface (ratsnest export, DRC/ERC over the API, headless jobs) the private fork
+`n3rd-bugs/kicad-fork` carries the additions until they are merged upstream.
 
 ## Local environment this was verified on
 

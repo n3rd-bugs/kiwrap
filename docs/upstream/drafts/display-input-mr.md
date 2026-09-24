@@ -1,8 +1,8 @@
 # MR draft: `mr/display-input` (NOT opened; branch pushed to the private GitHub fork only, 2026-09-20)
 
 Branch `mr/display-input` on `n3rd-bugs/kicad-fork` (private) = `base/6dd893f7d1` (nightly
-10.99.0-4083) + one commit `d70b0af290` "Add an input-from-events mode for message-driven editors
-(MSW)", 25 files, +534 −48, `Assisted-by: Claude Code` trailer. Evidence and measurements:
+10.99.0-4083) + one commit `67ceff363d` "Add an input-from-events mode for message-driven editors
+(MSW)", 25 files, +534 −48. Evidence and measurements:
 [`../../research/display/win-input-patch.md`](../../research/display/win-input-patch.md).
 
 ## Recommendation

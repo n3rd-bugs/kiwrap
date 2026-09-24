@@ -1,7 +1,7 @@
 # MR draft: `mr/g6-headless-jobs` (NOT opened; branch pushed to the GitHub fork only, 2026-09-19)
 
 Branch `mr/g6-headless-jobs` on `n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-fork` carries none of our refs) = `base/6dd893f7d1` + one
-commit, `517c0ccfea` "Add an API e2e case for the board statistics export job". It touches
+commit, `4589ac04b6` "Add an API e2e case for the board statistics export job". It touches
 `qa/tests/api/test_api_jobs.cpp` only (+50 lines, one `#include <json_common.h>` and one
 `BOOST_FIXTURE_TEST_CASE( ExportBoardStats, API_SERVER_E2E_FIXTURE )`). There is **no handler
 change**: the job handlers already run headless (see `g6-issue.md`), so the "smallest possible
@@ -50,8 +50,7 @@ Tested on Windows (MSVC 14.44, RelWithDebInfo): `qa_api --run_test=ApiJobs` 7/7;
 unchanged apart from the added case.
 
 Tool disclosure: the case was drafted with Claude Code from the neighbouring `ExportBoardDrill`
-/ `ExportSchematicNetlist` cases and reviewed and run by hand; the commit carries an
-`Assisted-by:` trailer per the tool-generated-content policy.
+/ `ExportSchematicNetlist` cases and reviewed and run by hand.
 
 ## Commit (as pushed)
 
@@ -65,8 +64,6 @@ Tool disclosure: the case was drafted with Claude Code from the neighbouring `Ex
     same end-to-end coverage: the job has to run headless, honour the
     requested output path and format, and describe the board that was
     opened (basic_test: outline present, nine footprints).
-
-    Assisted-by: Claude Code
 
 Diffstat: `qa/tests/api/test_api_jobs.cpp | 50 ++++++++++++`, 1 file changed, 50 insertions(+).
 

@@ -199,7 +199,7 @@ req.json = { "version": 1, "ops": [
 
 | Piece | Implementation inside KiCad | Size estimate |
 |---|---|---|
-| job plumbing (CLI command, job class, JSON schema, `pcbnew_jobs_handler` entry) | like `pcb export ratsnest` (`5d40bcb51c`: 18 files, 1,471 lines incl. 286-line unit test, 168-line schema) | ~800 |
+| job plumbing (CLI command, job class, JSON schema, `pcbnew_jobs_handler` entry) | like `pcb export ratsnest` (`8f5b175459`: 18 files, 1,471 lines incl. 286-line unit test, 168-line schema) | ~800 |
 | `copper` | `ConvertBrdLayerToPolygonalContours`, per-net filter, `Simplify`, `Inflate`, `Unfracture` | ~250 |
 | `clearance` | resolve items, `DRC_ENGINE::EvalRules(CLEARANCE_CONSTRAINT)`, `GetEffectiveShape()->Collide(…,&actual,&pos)`, `NearestPoints` | ~400 |
 | `markers` | run `DRC_ENGINE`, serialise `PCB_MARKER` pos/layer/path | ~150 (or the 40-80-line JSON patch to the existing report, §1.3) |
@@ -525,5 +525,5 @@ KiCad source (`C:\src\kicad`, `kiwrap/6dd893f7d1`, and `upstream/10.0` @ `251d99
 `pcbnew/zone_filler.cpp:3610`, `pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.cpp:3678-3695`,
 `common/transline_calculations/*`, `pcbnew/dialogs/panel_setup_tuning_profile_info.cpp`,
 `api/proto/board/board_commands.proto`, `api/proto/board/board_types.proto`; commits
-`814f65934f` (marker clearance paths), `f360829c97` (via stitching), `5d40bcb51c` and
-`f2f299b687` (our ratsnest patches, size calibration).
+`814f65934f` (marker clearance paths), `f360829c97` (via stitching), `8f5b175459` and
+`f474f77212` (our ratsnest patches, size calibration).

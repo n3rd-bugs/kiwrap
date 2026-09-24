@@ -97,8 +97,9 @@ tested by me.
     "common.*"/"board.*"; after it they use relative imports and the wheel
     imports in a fresh venv. Linux (a real protoc on PATH) is unchanged.
 
-Before pushing, add the `Assisted-by: Claude Code` trailer the tool-generated-content policy
-asks for (the patch in `patches/` carries no trailer so the series stays usable either way).
+Our commits carry no AI trailer (DECISIONS.md D19 as amended 2026-09-24). KiCad's
+tool-generated-content policy asks for `Assisted-by:` on submission; the owner decides that on
+the day of submission.
 
 ## Notes for the reviewer thread (only if asked)
 

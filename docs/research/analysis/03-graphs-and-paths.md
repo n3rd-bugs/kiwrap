@@ -341,7 +341,7 @@ The user's KiCad config hash was unchanged.
 
 ## 7. KiCad's `CONNECTIVITY_DATA`: what it could provide
 
-Read from the private fork checkout `C:\src\kicad` at `2225917b49`, `pcbnew/connectivity/`:
+Read from the private fork checkout `C:\src\kicad` at `0cdfa41cb6`, `pcbnew/connectivity/`:
 
 - **The graph exists inside KiCad.** `CN_ITEM` holds `m_connected`, the list of items it touches
   (`ConnectedItems()`, `connectivity_items.h:227`). Zone islands are `CN_ZONE_LAYER` items, one per
@@ -461,7 +461,7 @@ Read from the private fork checkout `C:\src\kicad` at `2225917b49`, `pcbnew/conn
 - shapely 2.1.2 (contact detection only): `LICENSE.txt` (BSD-3), `LICENSE_GEOS` (LGPL-2.1, GEOS
   dynamically linked in `shapely.libs`).
 - KiCad connectivity: `pcbnew/connectivity/connectivity_data.h`, `connectivity_items.h`,
-  `from_to_cache.cpp` at `C:\src\kicad` commit `2225917b49` (private fork; upstream equivalents at
+  `from_to_cache.cpp` at `C:\src\kicad` commit `0cdfa41cb6` (private fork; upstream equivalents at
   https://gitlab.com/kicad/code/kicad/-/tree/master/pcbnew/connectivity).
 - kiwrap: `src/kiwrap/formats/analysis/ratsnest.py` (docstring and cost), `src/kiwrap/backends/ipc/queries.py`
   (GetConnectedItems cluster walk, G1 `GetRatsnest`), docs/UPSTREAM.md §G1,

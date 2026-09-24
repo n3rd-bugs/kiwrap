@@ -1,4 +1,4 @@
-# MR draft: `pcb import-ses` (commit `090e4d4820` of `mr/specctra-jobs`; NOT opened, branch pushed to the private fork only, 2026-09-20)
+# MR draft: `pcb import-ses` (commit `d37c712bc1` of `mr/specctra-jobs`; NOT opened, branch pushed to the private fork only, 2026-09-20)
 
 The SECOND MR of `mr/specctra-jobs` (see `specctra-jobs-export-mr.md` for the branch and the
 first commit); to be opened once `pcb export specctra` has landed, rebased on `upstream/master`
@@ -6,7 +6,7 @@ on the day (`pcbnew_jobs_handler.cpp` and `kicad_cli.cpp` move often).
 
 | Commit | Subject | Files |
 |---|---|---|
-| `090e4d4820` | ADDED: Import a Specctra session into a board (pcb import-ses) | 11 files, +745/-1: `common/jobs/job_import_pcb_specctra_ses.{h,cpp}` (JOB "import_ses", `JOB_PARAM<wxString> session_file`, `REGISTER_JOB( pcb_import_ses, "PCB: Import Specctra Session" )`), `kicad/cli/command_pcb_import_ses.{h,cpp}` (`COMMAND( "import-ses" )`, `--ses SES_FILE`, `-o OUT_BOARD`, positional BOARD; `ERR_ARGS` without `--ses`, `ERR_INVALID_INPUT_FILE` for a missing board or session), `kicad/kicad_cli.cpp` (+5, a sibling of `pcb import`), `pcbnew/pcbnew_jobs_handler.{h,cpp}` (+95: `JobImportSpecctraSes`), 2 CMakeLists, `qa/tests/pcbnew/test_specctra_export.cpp` (+167, 1 case), `qa/tests/cli/test_pcb_specctra.py` (+276, 3 cases) |
+| `d37c712bc1` | ADDED: Import a Specctra session into a board (pcb import-ses) | 11 files, +745/-1: `common/jobs/job_import_pcb_specctra_ses.{h,cpp}` (JOB "import_ses", `JOB_PARAM<wxString> session_file`, `REGISTER_JOB( pcb_import_ses, "PCB: Import Specctra Session" )`), `kicad/cli/command_pcb_import_ses.{h,cpp}` (`COMMAND( "import-ses" )`, `--ses SES_FILE`, `-o OUT_BOARD`, positional BOARD; `ERR_ARGS` without `--ses`, `ERR_INVALID_INPUT_FILE` for a missing board or session), `kicad/kicad_cli.cpp` (+5, a sibling of `pcb import`), `pcbnew/pcbnew_jobs_handler.{h,cpp}` (+95: `JobImportSpecctraSes`), 2 CMakeLists, `qa/tests/pcbnew/test_specctra_export.cpp` (+167, 1 case), `qa/tests/cli/test_pcb_specctra.py` (+276, 3 cases) |
 
 ## Semantics: the editor's, decided and documented
 
@@ -54,7 +54,7 @@ no subcommands). The name mirrors `pcb export specctra`'s object.
   import the unlocked copper is gone, the locked track and via are still there, the session's
   wires and via are present with their widths / size / drill / nets, the two footprints moved
   to the session's position, side and rotation, every other footprint stayed; re-run
-  2026-09-20 on `dfd50b8639`, "No errors detected").
+  2026-09-20 on `acdc6a3061`, "No errors detected").
 - `qa_cli`: `test_pcb_import_ses_round_trip` (export -> a session made of the DSN's own wiring
   -> import to `-o`: the same segments and vias within the 1 um the DSN's six significant
   digits keep, and `pcb drc` on both boards reports the same unconnected count),
@@ -118,6 +118,5 @@ copper and the in-place save; the error paths). Outside the tree, the import equ
 10.0.6's `pcbnew.ImportSpecctraSES` produces for the same board and Freerouting 2.4.1 session,
 on a 2-layer and a 4-layer board, judged by `kicad-cli pcb drc`.
 
-Tool disclosure: the code was written with an LLM assistant (Claude Code; the commit carries the
-`Assisted-by:` trailer) driving the build and the QA runs; the design, the review of every line
+Tool disclosure: the code was written with an LLM assistant (Claude Code) driving the build and the QA runs; the design, the review of every line
 and the verification above are mine.

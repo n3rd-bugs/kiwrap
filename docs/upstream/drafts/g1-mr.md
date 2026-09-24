@@ -1,14 +1,13 @@
 # MR draft: `mr/g1-ratsnest` (NOT opened; branch pushed to the GitHub fork only, 2026-09-19)
 
-Branch `mr/g1-ratsnest` on `n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-fork` carries none of our refs) = `base/6dd893f7d1` (nightly
+Branch `mr/g1-ratsnest` on `n3rd-bugs/kicad-fork` (private; the public fork `n3rd-bugs/kicad-source-mirror` carries none of our refs) = `base/6dd893f7d1` (nightly
 10.99.0-4083) + two commits (reworked after the internal review of 2026-09-19: `excluded` flag,
-shared-layer rule for through items, `--format` and the dead dialog title dropped, `Assisted-by`
-trailers on both):
+shared-layer rule for through items, `--format` and the dead dialog title dropped):
 
 | Commit | Subject | Files |
 |---|---|---|
-| `5d40bcb51c` | ADDED: Export the board ratsnest as JSON (pcb export ratsnest) | 18 files: `common/jobs/job_export_pcb_ratsnest.{h,cpp}`, `pcbnew/ratsnest/ratsnest_report.{h,cpp}`, `pcbnew/pcbnew_jobs_handler.{h,cpp}` (+78), `kicad/cli/command_pcb_export_ratsnest.{h,cpp}`, `kicad/kicad_cli.cpp` (+3), `include/rc_json_schema.h` (+70), `resources/schemas/ratsnest.v1.json`, 3 CMakeLists, `qa/tests/pcbnew/test_ratsnest_report.cpp` (5 cases), `qa/data/pcbnew/ratsnest_layers.kicad_pcb` (hand-made fixture: THT pad -> B.Cu track, THT -> THT, SMD -> B.Cu track), `qa/tests/cli/test_pcb.py` (+108, 2 cases) |
-| `f2f299b687` | ADDED: GetRatsnest board API command | 4 files: `api/proto/board/board_commands.proto` (+62), `pcbnew/api/api_handler_pcb.{h,cpp}` (+66), `qa/tests/api/test_api_e2e.cpp` (+100) |
+| `8f5b175459` | ADDED: Export the board ratsnest as JSON (pcb export ratsnest) | 18 files: `common/jobs/job_export_pcb_ratsnest.{h,cpp}`, `pcbnew/ratsnest/ratsnest_report.{h,cpp}`, `pcbnew/pcbnew_jobs_handler.{h,cpp}` (+78), `kicad/cli/command_pcb_export_ratsnest.{h,cpp}`, `kicad/kicad_cli.cpp` (+3), `include/rc_json_schema.h` (+70), `resources/schemas/ratsnest.v1.json`, 3 CMakeLists, `qa/tests/pcbnew/test_ratsnest_report.cpp` (5 cases), `qa/data/pcbnew/ratsnest_layers.kicad_pcb` (hand-made fixture: THT pad -> B.Cu track, THT -> THT, SMD -> B.Cu track), `qa/tests/cli/test_pcb.py` (+108, 2 cases) |
+| `f474f77212` | ADDED: GetRatsnest board API command | 4 files: `api/proto/board/board_commands.proto` (+62), `pcbnew/api/api_handler_pcb.{h,cpp}` (+66), `qa/tests/api/test_api_e2e.cpp` (+100) |
 
 The commits split cleanly: the API commit only reuses `CollectRatsnestAirwires()` from the first.
 
@@ -17,8 +16,8 @@ The commits split cleanly: the API commit only reuses `CollectRatsnestAirwires()
 Open the issue first (`g1-issue.md`), wait for assignment, then open **two MRs in sequence**
 (docs/UPSTREAM.md §3.4: ~300 lines per MR, one logical change each; !2780's four files have
 waited a month, a 22-file MR spanning jobs, CLI, schema, proto and handler needs both Seth and
-Jon and is the shape that stalls): first `5d40bcb51c` (job + CLI + schema + qa_pcbnew/qa_cli),
-then `f2f299b687` (proto + handler + qa_api) once the first has landed, with the kicad-python
+Jon and is the shape that stalls): first `8f5b175459` (job + CLI + schema + qa_pcbnew/qa_cli),
+then `f474f77212` (proto + handler + qa_api) once the first has landed, with the kicad-python
 wrapper linked from the second. Do not batch either with G2/G6. Rebase on `upstream/master` on
 the day; the branch is on the 09-17 nightly commit and touches files that move often
 (`pcbnew_jobs_handler.cpp`, `api_handler_pcb.cpp`, `board_commands.proto`).
@@ -104,8 +103,7 @@ with DRC pair for pair and every end point is a pad position or a track end of t
 
 Related kicad-python MR: (to be opened; `Board.get_ratsnest(nets=None)`, see below).
 
-Tool disclosure: the code was written with an LLM assistant (Claude Code; the commits carry the
-`Assisted-by:` trailer) driving the build and the QA runs; the design, the review of every line
+Tool disclosure: the code was written with an LLM assistant (Claude Code) driving the build and the QA runs; the design, the review of every line
 and the verification above are mine.
 
 ## kicad-python: `Board.get_ratsnest()` and how to build it against this branch
@@ -137,7 +135,7 @@ gitlab.com and ~10 min):
    fork), branch `get-ratsnest`.
 2. Point the `kicad` submodule at the fork commit: `cd kicad && git remote add fork
    https://github.com/n3rd-bugs/kicad-fork.git && git fetch fork mr/g1-ratsnest && git
-   checkout f2f299b687` (only `api/proto/**` and `cmake/KiCadVersion.cmake` are read; a sparse
+   checkout f474f77212` (only `api/proto/**` and `cmake/KiCadVersion.cmake` are read; a sparse
    checkout as in `scripts/ci/build_kicad_python_wheel.py` `sparse_submodule()` works, the
    script only needs `fork` as the submodule remote and the sha above).
 3. `uv build --wheel` (protoc-wheel-0 + protoletariat + mypy-protobuf), then the wheel repair

@@ -156,7 +156,7 @@ Effort figures are calendar days for one engineer with a working source build, f
 - **Status 2026-09-19:** implemented on the fork branch `mr/g1-ratsnest` (= `base/6dd893f7d1` +
   two commits: job + CLI + schema + `qa_pcbnew`/`qa_cli` tests, then proto + handler + `qa_api`
   e2e case), built as `kiwrap-build/6dd893f7d1-4` (integration branch `kiwrap/6dd893f7d1` =
-  base + `mr/g6-headless-jobs` + `mr/g1-ratsnest`, built commit `4a04900fd2`), installed and
+  base + `mr/g6-headless-jobs` + `mr/g1-ratsnest`, built commit `638d03a55e`), installed and
   registered as `C:/kiwrap-builds/6dd893f7d1-4`. Issue not filed (draft
   `docs/upstream/drafts/g1-issue.md`), MR not opened (`g1-mr.md`); manifest status `local`.
 - **What it is:** `JOB_EXPORT_PCB_RATSNEST` run by `pcbnew_jobs_handler` after the loader's
@@ -454,8 +454,8 @@ regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`
   not a tier-3 *data* gap: no agent tool depends on it (D17 keeps the loop data-first); it is the
   only path to "KiCad invisible, VS Code is the UI" on Windows (DISPLAY.md decision 5 → §12.8 row 5).
 - **Status 2026-09-20:** implemented on the fork branch `mr/display-input` (= `base/6dd893f7d1` +
-  one commit `d70b0af290` "Add an input-from-events mode for message-driven editors (MSW)", 25 files
-  +534 −48, `Assisted-by: Claude Code`), built with the `msvc-win64-release` preset and measured on
+  one commit `67ceff363d` "Add an input-from-events mode for message-driven editors (MSW)", 25 files
+  +534 −48), built with the `msvc-win64-release` preset and measured on
   pcbnew (`research/display/win-input-patch.md`). Pushed to the private origin only; issue and MR
   **not** filed (D19), drafts in `docs/upstream/drafts/display-input-mr.md`. Not yet on the
   integration branch `kiwrap/6dd893f7d1` and not in the manifest: that is decision 5 in
@@ -516,11 +516,10 @@ regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`
   stock 11 works; the KiCad-side job is what makes KiCad itself the exporter / importer on 11
   and what certifies the codec there.
 - **Status 2026-09-20:** implemented on the fork branch `mr/specctra-jobs` (= `base/6dd893f7d1`
-  + `9cf760954d` "ADDED: Export a board to Specctra DSN (pcb export specctra)" +
-  `090e4d4820` "ADDED: Import a Specctra session into a board (pcb import-ses)", KiCad style,
-  `Assisted-by: Claude Code`), merged into `kiwrap/6dd893f7d1` at `dfd50b8639`, built and
+  + `9fe37dff4d` "ADDED: Export a board to Specctra DSN (pcb export specctra)" +
+  `d37c712bc1` "ADDED: Import a Specctra session into a board (pcb import-ses)", KiCad style), merged into `kiwrap/6dd893f7d1` at `acdc6a3061`, built and
   registered as `C:/kiwrap-builds/6dd893f7d1-5` (tag `kiwrap-build/6dd893f7d1-5`; T4 snapshot
-  `conformance/snapshots/cli-help/10.99.0+dfd50b8639.json`, T5 EQUAL to stock). Pushed to the
+  `conformance/snapshots/cli-help/10.99.0+acdc6a3061.json`, T5 EQUAL to stock). Pushed to the
   private origin only; MRs **not** opened (D19), drafts
   `docs/upstream/drafts/specctra-jobs-export-mr.md` and `specctra-jobs-import-mr.md` (open the
   export MR first, the import MR after it lands). Manifest `kiwrap_patches.json` id
@@ -566,12 +565,11 @@ regenerated, `ipc.headless_jobs = true` verified by `tests/test_ipc_patch_g6.py`
   off, whatever dialect the input file had — the earlier note that "a board saved by the nightly
   exports the same from both" was wrong: the codec and the CLI disagreed with each other AND with
   10.0.6's SWIG export, which is the truth). Branch `mr/specctra-fp-zone-frame` (=
-  `base/6dd893f7d1` + `236ec0b0ec` "Export a footprint's rule areas in the image frame",
-  `Assisted-by: Claude Code`): the library outline is the image geometry (the flip for back parts
+  `base/6dd893f7d1` + `e8c61b3c09` "Export a footprint's rule areas in the image frame"): the library outline is the image geometry (the flip for back parts
   already mirrors it); QA case `SpecctraExportFootprintRuleAreaInImageFrame` (a rotated, placed
   footprint with a rule area: the DSN holds the library corners, none of the shifted ones);
   `qa_pcbnew SpecctraExport*` 4/4, `qa_api` 108/110 (the two known test-side failures), merged
-  into `kiwrap/6dd893f7d1` at `2225917b49`, built and registered as
+  into `kiwrap/6dd893f7d1` at `0cdfa41cb6`, built and registered as
   `C:/kiwrap-builds/6dd893f7d1-6` (tag `kiwrap-build/6dd893f7d1-6`; T4 tree = -5's, T5 EQUAL to
   stock). Draft `docs/upstream/drafts/specctra-fp-zone-frame-mr.md`: its own MR (a bug fix, not
   part of the two job MRs); kiwrap's codec now writes the library outline for stamp ≥ 20260616
@@ -612,9 +610,10 @@ Summary table (priority = order of work; "P" = priority):
 - Stock KiCad always works: every tool branches on a capability key (`caps.has(...)`), never on
   "is this our build". A patched build only flips keys to true.
 - Upstream first: one issue per change, assigned before coding; one MR per change; human-written
-  prose; `Assisted-by: Claude Code` trailer on every fork commit an LLM helped write (KiCad's
-  tool-generated-content policy, dev/upstream-workflow.md §1.7 — the trailer travels with the
-  commit, the MR description carries the prose disclosure); integration tests on real fixtures;
+  prose; no AI-attribution trailer on our commits (DECISIONS.md D19 as amended 2026-09-24): the MR
+  description carries the prose disclosure KiCad's tool-generated-content policy asks for, and the
+  owner decides the policy's `Assisted-by:` trailer on the day of submission
+  (dev/upstream-workflow.md §1.7); integration tests on real fixtures;
   KiCad style. Nothing is
   shipped to users *from the fork* — the fork exists so kiwrap's CI and the owner's machine can run
   the patched build while MRs are in review.

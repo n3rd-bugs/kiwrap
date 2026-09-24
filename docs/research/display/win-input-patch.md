@@ -33,7 +33,7 @@ foreground once at launch.
 | (new) hover state flickers, pointer position corrupted | `wxWindowMSW::GenerateMouseLeave()` builds `wxEVT_LEAVE_WINDOW` from `GetCursorPos()` + `GetKeyState()`, and `TrackMouseEvent(TME_LEAVE)` fires immediately because the real cursor is not in the window | every posted move is followed by a bogus LEAVE at the real cursor's coordinates |
 | (new) wheel zoom moves the user's mouse | `center_on_zoom` (default **true**) → `CenterOnCursor()` → `WarpPointer()` → `SetCursorPos` | with stock KiCad + PostMessage each wheel step teleports the physical cursor into the hidden window |
 
-## 2. The patch (branch `mr/display-input`, commit `d70b0af290`)
+## 2. The patch (branch `mr/display-input`, commit `67ceff363d`)
 
 Gate: environment variable `KICAD_INPUT_FROM_EVENTS` (`1`, or `cloak`). Nothing changes while it is
 unset; GTK/macOS get stub implementations. Diffstat: 25 files, +534 −48; the substance is

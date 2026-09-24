@@ -1,8 +1,7 @@
 {
- "commit": "dfd50b8639",
+ "commit": "638d03a55e",
  "kiwrap_patches": [
-  "ratsnest-export",
-  "specctra-jobs"
+  "ratsnest-export"
  ],
  "schema": 1,
  "tree": {
@@ -883,19 +882,6 @@
         ],
         "subcommands": {}
        },
-       "specctra": {
-        "command": "pcb export specctra",
-        "description": "Export the PCB as a Specctra DSN file for an external autorouter",
-        "exit_code": 0,
-        "flags": [
-         "--help",
-         "--output"
-        ],
-        "positionals": [
-         "INPUT_FILE"
-        ],
-        "subcommands": {}
-       },
        "stackup": {
         "command": "pcb export stackup",
         "description": "Export a board stackup report",
@@ -1205,20 +1191,6 @@
        "--report-format",
        "--report-file",
        "--layer-map"
-      ],
-      "positionals": [
-       "INPUT_FILE"
-      ],
-      "subcommands": {}
-     },
-     "import-ses": {
-      "command": "pcb import-ses",
-      "description": "Import a Specctra session (.ses) file into a board, replacing its unlocked tracks and vias with the session's routes; without -o the board is saved in place",
-      "exit_code": 0,
-      "flags": [
-       "--help",
-       "--output",
-       "--ses"
       ],
       "positionals": [
        "INPUT_FILE"

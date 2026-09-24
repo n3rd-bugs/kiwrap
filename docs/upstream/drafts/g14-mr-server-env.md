@@ -59,7 +59,8 @@ Tool disclosure: drafted with Claude Code's help; written, reviewed and tested b
     Add an optional env mapping to KiCadServer and KiCad() that is handed
     to Popen unchanged. The default still inherits the environment.
 
-Add the `Assisted-by:` trailer before pushing.
+Trailer: none on our commits (DECISIONS.md D19 as amended 2026-09-24); the policy's `Assisted-by:`
+is decided by the owner on the day of submission.
 
 ## Notes
 

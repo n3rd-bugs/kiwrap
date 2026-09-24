@@ -1,4 +1,4 @@
-# MR draft: footprint rule areas exported in the wrong frame (commit `236ec0b0ec` of `mr/specctra-fp-zone-frame`; NOT opened, branch pushed to the private fork only, 2026-09-20)
+# MR draft: footprint rule areas exported in the wrong frame (commit `e8c61b3c09` of `mr/specctra-fp-zone-frame`; NOT opened, branch pushed to the private fork only, 2026-09-20)
 
 Branch `mr/specctra-fp-zone-frame` on `n3rd-bugs/kicad-fork` (private; never pushed to `public` or
 GitLab) = `base/6dd893f7d1` (nightly 10.99.0-4083) + one commit (docs/UPSTREAM.md §3.4: one logical
@@ -8,7 +8,7 @@ DSN menu already runs.
 
 | Commit | Subject | Files |
 |---|---|---|
-| `236ec0b0ec` | Export a footprint's rule areas in the image frame | `pcbnew/specctra_import_export/specctra_export.cpp` (-11 / +5), `qa/tests/pcbnew/test_specctra_export.cpp` (+47, 1 case in the existing `SpecctraExport` suite) |
+| `e8c61b3c09` | Export a footprint's rule areas in the image frame | `pcbnew/specctra_import_export/specctra_export.cpp` (-11 / +5), `qa/tests/pcbnew/test_specctra_export.cpp` (+47, 1 case in the existing `SpecctraExport` suite) |
 
 ## The bug
 
@@ -49,7 +49,7 @@ the library outline about the footprint origin for them, so nothing else changes
   (1, 2) .. (3, 5) mm; the DSN's image keepout holds `1000 -2000`, `3000 -2000`, `3000 -5000`,
   `1000 -5000` (micrometres, y up) and none of the position-shifted values). "No errors detected",
   77 assertions.
-- `qa_api.exe` full run on the integration commit `2225917b49`: 108/110, the two known test-side
+- `qa_api.exe` full run on the integration commit `0cdfa41cb6`: 108/110, the two known test-side
   failures (`ApiE2E/CreateDocument` path separator, `ApiWizards/QueryWizards` Windows mock gap);
   nothing in this commit touches the API.
 - `clang-format` (LLVM 19.1.5, `_clang-format`) `--dry-run --Werror` clean on the changed ranges.
@@ -60,7 +60,7 @@ the library outline about the footprint origin for them, so nothing else changes
   the same image keepout as KiCad 10.0.6's SWIG `ExportSpecctraDSN` of the original board-frame
   file (`compare_dsn`: 0 differences at 5 um).
 - T4 `--help` tree of the installed build = the -5 build's (no CLI change); T5 IPC handler
-  snapshot `10.99.0+2225917b49.json` EQUAL to the stock nightly's.
+  snapshot `10.99.0+0cdfa41cb6.json` EQUAL to the stock nightly's.
 
 ## MR description (for GitLab)
 
@@ -78,5 +78,3 @@ side footprints are flipped to the top before the images are built and `ZONE::Mi
 mirrors the library outline for them, so nothing else changes. The QA case places a rotated
 footprint carrying a rule area and checks that the exported image keepout holds the library
 corners and none of the shifted ones.
-
-Assisted-by: Claude Code
