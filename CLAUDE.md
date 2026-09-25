@@ -37,8 +37,9 @@ scripts/               bootstrap.ps1 / bootstrap.sh, seed_config_root.py, ci hel
 - Corpus files that come from KiCad's own demos are copied from `<install>/share/kicad/demos`
   at test time (not committed). Hand-written minimal files live in `conformance/corpus/`.
 - Tool results are `Receipt`s (`kiwrap.core.state`); failures are `KiwrapError`s with a stable
-  code and a `fix`. Positions are always millimetres; ERC JSON positions from kicad-cli 8–10 must be
-  multiplied by `cli.erc_json_pos_scale` (100) — including inside `description` strings.
+  code and a `fix`. Positions are always millimetres; ERC JSON positions must be multiplied by the
+  capability value `cli.erc_json_pos_scale` (100 on the affected releases, 1 once fixed) — including
+  inside `description` strings.
 - Windows paths: use `pathlib`, quote nothing manually, pass argv lists to `subprocess`.
 - Scratch/temporary files go under `Platform.temp_dir` or pytest's `tmp_path`, never the repo.
 - Style: ruff (line length 110), type hints everywhere, dataclasses over dicts, docstrings that say

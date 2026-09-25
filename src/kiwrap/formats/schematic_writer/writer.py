@@ -403,8 +403,9 @@ class SchematicWriter:
             raise WriterError(
                 "E_EPOCH",
                 f"the sheets are in different KiCad file-format eras: {names}",
-                fix="make them uniform with kw_project(action='upgrade') (or restore the snapshot before the mix); "
-                "an older KiCad cannot load a project whose sheets are newer than its own format",
+                fix="make them uniform with kw_project_upgrade (its arguments are the upgrade_args "
+                "kw_project(action='status') returns; the user approves the call) or restore the snapshot "
+                "before the mix; an older KiCad cannot load a project whose sheets are newer than its own format",
             )
 
     def _load_children(self, doc: _Doc, chain: tuple[Path, ...]) -> None:
@@ -1136,6 +1137,10 @@ class SchematicWriter:
             or Path(file_name).is_absolute()
             or file_name.startswith(("~", "."))
             or ":" in file_name
+            # both separators on every OS: `a\b` is a legal POSIX file name, but the same sheet
+            # reference names a subdirectory on Windows (and KiCad writes '/' in Sheetfile)
+            or "/" in file_name
+            or "\\" in file_name
         ):
             raise WriterError(
                 "E_SHEET_FILE",

@@ -152,9 +152,10 @@ build carries); `hidden` on a build without the patch is a teaching error (E_UNS
 
 ### 3.3 Extension ↔ kiwrap (contract 3)
 
-The extension calls `kw_env`, `kw_project`, `kw_sch_check`, `kw_pcb_drc`, `kw_live`,
-`kw_sch_render` / `kw_pcb_render` like an agent would: same receipts, same teaching errors, same
-stage gates. It does not get private tools. Receipts are rendered, not interpreted: a DRC receipt
+The extension calls `kw_env`, `kw_project`, `kw_project_upgrade` (only after the user's click in
+its consent modal, §8), `kw_sch_check`, `kw_pcb_drc`, `kw_live`, `kw_sch_render` /
+`kw_pcb_render` like an agent would: same receipts, same teaching errors, same stage gates. It
+does not get private tools. Receipts are rendered, not interpreted: a DRC receipt
 becomes diagnostics one-to-one (`severity`, `pos_mm`, `description`, `rule`), and the extension
 never re-derives a position from a file.
 
@@ -320,8 +321,8 @@ Code; `commands/configurePlan.ts` computes the edits: `.mcp.json`, a managed blo
 install: *Match the project's file format* or one install; with an existing project it also offers
 to pin it with `kw_project(action='retarget')`, which never touches the files),
 `kiwrap.upgradeProject` (Upgrade project file format...: the inline action of the sidebar's "file
-format" row when no installed KiCad writes the project's format; it opens the consent modal below
-proactively), `kiwrap.pickProject`, `kiwrap.runErc` / `kiwrap.runDrc` / `kiwrap.runChecks`,
+format" row when no installed KiCad writes the project's format; `kw_project status`, then the
+consent modal below, then `kw_project_upgrade`), `kiwrap.pickProject`, `kiwrap.runErc` / `kiwrap.runDrc` / `kiwrap.runChecks`,
 `kiwrap.openPreview` (the `kiwrap.preview` custom editor, `priority: option`, on `*.kicad_sch` /
 `*.kicad_pcb`), `kiwrap.openLive` / `kiwrap.closeLive`, `kiwrap.restartServer`, `kiwrap.refresh`,
 `kiwrap.showOutput`, `kiwrap.showProblems`; the view `kiwrap.status` ("KiCad (kiwrap)": tracked
@@ -333,28 +334,75 @@ keys `kiwrap.live.shield`, `kiwrap.live.shieldPalette`, `kiwrap.live.input` (an 
 injects), `kiwrap.live.active`. No command title, setting label or walkthrough text names the
 hidden / mirror modes.
 
-**The D21 consent modal** (`src/consent.ts`, bound to the window API by `src/consentUi.ts`). Any
-interactive call that fails with `E_FORMAT_UPGRADE_REQUIRED` (ERC / DRC, the live launch,
-`kiwrap.core.callTool`) and the proactive `kiwrap.upgradeProject` open one modal per project:
-"<project> is in KiCad <x> format and no installed KiCad <x> can write it. Upgrade the project files
-to KiCad <y> format? KiCad <x> will no longer open them." The detail lists the files that would be
-converted, the installed KiCads with their formats, and the alternative (the `install_hint`, e.g.
-`winget install KiCad.KiCad --version 10.0.6`). Buttons:
+**The format-upgrade consent modal** (D21, amended by D24; `src/consent.ts`, bound to the window
+API by `src/consentUi.ts`). Any interactive call that fails with `E_FORMAT_UPGRADE_REQUIRED` (ERC /
+DRC, the live launch, `kiwrap.core.callTool`) and the proactive `kiwrap.upgradeProject` open one
+modal per project: "<project> is in KiCad <x> format and no installed KiCad <x> can write it.
+Upgrade the project files to KiCad <y> format? KiCad <x> will no longer open them." The detail
+lists what the server says gets converted - its `upgrade_args`: **From** (`from_kicad`), **To**
+(`to_kicad` with `to_format`; an install root is named by the install writing that format) and
+**the files** (sorted project-relative paths, sub-sheets included) - then what is never converted
+(`.kicad_pro`, `.kicad_prl`, `.kicad_dru`, library tables, project libraries), the installed
+KiCads with their formats, and the alternative (the `install_hint`, e.g.
+`winget install KiCad.KiCad --version <x>`). Buttons:
 
-- **Upgrade** - `kw_project(action='upgrade', confirm=true)` (converted on a copy, snapshot first,
-  ERC/DRC before and after), then the original call is retried once;
+- **Upgrade** - `kw_project_upgrade(**upgrade_args)` (D24: the only conversion; converted on a
+  copy, snapshot first, ERC/DRC before and after), then the original call is retried once. The
+  arguments are the error's `data.upgrade_args` passed verbatim (the four the tool takes;
+  `to_format` is informational). When an older server's error carries none, the extension reads
+  them from `kw_project status` before the modal; when neither has them the modal offers no
+  *Upgrade*; an `upgrade_args` whose `files` is empty counts as none (the server refuses it as
+  "nothing to convert"). The extension's client identifies as `kiwrap-vscode`, so the click is the
+  consent the receipt records (`consent.gate`/`via` = `kiwrap_vscode_modal`) - and therefore this
+  button is the only sender: `McpClient.call` refuses `kw_project_upgrade` without the modal's
+  `MODAL_CONSENT` token and sends nothing, so `kiwrap.core.callTool` and the exported client cannot
+  forge the click (review finding 6). There is no `confirm` argument any more: D24 retired
+  `kw_project(action='upgrade', confirm=true)`. When the call asked for another KiCad than the one
+  the project runs on (the live launch passes the *KiCad install* setting as `target_kicad`), the
+  refusal carries no `upgrade_args` but `data.retarget_first` (the install to pin and the
+  `upgrade_args` status returns after that pin): the modal then reads "<project> runs on KiCad <a>;
+  the selected KiCad <b> would convert its ... files. Pin the project to KiCad <b> and upgrade the
+  files to its format?", and *Upgrade* runs `kw_project(action='retarget')` (files untouched), then
+  `kw_project_upgrade`, then the retry; a failed upgrade puts the previous pin back (review findings
+  2 and 3: the old refusal's arguments were refused after the click and the command looped);
 - **Install KiCad <x>...** - the install command is put in a terminal (not run: the user presses
   Enter), or the KiCad download page opens when there is no hint; nothing is converted;
 - **Use KiCad <v>** - instead of Install when an installed KiCad does write the files' format:
   `kw_project(action='retarget', target_kicad=<v>)` pins it (files untouched) and the call is
-  retried;
+  retried. When the stamp guard rolled back a write by another install although the project's own
+  KiCad writes its format, the server attaches no `upgrade_args` (nothing is pending) and this is
+  the only offer: "<project> is in KiCad <x> format and installed KiCad <v> still writes it; a write
+  by KiCad <y> would have converted it, so nothing was saved." (review finding 8);
 - **Cancel** - nothing changes; the error is not shown a second time.
+
+What happens when `kw_project_upgrade` fails (each is shown once, the error is marked handled,
+and the original call is **not** retried; the upgrade call bypasses the consent hook, so a failed
+upgrade never reopens the modal):
+
+| outcome | shown |
+|---|---|
+| `E_BAD_ARGS` with a non-empty `data.mismatch` (the server recomputed `upgrade_args` under the project lock and they differ: a sheet was added, the pin changed) | error "the project <name> changed; run the command again. Nothing was converted."; the project status is refreshed |
+| `E_BAD_ARGS` "nothing to convert" (`data.mismatch` null: the files are already in the target's format) | error "upgrading <name> failed: <message> - <fix>", the fix naming `kw_project retarget` (review finding 9) |
+| the tool is not published (`E_NO_TOOL`: a read-only server does not register it, D23/D24) or `E_READONLY` | the read-only information message |
+| `E_UNSUPPORTED` (the target's kicad-cli lacks `sch/pcb upgrade`), a failed conversion, any other error | error "upgrading <name> failed: <message> - <fix>" |
+
+On success an information message names the files converted, ERC/DRC before -> after, any stage
+gate dropped, and `kw_snapshot restore <snapshot_before>`, which undoes it.
+
+**The proactive command** (`kiwrap.upgradeProject`, `FormatConsent.proactive`) builds no error
+locally: `kw_project status` (a background read, `interactive: false`) supplies `upgrade_args`,
+then the modal, then `kw_project_upgrade(**upgrade_args)`. Status returns `upgrade_args` only
+when a write would need an upgrade; without them the command says the project is already in the
+format its KiCad writes ("nothing to upgrade") instead of asking. The target is the one the
+project pins (`upgrade_args.to_kicad`): to move a project to a newer KiCad, pin it to that install
+first (*Select KiCad install* -> *Pin project*), then run the command. On a server without
+`kw_project_upgrade` the read-only message replaces a modal whose *Upgrade* could only fail. The
+modal also takes `project_kicad`, `install_hint`, `file_epochs` and `candidates` from status, so
+it names "KiCad 10.0" and the winget command even when no installed KiCad writes the format.
 
 Background calls (on-save checks, previews, the status refresh) never open the modal.
 `E_FORMAT_NEWER` becomes an error naming the KiCad that is needed (with *Use KiCad <v>* when an
-installed one reads the files), `E_READONLY` (D23) an information message. The proactive command
-takes `project_kicad`, `install_hint`, `file_epochs` and `candidates` from `kw_project status`, so
-it names "KiCad 10.0" and the winget command even when no installed KiCad writes the format.
+installed one reads the files), `E_READONLY` (D23) an information message.
 
 ## 9. Repo layout and build
 

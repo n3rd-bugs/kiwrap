@@ -83,7 +83,14 @@ def tree(d: Path) -> dict[str, str]:
 
 
 def _rmtree(path: Path) -> None:
-    shutil.rmtree(path, onexc=lambda fn, p, _e: (Path(p).chmod(stat.S_IWRITE), fn(p)))
+    """`shutil.rmtree` that also removes read-only files on Python 3.11 (`rmtree(onexc=)` is 3.12+,
+    and CI runs 3.11): clear the read-only bit first, then remove."""
+    if not path.exists():
+        return
+    for p in path.rglob("*"):
+        with contextlib.suppress(OSError):
+            p.chmod(stat.S_IREAD | stat.S_IWRITE)
+    shutil.rmtree(path)
 
 
 def _with_prl(d: Path, name: str) -> None:
@@ -201,7 +208,10 @@ def test_readonly_server_session_leaves_a_third_party_project_byte_identical(
         for tool, args in (
             ("kw_sch_annotate", {}),
             ("kw_pcb_drc", {"save_board": True}),
-            ("kw_project", {"action": "upgrade", "confirm": True}),
+            (
+                "kw_project_upgrade",
+                {"from_kicad": "10.0", "to_kicad": install.version, "files": ["pic_programmer.kicad_pcb"]},
+            ),
             ("kw_project", {"action": "retarget", "target_kicad": install.version}),
             ("kw_snapshot", {"action": "create"}),
             ("kw_pcb_sync", {}),

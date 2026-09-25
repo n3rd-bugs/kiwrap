@@ -55,7 +55,9 @@ uv run kiwrap serve              # MCP server over stdio (Claude Code picks it u
 code --install-extension .\dist\kiwrap-0.1.0.vsix   # then "kiwrap: Select KiCad", "kiwrap: Configure Claude Code"
 ```
 
-Tools (33): `kw_env`, `kw_project` (create/status), `kw_snapshot`, `kw_job`, `kw_help`,
+Tools (34): `kw_env`, `kw_project` (create / status / retarget / upgrade_preview),
+`kw_project_upgrade` (the only conversion of a project to a newer KiCad file format; Claude Code
+asks the user on every call), `kw_snapshot`, `kw_job`, `kw_help`,
 `kw_live` (launch / attach / status / screenshot / detach / raise a sandboxed GUI KiCad the
 extension displays and the `ipc11` provider writes into),
 `kw_intent` (declare nets / rails / interfaces; diffed against KiCad's netlist by `kw_sch_check`),
@@ -75,6 +77,16 @@ renders `kw_sch_render` / `kw_pcb_render`. Every tool names its provider (`ipc11
 `cli`, `codec`, `cli:<v>+<patch>`) and any degradation. The agent-facing protocol is in
 [AGENTS.md](AGENTS.md) and the skill in
 [.claude/skills/kiwrap-flow/SKILL.md](.claude/skills/kiwrap-flow/SKILL.md).
+
+**File formats and consent (D21, D24).** A project runs on the installed KiCad that writes its
+files' own format. A write that would move the files to a newer format stops with
+`E_FORMAT_UPGRADE_REQUIRED`, whose `data.upgrade_args` are the arguments of
+`kw_project_upgrade(project, from_kicad, to_kicad, files)`. That tool is published with
+`_meta["anthropic/requiresUserInteraction"]: true`, so Claude Code (2.1.199 and later) shows the
+user a permission card for every call, whatever the allow rules or permission mode (a headless
+session denies it); the VS Code extension's modal calls the same tool. The receipt records which gate and client approved the
+call, and its `snapshot_before` undoes the conversion. `scripts/e2e_consent.py` is the manual
+end-to-end checklist for that card ([docs/VERIFICATION.md](docs/VERIFICATION.md) claim 13).
 
 ## Phase 1c end-to-end numbers (2026-09-20)
 
@@ -101,7 +113,7 @@ routing, the F.Cu pour after (docs/ARCHITECTURE.md §8).
    changed, §17 known gaps.
 2. [docs/DECISIONS.md](docs/DECISIONS.md) — the 15 decisions taken on 2026-09-19 with alternatives and
    consequences, plus D16 (KiCad 11 first) and D17 (data-first feedback, upstream CLI/IPC expansion, source build).
-3. [docs/VERIFICATION.md](docs/VERIFICATION.md) — the 12 load-bearing claims, each attacked by an
+3. [docs/VERIFICATION.md](docs/VERIFICATION.md) — the 12 load-bearing claims (plus claim 13, D24's consent gate), each attacked by an
    empirical and a documentary verifier, with corrections.
 4. [CLAUDE.md](CLAUDE.md) — working conventions for anyone (human or agent) changing the code.
 5. [docs/research/](docs/research/) — nine research digests and the three competing proposals with

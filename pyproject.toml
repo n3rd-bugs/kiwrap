@@ -81,6 +81,7 @@ markers = [
     "gui: launches a KiCad GUI process (sandboxed); never run in parallel with another gui test",
     "network: needs internet access",
     "slow: takes more than ~30 s",
+    "claude_code: reads the installed Claude Code bundle (CLAUDE_CODE_EXECPATH or ~/.vscode/extensions); auto-skips without one; only literal anchors fail (docs/DECISIONS.md D24)",
 ]
 filterwarnings = ["error::DeprecationWarning:kiwrap.*"]
 

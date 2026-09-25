@@ -346,18 +346,52 @@ WRITE_KINDS: dict[str, str] = {
 EPOCH_MISMATCH_TAG = "ipc11_epoch_mismatch"
 
 
+@dataclass(frozen=True)
+class _BoundGui:
+    """The install of the live GUI `kw_live` bound to the project, as `saves_in_format` sees one
+    (`key()` / `version`), from the mutation prologue's `bound` record."""
+
+    install_key: Any
+    version: str
+
+    def key(self) -> Any:
+        return self.install_key
+
+
+def _bound_writer(running: Any) -> tuple[Any, dict[str, int]] | None:
+    """(the bound GUI's install, its `formats.<kind>` as caps) when a live GUI holds the project
+    and its record names the formats, else None."""
+    bound = getattr(running, "bound", None)
+    if not isinstance(bound, dict) or not isinstance(bound.get("formats"), dict):
+        return None
+    formats = {
+        f"formats.{k}": int(v)
+        for k, v in bound["formats"].items()
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+    }
+    return _BoundGui(bound.get("install"), str(bound.get("kicad") or "?")), formats
+
+
 def ipc_write_epoch_mismatch(op_name: str, caps: Any, install: Any) -> str | None:
     """Why ipc11 must not write for `op_name` in the running mutation (None: it may): the
-    api-server would save the document in a newer format than the project's files."""
+    api-server would save the document in a newer format than the project's files.
+
+    When `kw_live` bound a GUI to the project, the pool hands every ipc11 attempt to THAT GUI
+    whatever install was requested (`sessions.SessionPool.acquire`), so the GUI's own formats are
+    judged, not the effective target's (review finding 7: a newer-format GUI next to an older
+    target would re-stamp the files, and the stamp guard only warns while a GUI is bound)."""
     kind = WRITE_KINDS.get(op_name)
     running = current_mutation()
     if kind is None or running is None or install is None:
         return None
-    if saves_in_format(install, caps, running.project, kind, running):
+    gui = _bound_writer(running)
+    writer, writer_caps = (gui[0], gui[1]) if gui is not None else (install, caps)
+    if saves_in_format(writer, writer_caps, running.project, kind, running):
         return None
-    version = getattr(install, "version", "?")
+    version = getattr(writer, "version", "?")
+    who = f"the live KiCad {version} GUI (kw_live)" if gui is not None else f"KiCad {version}'s api-server"
     return (
-        f"ipc11 skipped: KiCad {version}'s api-server would save the {kind} document(s) in a newer file format "
+        f"ipc11 skipped: {who} would save the {kind} document(s) in a newer file format "
         "than the project's (D21); the file engine answered and kept every file's own format"
     )
 

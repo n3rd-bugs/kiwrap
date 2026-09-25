@@ -776,6 +776,69 @@ def test_kill_tree_and_stop_on_a_plain_process(tmp_path):
     sessions._kill_tree(999999999)  # unknown pid: never raises
 
 
+def test_kill_tree_never_kills_its_own_process_group(monkeypatch):
+    """POSIX `_kill_tree` SIGKILLs the child's process group only when it is not OUR group: a child
+    started without `start_new_session=True` shares it, and `killpg` then took the server - and
+    pytest's whole session under WSL - down with it (S2 finding on the ubuntu unit leg). Simulated
+    on any OS: the POSIX branch runs with the os functions replaced."""
+    import os
+    import signal
+
+    killed: list[tuple[str, int, int]] = []
+    monkeypatch.setattr(sessions.sys, "platform", "linux")
+    monkeypatch.setattr(os, "getpgrp", lambda: 100, raising=False)
+    monkeypatch.setattr(os, "killpg", lambda g, s: killed.append(("killpg", g, s)), raising=False)
+    monkeypatch.setattr(os, "kill", lambda p, s: killed.append(("kill", p, s)))
+    sigkill = getattr(signal, "SIGKILL", 9)
+    monkeypatch.setattr(signal, "SIGKILL", sigkill, raising=False)
+    monkeypatch.setattr(os, "getpgid", lambda pid: 100, raising=False)
+    sessions._kill_tree(4242)  # same group as ours: only the pid itself
+    monkeypatch.setattr(os, "getpgid", lambda pid: 4242, raising=False)
+    sessions._kill_tree(4242)  # its own session: the whole group
+    assert killed == [("kill", 4242, sigkill), ("killpg", 4242, sigkill)]
+
+
+def test_pid_alive_treats_an_out_of_range_pid_as_dead(monkeypatch):
+    """`os.kill(3999999999, 0)` raises OverflowError on Linux (pid_t is 32-bit signed): a stale
+    record with such a pid is no live process (S2 finding on the ubuntu unit leg)."""
+    import os
+
+    def overflow(pid: int, sig: int) -> None:
+        raise OverflowError("signed integer is greater than maximum")
+
+    monkeypatch.setattr(sessions.sys, "platform", "linux")
+    monkeypatch.setattr(os, "kill", overflow)
+    assert sessions._pid_alive(3_999_999_999) is False
+
+
+def test_pid_alive_treats_an_unreaped_zombie_as_dead(monkeypatch, tmp_path):
+    """POSIX: a killed child its parent has not reaped still answers `kill(pid, 0)`; `/proc/<pid>/stat`
+    state `Z` makes `_pid_alive` False, so `RemoteGuiSession.close()` removes the record and the locks
+    (tests/test_live_remote_unit.py on the ubuntu leg). No procfs (Windows): no change."""
+    import os
+
+    proc = tmp_path / "proc"
+    monkeypatch.setattr(sessions.sys, "platform", "linux")
+    monkeypatch.setattr(os, "kill", lambda pid, sig: None)
+    real_path = sessions.Path
+
+    def fake_path(text: str) -> Path:
+        return (
+            real_path(str(text).replace("/proc", str(proc), 1))
+            if str(text).startswith("/proc/")
+            else real_path(text)
+        )
+
+    monkeypatch.setattr(sessions, "Path", fake_path)
+    (proc / "41").mkdir(parents=True)
+    (proc / "41" / "stat").write_text("41 (python (sleep)) Z 1 41 41 0 -1", encoding="ascii")
+    (proc / "42").mkdir()
+    (proc / "42" / "stat").write_text("42 (pcbnew) S 1 42 42 0 -1", encoding="ascii")
+    assert sessions._pid_alive(41) is False
+    assert sessions._pid_alive(42) is True
+    assert sessions._pid_alive(43) is True  # no stat file (no procfs): kill(pid, 0) decides
+
+
 def test_stop_removes_the_lock_a_killed_server_left(tmp_path, monkeypatch):
     """A server that had to be killed (CloseAllDocuments failed: the wedged-server case) never
     released KiCad's `~<name>.kicad_pro.lck`; `stop()` removes the lock written around the

@@ -21,6 +21,7 @@ the session's sandboxed config root; no GUI, no api-server. What is locked in:
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import hashlib
 import io
@@ -73,7 +74,14 @@ class Server:
 
 
 def _rmtree(path: Path) -> None:
-    shutil.rmtree(path, onexc=lambda fn, p, _e: (Path(p).chmod(stat.S_IWRITE), fn(p)))
+    """`shutil.rmtree` that also removes read-only files on Python 3.11 (`rmtree(onexc=)` is 3.12+,
+    and CI runs 3.11): clear the read-only bit first, then remove."""
+    if not path.exists():
+        return
+    for p in path.rglob("*"):
+        with contextlib.suppress(OSError):
+            p.chmod(stat.S_IREAD | stat.S_IWRITE)
+    shutil.rmtree(path)
 
 
 def _demo(install: Any, name: str, dst: Path) -> Path:

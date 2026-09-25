@@ -242,7 +242,12 @@ def probe_headless_jobs(session: HeadlessSession, kind: str | None = None) -> bo
             target.unlink()
 
 
-def _units_value(units: str) -> int:
+def _units_value(units: str) -> Any:
+    """The `Units` enum value for `units`. Typed `Any`: the job requests' `units` fields are typed
+    `Units.ValueType` by the kicad-python stubs the CI wheel resolves (scripts/ci/
+    build_kicad_python_wheel.py rewrites their imports) and plain `int` by unresolved stubs, and
+    one annotation cannot satisfy both without a `type: ignore` that `warn_unused_ignores` rejects
+    on the other."""
     from kipy.proto.common.types.enums_pb2 import Units
 
     try:

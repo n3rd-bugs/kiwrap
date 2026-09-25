@@ -1,22 +1,27 @@
 /**
  * The kiwrap server as seen by the extension: how it is launched (`uv run kiwrap serve` from the
  * kiwrap checkout, with `--storage-home` under the extension's global storage) and typed wrappers
- * over the kw_* tools the extension calls (kw_env, kw_project, kw_sch_check, kw_pcb_drc,
- * kw_pcb_check, kw_sch_render, kw_pcb_render, kw_live).
+ * over the kw_* tools the extension calls (kw_env, kw_project, kw_project_upgrade, kw_sch_check,
+ * kw_pcb_drc, kw_pcb_check, kw_sch_render, kw_pcb_render, kw_live).
  *
  * No `vscode` import: the unit tests run it against test/unit/fakeServer.ts.
  */
 import { McpClient, type CallOptions, type McpClientOptions, type ServerSpec } from './mcpClient';
-import type {
-  EnvData,
-  LiveArgs,
-  LiveSessionData,
-  PcbCheckData,
-  PcbDrcData,
-  ProjectStatusData,
-  Receipt,
-  RenderData,
-  SchCheckData,
+import {
+  asUpgradeArgs,
+  upgradeCallArgs,
+  type EnvData,
+  type LiveArgs,
+  type LiveSessionData,
+  type PcbCheckData,
+  type PcbDrcData,
+  type ProjectStatusData,
+  type Receipt,
+  type RenderData,
+  type SchCheckData,
+  type UpgradeArgs,
+  type UpgradeCallArgs,
+  type UpgradeData,
 } from './types';
 
 export interface LaunchSettings {
@@ -130,11 +135,29 @@ export class KiwrapServer {
   }
 
   /**
-   * kw_project upgrade (D21): the only sanctioned up-conversion. `confirm: true` is the user's
-   * consent (the extension asks with a modal first); `toKicad` defaults to the server's choice.
+   * `kw_project_upgrade` (D24): the only way kiwrap converts design files to a newer KiCad format.
+   * Called only after the user clicked [Upgrade] in the extension's modal (this client identifies as
+   * `kiwrap-vscode`, so the server records consent gate/via `kiwrap_vscode_modal`): `call.consent`
+   * must be `MODAL_CONSENT`, else `McpClient.call` refuses without sending anything (review
+   * finding 6). The arguments are the server's own `upgrade_args` passed verbatim; `to_format` is
+   * informational and dropped.
    */
-  projectUpgrade(project: string, toKicad?: string, call?: CallOptions): Promise<Receipt<Record<string, unknown>>> {
-    return this.client.call('kw_project', compact({ action: 'upgrade', project, confirm: true, to_kicad: toKicad }), call);
+  projectUpgrade(args: UpgradeArgs | UpgradeCallArgs, call?: CallOptions): Promise<Receipt<UpgradeData>> {
+    return this.client.call<UpgradeData>('kw_project_upgrade', upgradeCallArgs(args), call);
+  }
+
+  /**
+   * The `kw_project_upgrade` arguments of a project from `kw_project status` (D24: status returns
+   * `upgrade_args` whenever a write would need an upgrade). A background read: never a modal.
+   * null when no write needs an upgrade, or on a server older than D24.
+   */
+  async upgradeArgs(project: string): Promise<UpgradeArgs | null> {
+    const st = await this.client.call<ProjectStatusData>(
+      'kw_project',
+      { action: 'status', project },
+      { interactive: false, handleErrors: false },
+    );
+    return asUpgradeArgs(st.data.upgrade_args);
   }
 
   projectCreate(dir: string, name: string, targetKicad?: string, boardSizeMm?: [number, number]) {

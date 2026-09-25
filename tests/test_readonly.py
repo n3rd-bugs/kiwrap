@@ -73,6 +73,10 @@ def test_every_tool_publishes_persist_with_a_description(h: Harness):
     tools = anyio.run(h.server.list_tools)
     assert tools
     for t in tools:
+        if t.name == "kw_project_upgrade":
+            # D24: a call the client asks the user about must never be one that can only fail
+            assert "persist" not in t.input_schema["properties"]
+            continue
         prop = t.input_schema["properties"].get("persist")
         assert prop is not None, t.name
         assert "read-only" in prop["description"] and "E_READONLY" in prop["description"], t.name
@@ -171,7 +175,10 @@ def test_mutating_tools_refuse_with_a_teaching_error(h: Harness, mode: str):
         ("kw_pcb_route_auto", {"project": str(proj)}),
         ("kw_project", {"action": "create", "dir": str(h.work / "new"), "name": "new"}),
         ("kw_project", {"action": "retarget", "project": str(proj), "target_kicad": "10"}),
-        ("kw_project", {"action": "upgrade", "project": str(proj), "confirm": True}),
+        (
+            "kw_project_upgrade",
+            {"project": str(proj), "from_kicad": "10.0", "to_kicad": "10.0.0", "files": ["demo.kicad_sch"]},
+        ),
         ("kw_snapshot", {"action": "create", "project": str(proj)}),
         ("kw_snapshot", {"action": "restore", "project": str(proj), "ref": "HEAD"}),
         ("kw_intent", {"action": "set", "project": str(proj), "intent": {"nets": {}}}),
@@ -197,8 +204,10 @@ def test_refusal_policy_table():
             self.__dict__.update(kw)
 
     assert readonly.refusal("kw_project", A(action="status"), read_only_hint=False) is None
-    assert readonly.refusal("kw_project", A(action="upgrade", dry_run=True), read_only_hint=False) is None
-    assert readonly.refusal("kw_project", A(action="upgrade", dry_run=False), read_only_hint=False)
+    assert readonly.refusal("kw_project", A(action="upgrade_preview"), read_only_hint=False) is None
+    assert readonly.refusal("kw_project", A(action="retarget"), read_only_hint=False)
+    assert readonly.refusal("kw_project_upgrade", A(project="p", files=["a"]), read_only_hint=False)
+    assert readonly.READ_ALTERNATIVES["kw_project_upgrade"][0] == "kw_project(action='upgrade_preview')"
     assert (
         readonly.refusal("kw_pcb_drc", A(save_board=True, refill_zones=False), read_only_hint=False) is None
     )

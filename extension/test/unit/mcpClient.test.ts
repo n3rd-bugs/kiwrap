@@ -95,7 +95,7 @@ describe('McpClient (fake stdio server)', function () {
       assert.deepEqual(err.candidates, ['1']);
       return true;
     });
-    // a schema-level rejection by the SDK is an isError too
+    // an unknown action (the server's teaching E_BAD_ARGS) is an isError too
     await assert.rejects(server.client.call('kw_project', { action: 'nope' }), (err: unknown) => {
       assert.ok(err instanceof KiwrapError);
       return true;

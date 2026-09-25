@@ -30,13 +30,18 @@ With kicad-python `main` (f79cebd1) and the `ecc83` demo (U1 is the ECC83 dual t
 
 ```python
 from kipy import KiCad
-k = KiCad(headless=True, kicad_cli_path=r"C:\Program Files\KiCad\10.99\bin\kicad-cli.exe",
-          file_path=r"...\ecc83\ecc83-pp.kicad_sch", timeout_ms=5000)
+
+k = KiCad(
+    headless=True,
+    kicad_cli_path=r"C:\Program Files\KiCad\10.99\bin\kicad-cli.exe",
+    file_path=r"...\ecc83\ecc83-pp.kicad_sch",
+    timeout_ms=5000,
+)
 sch = k.get_schematic()
 u1 = sorted((s for s in sch.get_symbols() if s.reference_field.text.value == "U1"), key=lambda s: s.unit)
-sch.update_items(u1[0])   # unit 1: OK
-sch.update_items(u1[0])   # unit 1 again: OK
-sch.update_items(u1[1])   # unit 2: ConnectionError: Error receiving reply from KiCad: Timed out
+sch.update_items(u1[0])  # unit 1: OK
+sch.update_items(u1[0])  # unit 1 again: OK
+sch.update_items(u1[1])  # unit 2: ConnectionError: Error receiving reply from KiCad: Timed out
 ```
 
 The attached `g13_repro.py` does this with a private `KICAD_CONFIG_HOME`, then shows that a

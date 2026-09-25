@@ -1,6 +1,6 @@
 ---
 name: kiwrap-flow
-description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones (B.Cu plane) -> kw_pcb_route_auto (+ kw_job, kw_pcb_fix) -> kw_pcb_zones (F.Cu pour) -> kw_pcb_route touch-ups -> kw_pcb_drc -> kw_fab_bom / kw_fab_export(profile="jlcpcb")), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors (including the file-format upgrade consent, E_FORMAT_UPGRADE_REQUIRED / kw_project upgrade, and read-only reviews with persist=false). Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
+description: End-to-end KiCad flow through the kiwrap MCP server (kw_env -> kw_project create -> kw_lib_search -> kw_sch_add_symbol / kw_sch_connect / kw_sch_add_item -> kw_sch_stats / kw_sch_get -> kw_sch_check -> kw_sch_annotate -> kw_sch_assign_footprints -> kw_pcb_setup -> kw_pcb_sync -> kw_pcb_place with kw_pcb_check / kw_pcb_get -> kw_pcb_zones (B.Cu plane) -> kw_pcb_route_auto (+ kw_job, kw_pcb_fix) -> kw_pcb_zones (F.Cu pour) -> kw_pcb_route touch-ups -> kw_pcb_drc -> kw_fab_bom / kw_fab_export(profile="jlcpcb")), the data-first feedback protocol, the stage gates, how to read receipts and how to act on teaching errors (including the file-format upgrade consent, E_FORMAT_UPGRADE_REQUIRED / kw_project_upgrade, and read-only reviews with persist=false). Use whenever a task involves a KiCad project, schematic, board, ERC, DRC, placement, routing, gerbers or fabrication outputs.
 ---
 
 # kiwrap flow (data first)
@@ -44,8 +44,9 @@ pass `board_size_mm=[w, h]` for a rectangular outline (or set it later with `kw_
 design is opened with `status` on its `.kicad_pro`, never re-created.
 `action="status"` returns stage, hashes, epochs, external edits and `next_suggested`, plus which
 KiCad the project runs on: `target_effective`, `target_source`, `epoch_match`, `project_kicad`,
-`install_hint`, `file_epochs[]`, `warnings`. On a project you did not create, call `status` first
-and read `epoch_match` / `warnings` (see "File formats and read-only mode" below).
+`install_hint`, `file_epochs[]`, `warnings`, and `upgrade_args` whenever a write would need a
+newer file format. On a project you did not create, call `status` first and read `epoch_match` /
+`warnings` (see "File formats and read-only mode" below).
 
 ## 1b. `kw_intent(action="set", intent={blocks, rails, interfaces, nets, constraints})`
 
@@ -241,20 +242,35 @@ validates; `kw_sch_diff` is unsupported and the ratsnest is an estimate. Tool na
 receipts are identical; only `provider_used` / `degraded` differ - read them instead of asking
 which version is installed.
 
-## File formats and read-only mode (D21-D23)
+## File formats and read-only mode (D21-D24)
 
 - A project runs on the installed KiCad that writes its files' own format (`kw_help(topic="formats")`).
   A write that would save the schematic / board in a NEWER format - which the older KiCad can no
-  longer open - stops with `E_FORMAT_UPGRADE_REQUIRED` (or the client shows an elicitation prompt).
-- Playbook: **ask the user** in plain words ("Upgrade <project> from KiCad 10.0 format to 10.99?
-  KiCad 10.0 will no longer open it; or install KiCad 10.0: <data.install_hint>"). The error's
-  `example` is `kw_project(action="upgrade", project=..., dry_run=true)` - safe to run, it converts a
-  copy and reports ERC/DRC before and after for the user. Only after a yes:
-  `kw_project(action="upgrade", project=..., confirm=true)`, then retry the original call. If they
-  prefer to keep the format: they install the KiCad in `data.install_hint` (kiwrap then picks it by
-  itself), or `kw_project(action="retarget", target_kicad=<a KiCad in candidates>)`. A project whose
-  sheets already mix formats is described file by file; its alternative is a snapshot from before
-  the mix. Never work around the error.
+  longer open - stops with `E_FORMAT_UPGRADE_REQUIRED`; nothing was written.
+- **Rule: `E_FORMAT_UPGRADE_REQUIRED`: tell the user (from, to, files, the install alternative), then
+  `kw_project_upgrade(**data.upgrade_args)`; a denied prompt means stop; never convert files with
+  kicad-cli yourself.** In plain words: "Upgrade <project> from KiCad <from_kicad> format to KiCad
+  <to_kicad>? KiCad <from_kicad> will no longer open <files>. Or install KiCad <from_kicad>:
+  <data.install_hint>." Pass `project`, `from_kicad`, `to_kicad` and `files` exactly as
+  `data.upgrade_args` has them (`kw_project(action="status")` returns the same `upgrade_args`).
+  Claude Code shows the user a permission card for that call - also under allow rules, auto and
+  bypass mode - and their click is the consent; there is no `confirm` argument to set. A mismatch
+  is refused after the card (`E_BAD_ARGS` with the true `data.upgrade_args`) and costs the user a
+  second prompt, so never edit the arguments and never call the tool "to try". After the receipt
+  (`files[]` with the stamps, `checks{before, after}`, `snapshot_before`, `consent`) retry the
+  original call; `kw_snapshot(action="restore", ref=<snapshot_before>)` undoes the conversion.
+- When `data.upgrade_args` is null, do not call `kw_project_upgrade`: follow `fix` / `example`. Either
+  the call asked for another KiCad than the one the project runs on (`kw_live` with `target_kicad`:
+  drop it, or tell the user and pin that KiCad with `kw_project(action="retarget")`, then use the
+  `upgrade_args` status returns), or the project's own KiCad writes its format (retarget to it).
+- `kw_snapshot restore` never converts: restoring a snapshot in a newer format than the files is
+  refused (`E_FORMAT_UPGRADE_REQUIRED`); convert with `kw_project_upgrade` first, then restore it.
+- To show the ERC/DRC effect first: `kw_project(action="upgrade_preview", project=...)` converts a
+  copy under the storage home and writes nothing in the project. If they prefer to keep the format:
+  they install the KiCad in `data.install_hint` (kiwrap then picks it by itself), or
+  `kw_project(action="retarget", target_kicad=<a KiCad in candidates>)`. A project whose sheets
+  already mix formats is described file by file; its alternative is a snapshot from before the mix.
+  `kw_project(action="upgrade")` and `confirm` are retired (`E_BAD_ARGS` points here).
 - Read-only (`kw_help(topic="readonly")`): `persist=false` on any call, or a server started with
   `kiwrap serve --readonly` / `KIWRAP_READONLY=1`, writes nothing into the project (reports and
   exports go under kiwrap's storage home or your `out_dir`, `data.readonly` says where). Reviewing
@@ -268,7 +284,7 @@ which version is installed.
 | `E_NO_KICAD` | no install matches `target_kicad` | `kw_env`, then pick from `candidates` |
 | `E_UNSUPPORTED` | capability / component missing on this KiCad or build (e.g. `sheet_pin` needs `pins` on the sheet item) | use `fix` / `data.fallback` or a KiCad from `candidates` |
 | `E_PROJECT_NOT_FOUND` | bad `project` path or missing design file | pass the dir or `.kicad_pro`; create with `kw_project` |
-| `E_BAD_ARGS` | schema/semantic error: unknown pin (candidates = the pins), unknown ref (candidates = the refs), a net or layer the board lacks, a `?` reference, `force` without a reason | follow `fix` / `example` / `candidates` |
+| `E_BAD_ARGS` | schema/semantic error: unknown pin (candidates = the pins), unknown ref (candidates = the refs), a net or layer the board lacks, a `?` reference, `force` without a reason; from `kw_project_upgrade`: arguments that differ from the project's (`data.mismatch`) | follow `fix` / `example` / `candidates`; for `kw_project_upgrade` tell the user the project changed and use the returned `data.upgrade_args` |
 | `E_KICAD_FAILED` | kicad-cli / api-server exited non-zero | read `data.stderr`; check epochs vs target |
 | `E_FILE_LOCKED` | KiCad has the file open, or another kiwrap call runs | close KiCad / wait |
 | `E_BUSY` | a live `kw_live` session already holds the project (one KiCad per project), or a read is in flight over IPC | use that session or `kw_live detach`; retry after the read |
@@ -276,9 +292,9 @@ which version is installed.
 | `E_EXTERNAL_EDIT` | `if_match` no longer matches the sheet / a file changed under an operation | re-read (`kw_sch_get`, `data.sheets`) and retry; re-run validators |
 | `E_TIMEOUT` | KiCad exceeded its time budget | `run_async=true` + `kw_job`; narrow reads with filters |
 | `E_INTERNAL` | kiwrap bug or git failure | report `data.traceback`; restore a snapshot |
-| `E_FORMAT_UPGRADE_REQUIRED` | the call would save the files in a newer KiCad format; nothing was written (or the stamp guard rolled it back, `data.guard`) | ask the user; show the `dry_run=true` upgrade; if yes `kw_project(action="upgrade", confirm=true)` and retry; else `data.install_hint` / `retarget` |
+| `E_FORMAT_UPGRADE_REQUIRED` | the call would save the files in a newer KiCad format; nothing was written (or the stamp guard rolled it back, `data.guard`) | tell the user (from, to, files, `data.install_hint`); `upgrade_preview` if they want the ERC/DRC counts; then `kw_project_upgrade(**data.upgrade_args)` (Claude Code asks them; denied = stop) and retry; else install / `retarget` |
 | `E_FORMAT_NEWER` | the files are newer than the KiCad the call would use | `retarget` to a KiCad in `candidates` or install a newer one; `provider="file"` reads still work |
-| `E_READONLY` | read-only mode (`serve --readonly`, `KIWRAP_READONLY=1`, `persist=false`) refused a write | tell the user; drop `persist=false` only if they want the change |
+| `E_READONLY` | read-only mode (`serve --readonly`, `KIWRAP_READONLY=1`, `persist=false`) refused a write; a read-only server does not publish `kw_project_upgrade` | tell the user; drop `persist=false` only if they want the change; `kw_project` `status` / `upgrade_preview` still run |
 | `E_STALE` | a stored DRC result or a cursor is older than the file (`data.reason`) | run `kw_pcb_drc` again; restart paging without `cursor` |
 
 ## Rules
@@ -291,4 +307,6 @@ which version is installed.
 - Read every receipt's `validators` and `stage`; act on `next_suggested`.
 - Do not call `kw_pcb_sync` / `kw_fab_export` with `force` to skip a gate unless the user
   explicitly accepts it.
-- Never pass `confirm=true` to `kw_project(action="upgrade")` without the user's yes.
+- Never change a design file's KiCad format except through `kw_project_upgrade` with the
+  error's `data.upgrade_args`, after telling the user; a denied permission prompt means stop.
+  Never run kicad-cli (`sch upgrade`, `pcb upgrade`, a GUI save) on the project yourself.

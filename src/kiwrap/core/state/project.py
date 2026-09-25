@@ -23,7 +23,8 @@ The sheets of a project are the root, every top-level `.kicad_sch` AND every she
 references through `(property "Sheetfile" ...)`, followed recursively relative to the referencing
 sheet (KiCad resolves a relative sheet path against the parent sheet's directory). KiCad's own 10.0
 demo royalblue54L_feather keeps its four sub-sheets under `sch/`; a top-level glob alone hid them
-from the target resolution, the stamp guard, `kw_project status` and `kw_project upgrade`, which
+from the target resolution, the stamp guard, `kw_project status` and the upgrade (now
+`kw_project_upgrade`, D24), which
 then left them in the 9.0 format (fixer finding 2 on the D21 work).
 """
 

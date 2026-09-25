@@ -60,7 +60,7 @@ flagged **kiwrap TODO** so they are not confused with KiCad gaps.
 | Symbol / label / sheet bounding boxes (overlap and clutter checks) | 1 **kiwrap TODO** | `LibSymbol` graphics are not yet in the file model; pin-set bbox only | T5: `GetBoundingBox schematic -> AS_UNHANDLED` ("no handler available"), so IPC cannot supply it either → gap **G7** |
 | Hit test on a schematic item | 2 | `queries.hit_test` (`HitTest`) | T5: `HitTest schematic -> AS_BAD_REQUEST` with a fake id (i.e. a handler ran); live test passes with a real id |
 | ERC violations with sheet, type, severity, item uuids and mm positions | 1 | `backends.cli` `sch erc --format json` + `formats.reports.erc` (`cli.erc_json_pos_scale` = 100 on 8–10 and the nightly) | verified by T6 `test_t6_erc_json_position_scale` on 8.0.9 / 9.0.9 / 10.0.6 / 10.99.0. Over IPC: **absent** — no `RunSchematicJobErc`/`RunERC` message exists (T5: not in inventory) → gap **G2** |
-| ERC positions correct without a ×100 fix | 3 (bug) | — | issue #25582 open, unassigned → gap **G3** |
+| ERC positions correct without a ×100 fix | 3 (bug) | — | **fixed upstream 2026-09-21** (#25582 closed, milestone 10.0.7: master 407f6293, 10.0 6d8e1fea); installed builds up to 10.0.6 and the 6dd893f7d1 nightly still need the ×100 → gap **G3** |
 | Semantic diff of two schematics (what did the last edit change) | 1 | `structured.sch_diff` (`sch diff --format json`, `cli.has_sch_diff`) | nightly only; positions in 1/10000 mm; regenerated UUIDs diff as removed+added |
 | Symbol placement from a library with real pins | 2 | `writes.place_symbol` (`PlaceSymbolFromLibrary` after `LoadAllLibraries`) | T5: `LoadAllLibraries schematic -> AS_OK`; `PlaceSymbolFromLibrary schematic -> AS_BAD_REQUEST` with an empty lib_id (handler present). ≤ 10: file writer only |
 | Library search ("never guess library ids") | 1 **kiwrap TODO** / 2 | file: read `sym-lib-table` rows + `.kicad_sym` names through the CST; IPC: `GetLibraryItems` / `SearchLibraries` | T5: `GetLibraryItems`, `GetLibraryTable`, `SearchLibraries`, `GetItemsFromLibrary` `-> AS_UNHANDLED` on **both** documents on 10.99.0-4083 even though master carries the handlers (12cdf280 09-15) → gap **G11** (re-probe on the next nightly first) |
@@ -236,7 +236,12 @@ Effort figures are calendar days for one engineer with a working source build, f
   strings; the capability key exists but the fix is a one-line scale error in KiCad.
 - **Workaround:** `cli.erc_json_pos_scale = 100` applied once in `formats.reports.erc`
   (`rescale_erc_document`), verified 8.0.9–10.99.0.
-- **Upstream status:** issue #25582 (2026-09-17, `status::new`, unassigned). Escain's !2727 was
+- **Upstream status (2026-09-25): fixed.** Mark Roszko fixed it on 2026-09-21 in master 407f6293 and
+  the 10.0 branch 6d8e1fea (one line in `ERC_REPORT::WriteJsonReport`: `pcbIUScale` ->
+  `schIUScale`); #25582 is closed with milestone 10.0.7 (`status::fix-committed`). The matrix
+  records 1 for 10.0.7 and 11.0.0 (from the diff) and keeps 100 through 10.0.6 and for the
+  10.99.0 nightly on 6dd893f7d1, which predates the fix; `run_erc` checks the scale on every run.
+  History: issue #25582 (2026-09-17, `status::new`, unassigned). Escain's !2727 was
   rejected for adding `LOCALE_IO`; Seth's own c02e4c8844 fixed the same class of bug for HitTest
   by using the schematic IU scale.
 - **Proposed change:** in the ERC JSON writer use the schematic IU scale (1/10000 mm) instead of
@@ -585,7 +590,7 @@ Summary table (priority = order of work; "P" = priority):
 |---|---|---|---|---|---|
 | 1 | G1 ratsnest export (CLI job + `GetRatsnest`) — **on the fork**, two MRs to open | feature | done (3–5 d) | medium-high | `cli.has_ratsnest_export`, `ipc.has_get_ratsnest` |
 | 1 | G14 kicad-python protoc fix + `env=` | Python | 1 d | high | — |
-| 2 | G3 ERC JSON ×100 (#25582) | bug fix | 1 d | high | `cli.erc_json_pos_scale == 1` |
+| 2 | G3 ERC JSON ×100 (#25582) - **fixed upstream** (407f6293 / 6d8e1fea, 10.0.7) | bug fix | 0 (done) | - | `cli.erc_json_pos_scale == 1` |
 | 2 | G13 UpdateItems hang | bug report | 0.5 d | — | `ipc.schematic_update_shared_lib_symbol_hangs == false` |
 | 3 | G16 UpdateItems rotation noise (`lib_footprint_mismatch`) | bug report | 0.5 d | — | `ipc.footprint_update_rotation_noise == false` |
 | 2 | G2 DRC/ERC jobs over IPC | feature | 3–5 d | medium | `ipc.has_drc_job`, `ipc.has_erc_job` |

@@ -1,6 +1,7 @@
 """D21 / D22 / B2 with fakes (no KiCad): which KiCad a project runs on, the consent before an
-up-conversion, the stamp guard, the ipc11 write precondition, the writers' epochs, kw_project
-status / retarget / upgrade and kw_pcb_drc's no-save default.
+up-conversion (D24: kw_project_upgrade and the frozen elicitation shortcut), the stamp guard, the
+ipc11 write precondition, the writers' epochs, kw_project status / retarget / upgrade_preview and
+kw_pcb_drc's no-save default. tests/test_project_upgrade.py covers kw_project_upgrade itself.
 
 requests/kiwrap-feature-requests.review.md item 1 (B1) reproduced four paths that re-stamped a
 KiCad 10.0 project as 10.99 on default arguments; every one is covered here against fakes and
@@ -123,12 +124,21 @@ class SafetyBackend(FakeBackend):
         work_dir: Path,
         *,
         caps: Any = None,
+        convert: list[Path] | None = None,
     ) -> ProjectCopy:
-        self._log("upgrade_project", version=install.version, files=[Path(f).name for f in files])
+        """`backends.cli.upgrade.upgrade_project_copy` in miniature: copy every design file, re-stamp
+        only `convert` (D24: exactly the listed files)."""
+        targets = list(files) if convert is None else [Path(c) for c in convert]
+        self._log(
+            "upgrade_project",
+            version=install.version,
+            files=[Path(f).name for f in files],
+            convert=[relative_design_path(project_dir, Path(f)).as_posix() for f in targets],
+        )
         values = self.caps.get(install.version, CAPS_10)
         work = copy_project(project_dir, files, work_dir)
         out = ProjectCopy(work_dir=work)
-        for src in files:
+        for src in targets:
             src = Path(src)
             kind = "sch" if src.suffix == ".kicad_sch" else "pcb"
             rel = relative_design_path(project_dir, src)  # sub-sheets keep their subdirectory
@@ -141,6 +151,14 @@ class SafetyBackend(FakeBackend):
                 UpgradedFile(src, dst, kind, before, new, changed=before != new, rel=rel.as_posix())
             )
         return out
+
+    def find(self, spec: str | None, installs: list[FakeInstall] | None = None) -> FakeInstall:
+        """The fake find plus install roots (kw_env lists them; D24 accepts one as `to_kicad`)."""
+        pool = installs if installs is not None else self.installs
+        for i in pool:
+            if spec and Path(spec) == Path(i.root):
+                return i
+        return super().find(spec, installs)
 
     def services(self, storage_home: Path):  # type: ignore[no-untyped-def]
         svc = super().services(storage_home)
@@ -213,9 +231,20 @@ def test_only_a_newer_install_reads_but_a_write_needs_consent(tmp_path: Path):
     with pytest.raises(KiwrapError) as exc:
         effective_target(ctx, project, ProjectState(), for_write=True)
     err = exc.value
-    # fixer finding 9: `example` is the non-committing dry run; confirm=true only in `fix`, after "if yes:"
-    assert err.code == "E_FORMAT_UPGRADE_REQUIRED" and err.example and "dry_run=true" in err.example
-    assert "confirm=true" not in err.example and err.fix.index("if yes:") < err.fix.index("confirm=true")
+    # D24: `example` is a placeholder kw_project_upgrade call; the retired consent flag is gone
+    assert err.code == "E_FORMAT_UPGRADE_REQUIRED"
+    assert err.example is not None and err.example.startswith("kw_project_upgrade(")
+    assert err.fix is not None
+    for text in (err.message, err.fix, err.example):
+        assert "confirm" not in text, text
+    assert "upgrade_preview" in err.fix and "kw_project_upgrade with data.upgrade_args" in err.fix
+    assert err.data["upgrade_args"] == {
+        "project": project.pro_path.as_posix(),
+        "from_kicad": "10.0",
+        "to_kicad": "10.99.0",
+        "to_format": {"sch": SCH_99, "pcb": PCB_99},
+        "files": ["demo.kicad_pcb", "demo.kicad_sch"],
+    }
     d = err.data
     assert d["upgrade_to"] == "10.99.0" and d["project_kicad"] == "10.0"
     assert d["install_hint"] == "winget install KiCad.KiCad --version 10.0.6"
@@ -376,15 +405,29 @@ def test_stamp_guard_allows_a_resave_inside_the_same_kicad_line(tmp_path: Path):
     assert sc["data"]["epochs"]["after"]["demo.kicad_pcb"] == PCB_10
 
 
-def test_stamp_guard_does_not_block_snapshot_restore(tmp_path: Path):
+def upgrade_args_of(h: Harness, d: Path) -> dict[str, Any]:
+    """`kw_project status`'s upgrade_args, as the four kw_project_upgrade arguments (D24)."""
+    ua = h.ok("kw_project", action="status", project=str(d))["data"]["upgrade_args"]
+    assert ua, "no upgrade needed"
+    return {k: ua[k] for k in ("project", "from_kicad", "to_kicad", "files")}
+
+
+def test_stamp_guard_lets_the_undo_through_but_not_the_redo(tmp_path: Path):
+    """Restoring snapshot_before only lowers the stamps and passes; restoring the post-upgrade
+    snapshot again would raise them without the user's approval, so the guard rolls it back (review
+    finding 1, D24: only kw_project_upgrade converts) - the forward way is the tool, then the restore."""
     h = harness(tmp_path, I1099)
     d = write_project(h.work / "p")
-    first = h.ok("kw_project", action="upgrade", project=str(d), confirm=True)
-    assert first["data"]["upgraded"] is True and file_epoch(d / "demo.kicad_pcb") == PCB_99
-    pre = first["data"]["upgrade"]["snapshot_before"]
+    first = h.ok("kw_project_upgrade", **upgrade_args_of(h, d))
+    assert file_epoch(d / "demo.kicad_pcb") == PCB_99
+    pre = first["data"]["snapshot_before"]
     h.ok("kw_snapshot", project=str(d), action="restore", ref=pre)
     assert file_epoch(d / "demo.kicad_pcb") == PCB_10
-    # and forward again (the restore of a post-upgrade snapshot raises the stamps: allowed)
+    refused = h.fail(
+        "kw_snapshot", "E_FORMAT_UPGRADE_REQUIRED", project=str(d), action="restore", ref=first["snapshot"]
+    )
+    assert file_epoch(d / "demo.kicad_pcb") == PCB_10 and refused["data"]["guard"]["restored"] is True
+    h.ok("kw_project_upgrade", **upgrade_args_of(h, d))
     h.ok("kw_snapshot", project=str(d), action="restore", ref=first["snapshot"])
     assert file_epoch(d / "demo.kicad_pcb") == PCB_99
 
@@ -422,30 +465,32 @@ def test_retarget_pins_without_touching_files_and_auto_unpins(tmp_path: Path):
     h.fail("kw_project", "E_FORMAT_NEWER", action="retarget", project=str(newer), target_kicad="10.0.6")
 
 
-def test_upgrade_needs_consent_dry_run_reports_confirm_converts(tmp_path: Path):
+def test_preview_reports_and_the_upgrade_tool_converts(tmp_path: Path):
+    """D24: the write refuses with upgrade_args, upgrade_preview converts a copy and changes nothing,
+    kw_project_upgrade(**upgrade_args) converts and pins; writes proceed afterwards."""
     h = harness(tmp_path, I1099)
     d = write_project(h.work / "p", child=SCH_10_DEMO)
     before = digest(d)
-    sc = h.fail("kw_project", "E_FORMAT_UPGRADE_REQUIRED", action="upgrade", project=str(d))
-    assert sc["data"]["upgrade_to"] == "10.99.0" and digest(d) == before
-    dry = h.ok("kw_project", action="upgrade", project=str(d), dry_run=True)["data"]
-    assert dry["upgraded"] is False and dry["upgrade"]["checks"]["before"]["erc"] == {
-        "errors": 0,
-        "warnings": 0,
-    }
-    assert dry["upgrade"]["checks"]["after"]["drc"]["errors"] == 0 and digest(d) == before
-    sc = h.ok("kw_project", action="upgrade", project=str(d), confirm=True)
-    up = sc["data"]["upgrade"]
-    assert sc["data"]["upgraded"] is True and sc["data"]["target_kicad"] == "10.99.0"
-    assert sorted(up["replaced"]) == ["child.kicad_sch", "demo.kicad_pcb", "demo.kicad_sch"]
-    assert {Path(p).name: s for p, s in up["epochs"]["after"].items()} == {
+    sc = h.fail("kw_pcb_drc", "E_FORMAT_UPGRADE_REQUIRED", project=str(d), save_board=True)
+    ua = sc["data"]["upgrade_args"]
+    assert ua["files"] == ["child.kicad_sch", "demo.kicad_pcb", "demo.kicad_sch"] and digest(d) == before
+    pre = h.ok("kw_project", action="upgrade_preview", project=str(d))
+    assert pre["next_suggested"] == "kw_project_upgrade" and pre["data"]["upgrade_args"] == ua
+    assert pre["data"]["checks"]["before"]["erc"] == {"errors": 0, "warnings": 0}
+    assert pre["data"]["checks"]["after"]["drc"]["errors"] == 0 and digest(d) == before
+    assert sorted(f["path"] for f in pre["data"]["files"]) == ua["files"]
+    sc = h.ok("kw_project_upgrade", **{k: ua[k] for k in ("project", "from_kicad", "to_kicad", "files")})
+    data = sc["data"]
+    assert sorted(data["replaced"]) == ["child.kicad_sch", "demo.kicad_pcb", "demo.kicad_sch"]
+    assert {Path(p).name: s for p, s in data["epochs"]["after"].items()} == {
         "demo.kicad_sch": SCH_99,
         "child.kicad_sch": SCH_99,
         "demo.kicad_pcb": PCB_99,
     }
-    assert up["snapshot_before"] and sorted(sc["changed"]["updated"]) == sorted(up["replaced"])
+    assert data["snapshot_before"] and sorted(sc["changed"]["updated"]) == sorted(data["replaced"])
+    assert data["target"] == {"kicad": "10.99.0", "source": SOURCE_PINNED, "epoch_match": True}
     st = h.ok("kw_project", action="status", project=str(d))["data"]
-    assert st["target_source"] == SOURCE_PINNED and st["epoch_match"] is True
+    assert st["target_source"] == SOURCE_PINNED and st["epoch_match"] is True and st["upgrade_args"] is None
     # writes proceed now
     h.ok("kw_pcb_drc", project=str(d), save_board=True, refill_zones=True)
 
@@ -453,7 +498,9 @@ def test_upgrade_needs_consent_dry_run_reports_confirm_converts(tmp_path: Path):
 def test_upgrade_to_a_kicad_without_the_upgrade_command(tmp_path: Path):
     h = harness(tmp_path, I909)
     d = write_project(h.work / "p", sch=20231120, pcb=20240108)
-    sc = h.fail("kw_project", "E_UNSUPPORTED", action="upgrade", project=str(d), confirm=True)
+    sc = h.fail("kw_project_upgrade", "E_UNSUPPORTED", **upgrade_args_of(h, d))
+    assert sc["data"]["capability"] == "cli.has_sch_pcb_upgrade"
+    sc = h.fail("kw_project", "E_UNSUPPORTED", action="upgrade_preview", project=str(d))
     assert sc["data"]["capability"] == "cli.has_sch_pcb_upgrade"
 
 
@@ -496,8 +543,14 @@ def test_elicitation_accept_upgrades_then_the_call_continues(tmp_path: Path, mod
     sc = result.structured_content
     assert sc["data"]["upgrade"]["kicad"] == "10.99.0" and sc["data"]["options"]["save_board"] is True
     assert file_epoch(d / "demo.kicad_pcb") == PCB_99 and file_epoch(d / "demo.kicad_sch") == SCH_99
-    assert Project.from_path(d).load_state().target_kicad == "10.99.0"
-    assert any("upgraded to KiCad 10.99.0 format with the user's consent" in w for w in sc["warnings"])
+    state = Project.from_path(d).load_state()
+    assert state.target_kicad == "10.99.0"
+    assert any("upgraded to KiCad 10.99.0 format (elicitation)" in w for w in sc["warnings"])
+    # D24: the accept ran the same conversion core - checks on, the consent recorded
+    up = sc["data"]["upgrade"]
+    assert up["checks"]["before"] is not None and up["checks"]["after"] is not None
+    assert up["consent"]["gate"] == "elicitation" and up["consent"]["via"] == "elicitation"
+    assert any((e.get("consent") or {}).get("via") == "elicitation" for e in state.history)
 
 
 @pytest.mark.parametrize("mode", ["legacy", "auto"])
@@ -513,6 +566,24 @@ def test_elicitation_decline_leaves_the_files_alone(tmp_path: Path, mode: str, a
     sc = result.structured_content
     assert sc["code"] == "E_FORMAT_UPGRADE_REQUIRED" and sc["data"]["answer"] == answer
     assert digest(d) == before and Project.from_path(d).load_state().target_kicad is None
+
+
+@pytest.mark.parametrize("mode", ["legacy", "auto"])
+def test_no_elicitation_under_the_vscode_panel(tmp_path: Path, mode: str, monkeypatch: pytest.MonkeyPatch):
+    """D24: under the Claude Code VS Code panel (it declines every elicitation) kiwrap sends none and
+    answers E_FORMAT_UPGRADE_REQUIRED without claiming the user declined."""
+    monkeypatch.setenv("CLAUDE_CODE_ENTRYPOINT", "claude-vscode")
+    h = harness(tmp_path, I1099)
+    d = write_project(h.work / "p")
+    before = digest(d)
+    result, asked = anyio.run(
+        _call_with_client, h.server, mode, "accept", "kw_pcb_drc", {"project": str(d), "save_board": True}
+    )
+    assert not asked and result.is_error
+    sc = result.structured_content
+    assert sc["code"] == "E_FORMAT_UPGRADE_REQUIRED" and "answer" not in sc["data"]
+    assert "declined" not in sc["why"] and sc["data"]["upgrade_args"]["files"]
+    assert digest(d) == before
 
 
 @pytest.mark.parametrize("mode", ["legacy", "auto"])
@@ -554,6 +625,40 @@ def test_ipc11_write_falls_back_to_file_when_it_would_restamp(tmp_path: Path):
     # reads are never gated, and outside a mutation nothing is known about the document
     out = planner.run("board.read", caps, {planner.IPC11: lambda: "ipc"}, install=I1099)
     assert out.value == "ipc"
+
+
+def test_ipc11_write_through_a_bound_gui_judges_the_guis_formats(tmp_path: Path):
+    """Review finding 7: with a kw_live GUI bound to the project the pool hands every ipc11 attempt
+    to THAT GUI whatever install was requested, so the precondition must judge the GUI's formats,
+    not the effective target's: a newer-format GUI next to a target writing the files' own format
+    would re-stamp them (and the stamp guard only warns while a GUI is bound)."""
+    ctx = ctx_of(tmp_path, backend(I1099, I1006))
+    target_caps = FakeCaps({**CAPS_10, "ipc.headless": True}, I1006)  # a target with a headless provider
+    older = Project.from_path(write_project(tmp_path / "p", sch=SCH_10, pcb=PCB_10))
+    attempts = {planner.IPC11: lambda: "ipc", planner.FILE: lambda: "file"}
+
+    def bound_to(install: FakeInstall, sch: int, pcb: int) -> None:
+        ctx.services.ipc_release_project = lambda project_dir: {  # type: ignore[attr-defined]
+            "bound": {
+                "session_id": "g1",
+                "pid": 4242,
+                "locks": [],
+                "ipc11": True,
+                "install": install.key(),
+                "kicad": install.version,
+                "formats": {"sch": sch, "pcb": pcb},
+            }
+        }
+
+    bound_to(I1099, SCH_99, PCB_99)  # the user's GUI is the newer KiCad
+    with mutation(ctx, older, "kw_pcb_place", gate=False):
+        out = planner.run("board.place", target_caps, attempts, install=I1006)
+    assert out.value == "file" and planner.EPOCH_MISMATCH_TAG in out.degraded
+    assert any("live KiCad 10.99.0 GUI" in r for p, r in out.plan.skipped if p == planner.IPC11)
+    bound_to(I1006, SCH_10, PCB_10)  # a GUI writing the files' own format writes through
+    with mutation(ctx, older, "kw_pcb_place", gate=False):
+        out = planner.run("board.place", target_caps, attempts, install=I1006)
+    assert out.value == "ipc" and planner.EPOCH_MISMATCH_TAG not in out.degraded
 
 
 # ---- writers' epochs -----------------------------------------------------------------------------------------

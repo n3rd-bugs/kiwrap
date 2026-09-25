@@ -50,7 +50,11 @@ class KiwrapError(Exception):
     E_GATE (stage gate not satisfied), E_EXTERNAL_EDIT, E_TIMEOUT, E_CANCELLED (a background job
     cancelled through kw_job), E_INTERNAL; the library tools add E_LIB_NOT_FOUND, E_LIB_UNSUPPORTED,
     E_LIB. D21 (docs/DECISIONS.md, review item 1): E_FORMAT_UPGRADE_REQUIRED (a save would move the
-    files to a newer KiCad format and the user has not consented), E_FORMAT_NEWER (the files are
+    files to a newer KiCad format and the user has not consented; D24: its `data.upgrade_args` are
+    the exact `kw_project_upgrade` arguments, or None with `data.retarget_first` when the call ran on
+    a per-call or guard-rolled-back target that is not the project's own - pin that first; the
+    retired consent flag of kw_project is gone - a stale call gets a teaching E_BAD_ARGS),
+    E_FORMAT_NEWER (the files are
     newer than the KiCad that would open them). D23: E_READONLY (the call would write the project in
     read-only mode). Review item 3 / B3: E_STALE (a stored result or a paging cursor belongs to an
     older file). Every code has a kw_help page (`kiwrap.core.tools.help.ERROR_PAGES`).

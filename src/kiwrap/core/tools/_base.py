@@ -10,19 +10,27 @@ Which KiCad a project runs on (docs/DECISIONS.md D21, requests/kiwrap-feature-re
 1 / B1 and theme T1): `effective_target()` is the one resolver every tool calls instead of
 `services.install(state.target_kicad)`. It answers the pinned target, else the newest installed
 point release that writes the files' own format, else the nearest newer one (reads only). A write
-that would save the design files in a newer format asks the user (MCP elicitation, both the
-2025-era server request and the 2026-07-28 `InputRequiredResult` round trip) or fails with
-`E_FORMAT_UPGRADE_REQUIRED`; files newer than every install are `E_FORMAT_NEWER`. The mutation
-epilogue re-reads the stamps and undoes any call that raised one without consent (the stamp
-guard: the only layer that catches a write path nobody anticipated).
+that would save the design files in a newer format fails with `E_FORMAT_UPGRADE_REQUIRED`, whose
+`data.upgrade_args` are the exact arguments of `kw_project_upgrade` - the only conversion, which
+the client's permission flow approves (docs/DECISIONS.md D24: published with
+`_meta["anthropic/requiresUserInteraction"]`). MCP elicitation stays a frozen optional shortcut:
+asked only when the client declares it and the server does not run under the VS Code panel
+(`CLAUDE_CODE_ENTRYPOINT=claude-vscode` declines every elicitation, ANALYSIS-TOOLING.md §6), through
+the SDK's resolver API on both protocol eras; an accept runs the same conversion core. Files newer
+than every install are `E_FORMAT_NEWER`. The mutation epilogue re-reads the stamps and undoes any
+call that raised one without consent (the stamp guard: the only layer that catches a write path
+nobody anticipated).
 """
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import copy
 import datetime as _dt
 import inspect
+import os
+import re
 import shutil
 import subprocess
 import traceback
@@ -87,6 +95,10 @@ class ToolSpec:
     meta: dict[str, Any] = field(default_factory=dict)
     #: a `ReceiptOut` subclass that types `data` for this tool's published outputSchema (None: ReceiptOut)
     output_model: type[BaseModel] | None = None
+    #: publish the common `persist` argument (D23). False for `kw_project_upgrade` (D24): a call the
+    #: client asks the user about must never be one that can only fail (persist=false would be
+    #: refused with E_READONLY after the prompt)
+    common_persist: bool = True
 
 
 # ---- exception mapping -----------------------------------------------------------------------
@@ -315,10 +327,13 @@ def make_callable(spec: ToolSpec, ctx: ToolContext) -> Callable[..., CallToolRes
     Every tool also publishes the common argument `persist` (docs/DECISIONS.md D23, review item 2):
     `persist=false` - or a read-only server (`kiwrap serve --readonly`, `KIWRAP_READONLY=1`) - runs
     the handler inside a `readonly.DetachedCall` (nothing written into the project; a tool that
-    would write it is refused with E_READONLY before the handler runs).
+    would write it is refused with E_READONLY before the handler runs). A spec with
+    `common_persist=False` (`kw_project_upgrade`, D24) does not publish it; a read-only server
+    still refuses it.
     """
     params: list[inspect.Parameter] = []
     own_persist = readonly.PERSIST_ARG in spec.input_model.model_fields
+    common_persist = spec.common_persist and not own_persist
     read_only_hint = bool(getattr(spec.annotations, "read_only_hint", False))
     readonly.register_tool(spec.name, read_only_hint=read_only_hint)
     for fname, finfo in spec.input_model.model_fields.items():
@@ -335,7 +350,7 @@ def make_callable(spec: ToolSpec, ctx: ToolContext) -> Callable[..., CallToolRes
         params.append(
             inspect.Parameter(fname, inspect.Parameter.KEYWORD_ONLY, default=default, annotation=ann)
         )
-    if not own_persist:
+    if common_persist:
         params.append(
             inspect.Parameter(
                 readonly.PERSIST_ARG,
@@ -353,6 +368,8 @@ def make_callable(spec: ToolSpec, ctx: ToolContext) -> Callable[..., CallToolRes
     def tool_fn(**kwargs: Any) -> ToolResult:
         token = _REQUEST.set(kwargs.pop(MCP_CONTEXT_ARG, None))
         persist = kwargs.get(readonly.PERSIST_ARG) if own_persist else kwargs.pop(readonly.PERSIST_ARG, None)
+        if not own_persist and not common_persist:
+            persist = None  # never published: only the server-wide switch applies
         call: readonly.DetachedCall | None = None
         try:
             ro_persist = persist if isinstance(persist, bool) else None
@@ -461,8 +478,6 @@ SOURCE_PINNED = "pinned"
 SOURCE_CREATED = "created"
 SOURCE_FILE_EPOCH = "file_epoch"
 SOURCE_NEWER_READONLY = "file_epoch_newer_readonly"
-#: `InputRequiredResult.input_requests` key of the upgrade consent (2026-07-28 protocol)
-CONSENT_KEY = "kiwrap.format_upgrade"
 
 
 @dataclass
@@ -822,8 +837,8 @@ def resolve_target(
         notes.append(
             f"the {kind} files mix KiCad format generations {values}: "
             + ", ".join(names)
-            + " - an older KiCad cannot load the project; kw_project(action='upgrade') makes them uniform "
-            "(or kw_snapshot restore the state before the mix)"
+            + " - an older KiCad cannot load the project; kw_project_upgrade (arguments: kw_project status "
+            "upgrade_args) makes them uniform (or kw_snapshot restore the state before the mix)"
         )
     choice = TargetChoice(
         install=install,
@@ -853,14 +868,14 @@ def resolve_target(
         if line:
             notes.append(
                 f"the files are in {what}; KiCad {install.version} writes a newer format, so it runs reads only - "
-                "a write asks to upgrade the project (D21) or needs the matching KiCad"
+                "a write needs the user's consent to upgrade the project (D21, D24) or the matching KiCad"
                 + (f" ({hint})" if hint else "")
             )
         else:
             convert, _olds, _n = _conversion_text(choice)
             notes.append(
                 f"KiCad {install.version} would save {convert} in the KiCad {_kicad_line(install.version)} format, "
-                "so it runs reads only - a write asks to upgrade the project first (D21)"
+                "so it runs reads only - a write needs the user's consent to upgrade the project first (D21, D24)"
             )
     return choice
 
@@ -880,13 +895,21 @@ def _uniform_label(choice: TargetChoice, kinds: Iterable[str] | None = None) -> 
     return f"KiCad {line}", hint
 
 
-def upgrade_calls(project: Project) -> tuple[str, str]:
-    """(the non-committing `dry_run=true` call, the consent-bearing `confirm=true` call)."""
-    pro = project.pro_path.as_posix()
-    return (
-        f'kw_project(action="upgrade", project="{pro}", dry_run=true)',
-        f'kw_project(action="upgrade", project="{pro}", confirm=true)',
-    )
+def preview_call(project: Project) -> str:
+    """The read-only preview of an upgrade (D24: `kw_project(action='upgrade_preview')` converts a
+    copy under the storage home and reports the ERC/DRC counts; it writes nothing in the project)."""
+    return f'kw_project(action="upgrade_preview", project="{project.pro_path.as_posix()}")'
+
+
+#: `E_FORMAT_UPGRADE_REQUIRED.example` (D24): a `kw_project_upgrade` call built from placeholders, so
+#: an agent that treats `example` as the corrective call still has to take the real arguments from
+#: `data.upgrade_args` (and the client asks the user before it runs)
+UPGRADE_EXAMPLE = (
+    "kw_project_upgrade(project=<data.upgrade_args.project>, from_kicad=<data.upgrade_args.from_kicad>, "
+    "to_kicad=<data.upgrade_args.to_kicad>, files=<data.upgrade_args.files>)"
+)
+#: the answers `ask_upgrade_consent` reports when the elicitation did not end in an accept
+NO_ANSWER = ("decline", "cancel", "error")
 
 
 def format_upgrade_error(
@@ -897,29 +920,43 @@ def format_upgrade_error(
     guard: dict[str, Any] | None = None,
     kinds: Iterable[str] | None = None,
 ) -> KiwrapError:
-    """E_FORMAT_UPGRADE_REQUIRED (contract (b)): saving would move the files to a newer KiCad format
-    and no installed KiCad writes theirs. `answer`: the user's elicitation answer (decline /
-    cancel) when one was asked; `guard`: the stamp guard's findings when the write already
-    happened and was rolled back; `kinds`: the design kinds the refused write saves (they pick
-    the KiCad line / install hint named as the alternative).
+    """E_FORMAT_UPGRADE_REQUIRED (contract (b), D21 as amended by D24): saving would move the files
+    to a newer KiCad format and no installed KiCad writes theirs. `answer`: the elicitation's
+    outcome when one was sent (decline / cancel / error are all reported as "the prompt was
+    declined or could not be shown": the VS Code panel declines every elicitation and a hook can
+    answer one, so a decline is no answer, D24); `guard`: the stamp guard's findings when the write
+    already happened and was rolled back; `kinds`: the design kinds the refused write saves (they
+    pick only the KiCad line / install hint named as the alternative, `release_for`).
 
-    `example` is the NON-committing `dry_run=true` call (it reports the conversion and the ERC /
-    DRC counts before and after - something to show the user); the `confirm=true` call appears
-    only in `fix`, after 'if yes:' (fixer finding 9: an agent treating `example` as the corrective
-    call must never run the consent-bearing one without asking)."""
+    `data.upgrade_args` is `project.upgrade_args(choice, project)`, the single source (D24) that
+    `kw_project status` and the `kw_project_upgrade` recompute also use - independent of `kinds`,
+    so a board-only refusal on a mixed-generation project (older sheets, newer board) carries
+    arguments the tool accepts. `example` is a placeholder `kw_project_upgrade(...)` call; no text
+    mentions the retired consent flag.
+
+    When `choice` converts nothing (its install writes the files' own format: the stamp guard
+    caught a write by ANOTHER install), `data.upgrade_args` is None and `example` is a retarget:
+    arguments with an empty `files` would only make the client ask the user for a call the tool
+    refuses as "nothing to convert" (review finding 8, D24: never a prompt for a call that can only
+    fail)."""
+    from kiwrap.core.tools.project import upgrade_args  # the kw_project module imports this one
+
+    args: dict[str, Any] | None = upgrade_args(choice, project)
+    if args is not None and not args["files"]:
+        args = None
     uniform, hint = _uniform_label(choice, kinds)
     y = choice.version
     y_line = _kicad_line(y) if y else ""
     matching = [c["version"] for c in choice.candidates if c.get("matches")]
-    dry_call, upgrade_call = upgrade_calls(project)
+    preview = preview_call(project)
     if uniform:
         message = (
             f"{project.name} is in {uniform} format; saving it with KiCad {y} would upgrade the files to a newer "
             f"format that {uniform} cannot open"
         )
-        ask = (
-            f"ask the user whether the project may be upgraded to KiCad {y} format ({uniform} can no longer open "
-            "it afterwards)"
+        tell = (
+            f"tell the user that {project.name} would be upgraded to the KiCad {y_line} format ({uniform} can no "
+            "longer open it afterwards) and name the alternatives below"
         )
     else:
         convert, olds, n = _conversion_text(choice)
@@ -929,37 +966,54 @@ def format_upgrade_error(
             f"saving {project.name}{mixed} with KiCad {y} would convert {convert} to the KiCad {y_line} format, "
             f"which {olds} cannot open"
         )
-        ask = (
-            f"ask the user whether {convert} may be converted to the KiCad {y_line} format ({olds} can no longer "
-            f"open {them} afterwards)"
+        tell = (
+            f"tell the user that {convert} would be converted to the KiCad {y_line} format ({olds} can no longer "
+            f"open {them} afterwards) and name the alternatives below"
         )
-    fix = (
-        f"{ask}; {dry_call} shows the conversion and the ERC/DRC counts before and after without changing "
-        f"anything; if yes: {upgrade_call} (converted on a copy, snapshot first), then retry this call"
-    )
+    if args is not None:
+        fix = (
+            f"{tell}; {preview} previews the conversion and the ERC/DRC counts before and after without changing "
+            "anything. If the user agrees: kw_project_upgrade with data.upgrade_args passed exactly as given (the "
+            "client asks the user to approve that call; a snapshot is taken first), then retry this call"
+        )
+    else:
+        fix = (
+            f"{tell}; no upgrade is pending for the KiCad {project.name} runs on (KiCad {y}), so data.upgrade_args "
+            "is null. To convert the files to a newer installed KiCad's format: tell the user, pin that KiCad with "
+            "kw_project(action='retarget', target_kicad=...) (no file changes), then kw_project_upgrade with the "
+            "upgrade_args kw_project(action='status') returns (the client asks the user)"
+        )
     if matching:
         fix += (
-            f"; or keep the format: kw_project(action='retarget', target_kicad='{matching[0]}') "
+            f"; alternative - keep the format: kw_project(action='retarget', target_kicad='{matching[0]}') "
             f"(KiCad {matching[0]} writes the files' own format)"
         )
     elif uniform:
-        fix += f"; or install {uniform}" + (f" ({hint})" if hint else "") + " and retry"
+        fix += f"; alternative - install {uniform}" + (f" ({hint})" if hint else "") + " and retry"
     elif choice.mixed:
         fix += (
-            "; or restore a snapshot from before the formats were mixed (kw_snapshot(action='list'), then "
-            "kw_snapshot(action='restore', ref=...))"
+            "; alternative - restore a snapshot from before the formats were mixed (kw_snapshot(action='list'), "
+            "then kw_snapshot(action='restore', ref=...))"
         )
     else:
-        fix += "; or install the KiCad that wrote the files and retry"
-    if answer in ("decline", "cancel"):
-        why = f"the user {'declined' if answer == 'decline' else 'dismissed'} the upgrade prompt; D21: never without consent"
+        fix += "; alternative - install the KiCad that wrote the files and retry"
+    fix += "; never convert the files any other way"
+    if answer in NO_ANSWER:
+        why = (
+            "the upgrade prompt was declined or could not be shown; kiwrap never saves a project in a newer KiCad "
+            "format without the user's consent (D21, D24)"
+        )
     elif guard:
         why = "a write raised the files' format stamp without the user's consent; the call was rolled back (D21)"
     else:
-        why = "kiwrap never saves a project in a newer KiCad format without the user's consent (D21)"
+        why = (
+            "kiwrap never saves a project in a newer KiCad format without the user's consent (D21); the only "
+            "conversion is kw_project_upgrade, whose call the user approves (D24)"
+        )
     files = choice.upgrade_files() or [f for f in choice.files if f.stamp is not None]
     data: dict[str, Any] = {
         "project": project.pro_path.as_posix(),
+        "upgrade_args": args,
         "files": [f.to_dict() for f in files],
         "project_epoch": dict(choice.project_epoch),
         "project_kicad": uniform[len("KiCad ") :] if uniform else None,
@@ -969,7 +1023,7 @@ def format_upgrade_error(
         "install_hint": hint if uniform else None,
         "target_source": choice.source,
         "install_epoch": dict(choice.install_epoch),
-        "dry_run_call": dry_call,
+        "preview_call": preview,
     }
     if answer:
         data["answer"] = answer
@@ -981,9 +1035,88 @@ def format_upgrade_error(
         why=why,
         fix=fix,
         candidates=matching,
-        example=dry_call,
+        example=UPGRADE_EXAMPLE
+        if args is not None
+        else retarget_example(project, matching[0] if matching else None),
         data=data,
     )
+
+
+def retarget_example(project: Project, version: str | None = None) -> str:
+    """`kw_project(action="retarget", ...)`: the example of a refusal whose remedy is a pin first."""
+    return (
+        f'kw_project(action="retarget", project="{project.pro_path.as_posix()}", '
+        f'target_kicad="{version or "<version>"}")'
+    )
+
+
+def _upgrade_refusal(
+    ctx: ToolContext,
+    project: Project,
+    state: ProjectState,
+    choice: TargetChoice,
+    prefer: str | None,
+    *,
+    answer: str | None,
+    kinds: Iterable[str] | None,
+) -> KiwrapError:
+    """E_FORMAT_UPGRADE_REQUIRED for a write `choice` cannot do in the files' format.
+
+    Without `prefer` it is `format_upgrade_error(choice)`. With `prefer` (kw_live's per-call
+    `target_kicad`) the refusal's `data.upgrade_args` must still be the ones `kw_project_upgrade`
+    accepts, and that tool recomputes them WITHOUT any per-call choice: from the pinned or auto
+    target (D24's single source; review findings 2 and 3 - the old refusal carried the `prefer`
+    arguments, the tool refused them as 'nothing to convert' after the user approved the card, and
+    the extension looped on it). So:
+    - the project's own target converts to the same format: its `upgrade_args` are attached;
+    - else `data.upgrade_args` is None and `data.retarget_first` says what to pin first
+      (`kw_project(action='retarget', target_kicad=<the requested install>)`, no file changes) and
+      which `upgrade_args` `kw_project status` returns after that pin - the fix says the order."""
+    err = format_upgrade_error(choice, project, answer=answer, kinds=kinds)
+    if not prefer:
+        return err
+    from kiwrap.core.tools.project import upgrade_args  # the kw_project module imports this one
+
+    wanted = upgrade_args(choice, project)
+    own: TargetChoice | None = None
+    with contextlib.suppress(KiwrapError):
+        own = resolve_target(ctx, project, state)
+    own_args = upgrade_args(own, project) if own is not None else None
+    if (
+        own_args is not None
+        and own_args["files"]
+        and all(own_args[k] == wanted[k] for k in ("from_kicad", "to_format", "files"))
+    ):
+        err.data["upgrade_args"] = own_args
+        return err
+    pro = project.pro_path.as_posix()
+    spec = wanted["to_kicad"]
+    runs_on = own.version if own is not None else None
+    err.data["upgrade_args"] = None
+    err.data["runs_on"] = runs_on
+    err.data["retarget_first"] = {
+        "project": pro,
+        "target_kicad": spec,
+        "target_kicad_before": state.target_kicad,
+        "upgrade_args": wanted if wanted["files"] else None,
+    }
+    keeps = (
+        f"without target_kicad the call runs on KiCad {runs_on}, which writes the files' own format"
+        if own is not None and own.writable
+        else f"the project itself runs on KiCad {runs_on}"
+        if runs_on
+        else "the project has no usable target"
+    )
+    err.fix = (
+        f"KiCad {choice.version} (the call's target_kicad) is not the KiCad {project.name} runs on: {keeps}. "
+        f"To move the project to KiCad {_kicad_line(choice.version)} format instead: tell the user, then "
+        f"kw_project(action='retarget', project='{pro}', target_kicad='{spec}') (no file changes), then "
+        "kw_project_upgrade with the upgrade_args kw_project(action='status') returns (the client asks the user; "
+        "they equal data.retarget_first.upgrade_args), then retry this call; never convert the files any other way"
+    )
+    err.candidates = [runs_on] if own is not None and own.writable and runs_on else []
+    err.example = retarget_example(project, spec)
+    return err
 
 
 def format_newer_error(choice: TargetChoice, project: Project) -> KiwrapError:
@@ -1020,16 +1153,6 @@ def format_newer_error(choice: TargetChoice, project: Project) -> KiwrapError:
     )
 
 
-class UpgradeConsent(BaseModel):
-    """The elicitation form of the D21 prompt (one boolean; the action carries accept/decline)."""
-
-    upgrade: bool = Field(
-        default=True,
-        title="Upgrade the project files",
-        description="Convert the schematic and board to the newer KiCad format (a snapshot is taken first)",
-    )
-
-
 def consent_message(project: Project, choice: TargetChoice, kinds: Iterable[str] | None = None) -> str:
     """'Upgrade <project> from KiCad <x> format to <y>? KiCad <x> will no longer open it.
     Alternatively install KiCad <x>.' (the wording of the SAFETY contract) when the files belong
@@ -1055,6 +1178,125 @@ def consent_message(project: Project, choice: TargetChoice, kinds: Iterable[str]
     return text + " Alternatively install the KiCad that wrote them."
 
 
+# ---- the consent record (D24) --------------------------------------------------------------------------
+
+#: the `_meta` key Claude Code checks before its permission-mode and allow-rule branches: a tool
+#: published with it asks the user on every call (docs/DECISIONS.md D24; code.claude.com/docs/en/mcp
+#: "Require approval for a specific tool")
+REQUIRES_USER_INTERACTION = "anthropic/requiresUserInteraction"
+#: the oldest Claude Code that honours `REQUIRES_USER_INTERACTION` (a Claude Code version, not a
+#: KiCad one; code.claude.com/docs/en/mcp "Require approval for a specific tool": v2.1.199)
+CLAUDE_CODE_MIN_CONSENT: tuple[int, int, int] = (2, 1, 199)
+#: `clientInfo.name` of Claude Code (a literal anchor of the claude.exe 2.1.280/2.1.281 bundles, D24)
+CLAUDE_CODE_CLIENT = "claude-code"
+#: `clientInfo.name` of the kiwrap VS Code extension's MCP client: its modal click is the consent (D24)
+KIWRAP_VSCODE_CLIENT = "kiwrap-vscode"
+#: the environment variable Claude Code sets for the servers it starts, and the VS Code panel's value
+#: (the panel answers every elicitation with decline: ANALYSIS-TOOLING.md §6, D24)
+CLAUDE_CODE_ENTRYPOINT_ENV = "CLAUDE_CODE_ENTRYPOINT"
+PANEL_ENTRYPOINT = "claude-vscode"
+_SEMVER3 = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+
+
+def _semver3(version: Any) -> tuple[int, int, int] | None:
+    m = _SEMVER3.search(str(version or ""))
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+
+
+def _field(obj: Any, name: str) -> Any:
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _client_identity(request: Any) -> tuple[bool, str | None, str | None]:
+    """(an MCP request is bound, clientInfo.name, clientInfo.version): the session's initialize
+    parameters (2025-era handshake), else the request's `_meta` client info (2026-07-28 stateless
+    requests carry it per request), else unknown."""
+    if request is None:
+        return False, None, None
+    try:
+        rc = request.request_context
+    except Exception:  # noqa: BLE001 - no request context: a direct in-process call
+        return False, None, None
+    if rc is None:
+        return False, None, None
+    info: Any = None
+    with contextlib.suppress(Exception):
+        info = _field(rc.session.client_params, "client_info")
+    if info is None:
+        from mcp_types import CLIENT_INFO_META_KEY
+
+        meta = getattr(rc, "meta", None)
+        if isinstance(meta, dict):
+            info = meta.get(CLIENT_INFO_META_KEY)
+    name, version = _field(info, "name"), _field(info, "version")
+    return True, (str(name) if name else None), (str(version) if version else None)
+
+
+def consent_source(request: Any) -> dict[str, Any]:
+    """The consent record of a `kw_project_upgrade` call (D24): `{gate, via, client {name, version},
+    entrypoint}`.
+
+    - `claude-code`: gate `anthropic/requiresUserInteraction`, via `client_permission_flow` - the
+      client's permission flow approved the call. That is NOT a claim that a human clicked: an
+      Agent SDK host's `canUseTool` receives flagged calls and may approve them programmatically
+      (code.claude.com/docs/en/mcp, the "Require approval for a specific tool" section).
+    - `kiwrap-vscode`: gate and via `kiwrap_vscode_modal` (the extension's modal click).
+    - no MCP request bound (a direct handler call, the CLI, tests): gate `none`, via `in_process`.
+    - any other client: gate `none`, via `unknown_client` (kiwrap cannot tell whether it asked; the
+      conversion runs with a warning).
+    The elicitation shortcut records gate and via `elicitation` (`effective_target`)."""
+    bound, name, version = _client_identity(request)
+    entrypoint = os.environ.get(CLAUDE_CODE_ENTRYPOINT_ENV) or None
+    if not bound:
+        gate, via = "none", "in_process"
+    elif name == CLAUDE_CODE_CLIENT:
+        gate, via = REQUIRES_USER_INTERACTION, "client_permission_flow"
+    elif name == KIWRAP_VSCODE_CLIENT:
+        gate, via = "kiwrap_vscode_modal", "kiwrap_vscode_modal"
+    else:
+        gate, via = "none", "unknown_client"
+    return {"gate": gate, "via": via, "client": {"name": name, "version": version}, "entrypoint": entrypoint}
+
+
+def refuse_unsupported_client(consent: dict[str, Any]) -> None:
+    """E_UNSUPPORTED for a Claude Code older than `CLAUDE_CODE_MIN_CONSENT` (or whose version cannot
+    be read): it does not honour `anthropic/requiresUserInteraction`, so the call may have run without
+    asking the user (D24)."""
+    client = consent.get("client") or {}
+    if client.get("name") != CLAUDE_CODE_CLIENT:
+        return
+    have = _semver3(client.get("version"))
+    if have is not None and have >= CLAUDE_CODE_MIN_CONSENT:
+        return
+    need = ".".join(str(p) for p in CLAUDE_CODE_MIN_CONSENT)
+    raise KiwrapError(
+        "E_UNSUPPORTED",
+        f"this Claude Code ({client.get('version') or 'unknown version'}) does not ask the user before "
+        "kw_project_upgrade runs; nothing was converted",
+        why=f"Claude Code honours {REQUIRES_USER_INTERACTION} (a permission prompt on every call) from {need} on; "
+        "without it the call is not the user's consent (D24)",
+        fix=f"tell the user: update Claude Code to {need} or newer and retry, or install the KiCad that writes "
+        "the files' own format (kw_project(action='status') names it)",
+        candidates=[f"Claude Code >= {need}"],
+        data={"client": dict(client), "client_capability": REQUIRES_USER_INTERACTION, "min_version": need},
+    )
+
+
+# ---- elicitation: the frozen optional shortcut (D24) ----------------------------------------------------
+
+
+class UpgradeConsent(BaseModel):
+    """The elicitation form of the D21 prompt (one boolean; the action carries accept/decline)."""
+
+    upgrade: bool = Field(
+        default=True,
+        title="Upgrade the project files",
+        description="Convert the schematic and board to the newer KiCad format (a snapshot is taken first)",
+    )
+
+
 def _client_elicits(request: Any) -> bool:
     """The client declared form elicitation (an empty `elicitation: {}` means form, 2025-06-18)."""
     try:
@@ -1067,6 +1309,15 @@ def _client_elicits(request: Any) -> bool:
     return getattr(el, "form", None) is not None or getattr(el, "url", None) is None
 
 
+def elicitation_allowed(request: Any) -> bool:
+    """D24: elicitation is sent only when the client declared it AND the server does not run under
+    the VS Code panel (`CLAUDE_CODE_ENTRYPOINT=claude-vscode`), which declines every elicitation
+    while still declaring the capability (ANALYSIS-TOOLING.md §6)."""
+    if request is None or os.environ.get(CLAUDE_CODE_ENTRYPOINT_ENV) == PANEL_ENTRYPOINT:
+        return False
+    return _client_elicits(request)
+
+
 def _answer_of(action: str, content: Any) -> str:
     if action != "accept":
         return action
@@ -1077,45 +1328,72 @@ def _answer_of(action: str, content: Any) -> str:
     return "accept"
 
 
+async def _elicit_consent(request: Any, message: str) -> Any:
+    """Ask through the SDK's resolver API (`Resolve` + `Elicit`), which follows the negotiated
+    protocol: a mid-call `elicitation/create` up to 2025-11-25, an `InputRequiredResult` round trip
+    (question digest and answer carried in `request_state`) from 2026-07-28, where `ctx.elicit()`
+    has no back-channel (ANALYSIS-TOOLING.md §6). Returns `{"consent": ElicitationResult}` or the
+    `InputRequiredResult` to hand back to the client."""
+    from mcp.server.mcpserver.resolve import Elicit, Resolve, build_resolver_plans, resolve_arguments
+
+    def kiwrap_format_upgrade() -> Any:  # the wire key is this function's module:qualname (stable)
+        return Elicit(message, UpgradeConsent)
+
+    params = {"consent": (Resolve(kiwrap_format_upgrade), True)}
+    plans = build_resolver_plans(params, set())
+    return await resolve_arguments(params, plans, {}, request)
+
+
 def ask_upgrade_consent(message: str) -> str | None:
-    """Ask the MCP client's user (D21). Returns 'accept' / 'decline' / 'cancel', or None when no
-    client can be asked (no request bound, or the client declared no elicitation, or the request
-    could not be sent). Under the 2026-07-28 protocol (no back-channel) the question travels as
-    an `InputRequiredResult` (`InputRequired` is raised) and the answer arrives on the retry."""
+    """Ask the MCP client's user (the frozen elicitation shortcut, D24). Returns 'accept', 'decline',
+    'cancel' or 'error' (the prompt could not be shown), or None when no elicitation may be sent
+    (`elicitation_allowed`). Under the 2026-07-28 protocol the question travels as an
+    `InputRequiredResult` (`InputRequired` is raised) and the answer arrives on the retry."""
     request = _REQUEST.get()
-    if request is None or not _client_elicits(request):
+    if not elicitation_allowed(request):
         return None
     try:
-        session = request.session
-    except Exception:  # noqa: BLE001
-        return None
-    if getattr(session, "can_send_request", True):
-        try:
-            import anyio.from_thread
+        import anyio.from_thread
 
-            result = anyio.from_thread.run(request.elicit, message, UpgradeConsent)
-        except Exception:  # noqa: BLE001 - not in a worker thread / no back-channel / client error
-            return None
-        return _answer_of(str(getattr(result, "action", "cancel")), getattr(result, "data", None))
-    responses = getattr(request, "input_responses", None) or {}
-    answer = responses.get(CONSENT_KEY) if isinstance(responses, dict) else None
-    if answer is not None:
-        return _answer_of(str(getattr(answer, "action", "cancel")), getattr(answer, "content", None))
-    from mcp.server.elicitation import render_elicitation_schema
-    from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResult
+        resolved = anyio.from_thread.run(_elicit_consent, request, message)
+    except Exception:  # noqa: BLE001 - not in a worker thread / no back-channel / client error
+        return "error"
+    from mcp.types import InputRequiredResult
 
-    raise InputRequired(
-        InputRequiredResult(
-            input_requests={
-                CONSENT_KEY: ElicitRequest(
-                    params=ElicitRequestFormParams(
-                        message=message, requested_schema=render_elicitation_schema(UpgradeConsent)
-                    )
-                )
-            },
-            request_state="kiwrap:format_upgrade",
-        )
+    if isinstance(resolved, InputRequiredResult):
+        raise InputRequired(resolved)
+    outcome = resolved.get("consent") if isinstance(resolved, dict) else None
+    if outcome is None:
+        return "error"
+    return _answer_of(str(getattr(outcome, "action", "cancel")), getattr(outcome, "data", None))
+
+
+def _upgrade_on_accept(
+    ctx: ToolContext,
+    project: Project,
+    state: ProjectState,
+    choice: TargetChoice,
+    running: Mutation | None,
+    prefer: str | None,
+) -> dict[str, Any]:
+    """The elicitation said yes: run the ONE conversion core (`project.run_upgrade`) with this
+    choice's `upgrade_args` and the consent gate/via `elicitation` - exactly `upgrade_files()`, ERC/DRC
+    before and after, a snapshot first (D24; it used to convert every design file unchecked).
+    Inside a running mutation it converts under that call's lock; else in its own."""
+    from kiwrap.core.tools.project import UpgradeArgs, run_upgrade, upgrade_args
+
+    args = upgrade_args(choice, project)
+    consent = {**consent_source(_REQUEST.get()), "gate": "elicitation", "via": "elicitation"}
+    receipt = run_upgrade(
+        ctx,
+        UpgradeArgs(**{k: args[k] for k in ("project", "from_kicad", "to_kicad", "files")}),
+        consent,
+        running=running,
+        prefer=prefer,
     )
+    pinned = running.state if running is not None else project.load_state()
+    state.target_kicad, state.target_source = pinned.target_kicad, pinned.target_source
+    return dict(receipt.data)
 
 
 def effective_target(
@@ -1134,9 +1412,10 @@ def effective_target(
       without KiCad loading the files (`allow_newer=True`: kw_pcb_get / kw_sch_get / ... fall
       through to the file provider).
     - `for_write` and the install would move a file of `kinds` (default: every design kind) to a
-      newer KiCad line: the user is asked (MCP elicitation); on accept the project is upgraded
-      (`kw_project upgrade` semantics, inside this call's lock and snapshot history) and pinned,
-      otherwise `E_FORMAT_UPGRADE_REQUIRED`.
+      newer KiCad line: `E_FORMAT_UPGRADE_REQUIRED` with `data.upgrade_args` (D24), unless the
+      frozen elicitation shortcut may ask and the user accepts - then the project is converted by
+      `kw_project_upgrade`'s core (inside this call's lock and snapshot history) and pinned. With
+      `prefer`, the refusal carries only arguments the tool accepts (`_upgrade_refusal`).
     Inside a `mutation()` the choice is recorded on it (`Mutation.target`: the planner's ipc11
     precondition and the receipt's `data.target` read it)."""
     if for_write:
@@ -1148,12 +1427,12 @@ def effective_target(
     if for_write and not choice.writable_for(kinds):
         answer = ask_upgrade_consent(consent_message(project, choice, kinds))
         if answer != "accept":
-            raise format_upgrade_error(choice, project, answer=answer, kinds=kinds)
-        report = upgrade_with_consent(ctx, project, state, choice.install, running)
+            raise _upgrade_refusal(ctx, project, state, choice, prefer, answer=answer, kinds=kinds)
+        report = _upgrade_on_accept(ctx, project, state, choice, running, prefer)
         choice = resolve_target(ctx, project, state)
         choice.upgraded = report
         choice.notes.append(
-            f"the user agreed: the project was upgraded to KiCad {choice.version} format "
+            f"the user agreed (elicitation): the project was upgraded to KiCad {choice.version} format "
             f"(pre-upgrade snapshot {str(report.get('snapshot_before') or '')[:12]})"
         )
     if running is not None:
@@ -1190,35 +1469,6 @@ def saves_in_format(install: Any, caps: Any, project: Project, kind: str, m: Mut
     return all(f.stamp == epoch for f in project.format_stamps() if f.kind == kind and f.stamp is not None)
 
 
-def upgrade_with_consent(
-    ctx: ToolContext, project: Project, state: ProjectState, install: Any, running: Mutation | None
-) -> dict[str, Any]:
-    """Run the sanctioned up-conversion after the user said yes (`core.tools.project.perform_upgrade`),
-    inside the running mutation when there is one (its lock is held), else in its own."""
-    from kiwrap.core.tools.project import perform_upgrade  # the kw_project module imports this one
-
-    if running is not None:
-        report = perform_upgrade(ctx, running, install, checks=False, reason=f"{running.tool} (user consent)")
-        commit = snapshot_create(
-            project.dir, f"[kiwrap] {running.tool}: upgrade to KiCad {install.version} format (user consent)"
-        )
-        report["snapshot_after"] = commit
-        running.receipt.warnings.append(
-            f"the project was upgraded to KiCad {install.version} format with the user's consent before this "
-            f"change (snapshot {str(commit or '')[:12]}; kw_snapshot restore {str(report.get('snapshot_before') or '')[:12]} undoes it)"
-        )
-        running.upgrade_report = report
-        return report
-    with mutation(ctx, project, "kw_project", gate=False) as m:
-        report = perform_upgrade(ctx, m, install, checks=False, reason="user consent")
-        m.summary = f"upgrade to KiCad {install.version} format (user consent)"
-        m.receipt = Receipt(
-            provider_used=ctx.services.provider(install), data={"ok": True, "upgrade": report}
-        )
-    state.target_kicad, state.target_source = m.state.target_kicad, m.state.target_source
-    return report
-
-
 # ---- mutation prologue / epilogue ---------------------------------------------------------------
 
 
@@ -1241,7 +1491,7 @@ class Mutation:
     bound: dict[str, Any] | None = None
     #: `{relpath: (version N)}` of the design files when the call began (the stamp guard's baseline)
     stamps_before: dict[str, int | None] = field(default_factory=dict)
-    #: the call may raise format stamps (kw_project upgrade, or after the user consented)
+    #: the call may raise format stamps (kw_project_upgrade, or after the user consented: D24)
     allow_format_upgrade: bool = False
     #: what `effective_target()` resolved inside this call (None until a tool asks)
     target: Any = None
@@ -1254,6 +1504,9 @@ class Mutation:
     #: the owned files (`snapshots.owned_files`) when the call began: the stamp guard's rollback
     #: removes what the call added beside them (fixer finding 5), None when not listed
     files_before: frozenset[str] | None = None
+    #: `{kind: known release epochs}` for the stamp guard when the tool resolved no `target`
+    #: (`kw_snapshot restore`: a re-save inside one KiCad line is not an upgrade; review finding 1)
+    guard_epochs: dict[str, list[int]] | None = None
 
     @property
     def degraded(self) -> list[str]:
@@ -1302,9 +1555,6 @@ def release_own_sessions(ctx: ToolContext, project: Project) -> dict[str, Any]:
 #: the mutation running in this thread (its project lock is held): `effective_target()` records
 #: its choice on it and upgrades inside it, the planner reads its stamps (ipc11 precondition)
 _CURRENT: contextvars.ContextVar[Mutation | None] = contextvars.ContextVar("kiwrap_mutation", default=None)
-
-#: tools whose purpose is to put files back as they were (a restore may raise a stamp)
-FORMAT_GUARD_EXEMPT = frozenset({"kw_snapshot"})
 
 
 def current_mutation(project: Project | None = None) -> Mutation | None:
@@ -1465,13 +1715,19 @@ def mutation(
                     target = m.target if isinstance(m.target, TargetChoice) else None
                     if target is not None and target.writable and target.version != writer:
                         # the project's own KiCad writes its format; another install did the write
+                        # D24: the conversion is kw_project_upgrade with the upgrade_args that
+                        # `project.upgrade_args` gives once the writer is the pinned target
                         guard_error.fix = (
                             f"the project runs on KiCad {target.version}, which writes its format: pin it with "
                             f"kw_project(action='retarget', target_kicad='{target.version}') and retry; converting "
-                            f"to KiCad {writer} format needs the user's consent "
-                            f"(kw_project(action='upgrade', to_kicad='{writer}', confirm=true))"
+                            f"to KiCad {writer} format needs the user's consent: tell the user, "
+                            f"kw_project(action='retarget', target_kicad='{writer}'), then kw_project_upgrade with the "
+                            "upgrade_args kw_project(action='status') returns (the client asks the user)"
                         )
                         guard_error.candidates = [target.version]
+                        # data.upgrade_args is None here (the target converts nothing): the
+                        # corrective call is the pin, never kw_project_upgrade (review finding 8)
+                        guard_error.example = retarget_example(project, target.version)
                 m.failure_code = guard_error.code
         finally:
             _CURRENT.reset(token)
@@ -1536,11 +1792,16 @@ def _format_guard(m: Mutation) -> dict[str, Any] | None:
     without `allow_format_upgrade` is an up-conversion nobody consented to: the files go back to
     the call's baseline snapshot and the state to what it was (unless a live GUI session holds the
     project - then the disk is the GUI's and only a warning is given). Returns the findings, or
-    None when nothing rose."""
-    if m.allow_format_upgrade or m.tool in FORMAT_GUARD_EXEMPT:
+    None when nothing rose.
+
+    No tool is exempt: `kw_snapshot restore` of a snapshot holding newer-format files (the state
+    after a conversion the user undid, a pre-call snapshot of an external save) is an up-conversion
+    too and is rolled back like any other write - only `kw_project_upgrade` converts (D24; review
+    finding 1). Restoring `snapshot_before` only lowers the stamps and passes."""
+    if m.allow_format_upgrade:
         return None
     after = stamp_map(m.project)
-    known = m.target.known_epochs if isinstance(m.target, TargetChoice) else {}
+    known = m.target.known_epochs if isinstance(m.target, TargetChoice) else (m.guard_epochs or {})
 
     def generation(rel: str, stamp: int) -> int:
         # a re-save inside one KiCad line (20260101 -> 20260306 by 10.0.6) is not an upgrade;

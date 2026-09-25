@@ -218,6 +218,10 @@ confirm=true)` convert them. The prompt also names the alternative: install the 
 **Why:** the review reproduced four paths that re-stamped a KiCad 10.0 project as 10.99 (unopenable in
 10.0) on default arguments. D16 stays "develop against the newest KiCad" but never writes a newer
 format into a user's files without consent.
+**Amended by D24 (2026-09-24):** the only conversion is `kw_project_upgrade`, which Claude Code always
+asks the user about (`requiresUserInteraction`); the VS Code modal calls the same tool. MCP elicitation
+is an optional shortcut outside the VS Code panel, and `kw_project(action='upgrade', confirm=true)` is
+retired.
 
 ## D22 — `kw_pcb_drc` does not save by default
 
@@ -257,6 +261,18 @@ move to a newer KiCad format only through `kw_project_upgrade(project, from_kica
 - **D15 check.** The end-to-end check with a real login is a manual checklist script.
 
 It is the first change after Phase 0+1.
+
+**Refined in implementation (2026-09-25, review findings):**
+- **When the arguments are null.** `E_FORMAT_UPGRADE_REQUIRED` carries `data.upgrade_args = null`
+  plus `data.retarget_first` (and `data.runs_on`) when the refused call ran on a KiCad other than the
+  project's own target, either a `kw_live` `target_kicad` or a stamp-guard rollback. The fix is to pin
+  that target with `kw_project(action='retarget')` first; the arguments then come from `status`.
+- **Snapshot restore is guarded.** `kw_snapshot restore` is no longer exempt from the stamp guard, so
+  restoring a post-upgrade snapshot cannot re-stamp the files without the prompt.
+- **No persist on the upgrade tool.** Any `persist` passed to `kw_project_upgrade` is refused:
+  `E_READONLY` when it reads as false, otherwise `E_BAD_ARGS`.
+- **No snapshot, no conversion.** A failed pre-upgrade snapshot stops the conversion instead of
+  converting with nothing to undo it with.
 
 ## D25 — Receipt shape: `pos` is KiCad's marker location, one cursor grammar, compact receipts
 

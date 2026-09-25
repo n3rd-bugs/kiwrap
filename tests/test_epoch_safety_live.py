@@ -6,13 +6,15 @@ pic_programmer's two sheets) and a `.kicad_prl` rewrite nobody undid. Each scena
 through the real MCP tool handlers with EXPLICIT install filters (the server's discovery is
 replaced by a filtered list): with only the 10.99 nightly considered (reads run, writes refuse
 with E_FORMAT_UPGRADE_REQUIRED - no client to ask here - and nothing on disk changes) and with
-10.0.6 installed too (10.0.6 is chosen and every stamp is kept). Then the `kw_project upgrade`
-round trip and E_FORMAT_NEWER. Nothing here starts an api-server (the refusals happen before
+10.0.6 installed too (10.0.6 is chosen and every stamp is kept). Then the `kw_project_upgrade`
+round trip (docs/DECISIONS.md D24; tests/test_project_upgrade_live.py has the full D24 checks) and
+E_FORMAT_NEWER. Nothing here starts an api-server (the refusals happen before
 any, and 10.0.6 has no headless IPC) or a GUI; every process runs in the session's sandbox.
 """
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import shutil
 import stat
@@ -73,7 +75,14 @@ class Server:
 
 
 def _rmtree(path: Path) -> None:
-    shutil.rmtree(path, onexc=lambda fn, p, _e: (Path(p).chmod(stat.S_IWRITE), fn(p)))
+    """`shutil.rmtree` that also removes read-only files on Python 3.11 (`rmtree(onexc=)` is 3.12+,
+    and CI runs 3.11): clear the read-only bit first, then remove."""
+    if not path.exists():
+        return
+    for p in path.rglob("*"):
+        with contextlib.suppress(OSError):
+            p.chmod(stat.S_IREAD | stat.S_IWRITE)
+    shutil.rmtree(path)
 
 
 def digest(d: Path) -> dict[str, str]:
@@ -227,7 +236,7 @@ def test_sch_edit_never_restamps_the_sheets(
     assert digest(pic)["pic_programmer.kicad_prl"] == before["pic_programmer.kicad_prl"]
 
 
-# ---- kw_project upgrade round trip + E_FORMAT_NEWER -------------------------------------------------------
+# ---- kw_project_upgrade round trip + E_FORMAT_NEWER -------------------------------------------------------
 
 
 def test_project_upgrade_round_trip_and_format_newer(
@@ -239,11 +248,13 @@ def test_project_upgrade_round_trip_and_format_newer(
     assert (
         st["target_effective"] == i99.version and st["epoch_match"] is False and st["project_kicad"] == "10.0"
     )
-    srv.fail("kw_project", "E_FORMAT_UPGRADE_REQUIRED", action="upgrade", project=str(pic))
+    # D24: the retired action is a teaching error; the arguments come from status
+    srv.fail("kw_project", "E_BAD_ARGS", action="upgrade", project=str(pic), confirm=True)
     assert digest(pic) == original
-    sc = srv.ok("kw_project", action="upgrade", project=str(pic), confirm=True)
-    up = sc["data"]["upgrade"]
-    assert sc["data"]["upgraded"] is True and sc["data"]["target_kicad"] == i99.version
+    ua = st["upgrade_args"]
+    sc = srv.ok("kw_project_upgrade", **{k: ua[k] for k in ("project", "from_kicad", "to_kicad", "files")})
+    up = sc["data"]
+    assert up["target"]["kicad"] == i99.version and up["target"]["source"] == "pinned"
     assert sorted(up["replaced"]) == [
         "pic_programmer.kicad_pcb",
         "pic_programmer.kicad_sch",

@@ -182,6 +182,26 @@ class TestSeedFor:
         assert values["ipc.schematic_update_shared_lib_symbol_hangs"] is True
         assert m.versions["11.0.0"]["ipc.schematic_update_shared_lib_symbol_hangs"] is False
 
+    @pytest.mark.parametrize(
+        ("version", "scale"),
+        [
+            ("8.0.9", 100),
+            ("9.0.9", 100),
+            ("10.0.6", 100),  # verified live (claim 1, re-verified 2026-09-25)
+            ("10.0.7", 1),  # upstream 6d8e1fea (10.0 branch, milestone 10.0.7)
+            ("10.0.8", 1),  # a later point release seeds from 10.0.7, never from 10.0.6
+            ("10.99.0", 100),  # the pinned nightly 6dd893f7d1 predates master's 407f6293 (verified)
+            ("10.99.1", 1),  # an unknown nightly seeds from 11.0.0 (master after 407f6293)
+            ("11.0.0", 1),
+        ],
+    )
+    def test_erc_json_pos_scale_follows_the_upstream_fix(self, version: str, scale: int):
+        """Cross-check finding (docs/decisions/D24-D31.md, plan step S1): seed_for gave a 10.0.7
+        install 10.0.6's `cli.erc_json_pos_scale` = 100, which would divide correct ERC positions
+        by 100 once upstream's fix (master 407f6293 / 10.0 6d8e1fea) ships."""
+        _seed, values, _exact, _note = seed_for(version)
+        assert values["cli.erc_json_pos_scale"] == scale
+
     def test_unknown_major_falls_back(self):
         m = load_matrix()
         top = int(m.known()[-1].split(".")[0])

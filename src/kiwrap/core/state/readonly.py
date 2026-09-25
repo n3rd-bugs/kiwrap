@@ -13,7 +13,8 @@ argument `make_callable` publishes on every tool). Such a call runs inside a `De
 - **refusal**: a tool (or an action / argument) that changes design files, the snapshot store or
   `.kiwrap/` state fails with `E_READONLY` and a teaching fix (`refusal()`); read tools, the
   validators (`kw_sch_check`, `kw_pcb_drc` without `save_board`), `kw_fab_bom`, `kw_fab_export`,
-  `kw_project status` / `upgrade(dry_run)` and the listing actions run;
+  `kw_project status` / `upgrade_preview` and the listing actions run; `kw_project_upgrade` is not
+  even registered on a read-only server (docs/DECISIONS.md D24) and is refused when a call reaches it;
 - **state in memory**: `mutation()` / `read_state()` load the project state from `.kiwrap/state.json`
   (or the defaults) and keep what the call changes in a per-process store (`load_state` /
   `store_state`), so a read-only session still has a stage (a clean `kw_pcb_drc` opens the
@@ -76,16 +77,19 @@ PERSIST_DESCRIPTION = (
 #: tools that run under `mutation()` but can be served without persisting (validators and exports);
 #: every other tool not annotated read-only is refused (`refusal`)
 DETACHABLE_TOOLS = frozenset({"kw_sch_check", "kw_pcb_drc", "kw_fab_export", "kw_fab_bom", "kw_job"})
-#: per-tool actions a non-persisting call may run (the rest of the tool's actions write)
+#: per-tool actions a non-persisting call may run (the rest of the tool's actions write);
+#: `upgrade_preview` converts a copy under the storage home and writes nothing in the project (D24)
 READ_ACTIONS: dict[str, frozenset[str]] = {
-    "kw_project": frozenset({"status"}),
+    "kw_project": frozenset({"status", "upgrade_preview"}),
     "kw_snapshot": frozenset({"list", "diff"}),
     "kw_intent": frozenset({"get", "diff"}),
     "kw_live": frozenset({"status", "screenshot", "raise", "detach"}),
 }
 #: what a refused tool can do instead in read-only mode (the E_READONLY `candidates`)
 READ_ALTERNATIVES: dict[str, tuple[str, ...]] = {
-    "kw_project": ("kw_project(action='status')", "kw_project(action='upgrade', dry_run=true)"),
+    "kw_project": ("kw_project(action='status')", "kw_project(action='upgrade_preview')"),
+    # D24: the conversion's read-only counterparts (the preview, and status's upgrade_args)
+    "kw_project_upgrade": ("kw_project(action='upgrade_preview')", "kw_project(action='status')"),
     "kw_snapshot": ("kw_snapshot(action='list')", "kw_snapshot(action='diff', ref=...)"),
     "kw_intent": ("kw_intent(action='get')", "kw_intent(action='diff')"),
     "kw_live": ("kw_live(action='status')", "kw_live(action='screenshot')"),
@@ -169,10 +173,8 @@ def refusal(tool: str, args: Any, *, read_only_hint: bool) -> str | None:
     if tool in READ_ACTIONS:
         if action in READ_ACTIONS[tool]:
             return None
-        if tool == "kw_project" and action == "upgrade" and bool(getattr(args, "dry_run", False)):
-            return None  # converts a copy under the storage home and reports; never replaces files
         what = {
-            "kw_project": "creates, pins or converts project files",
+            "kw_project": "creates project files or pins the project's KiCad",
             "kw_snapshot": "writes the snapshot store or restores files",
             "kw_intent": "writes <project>/.kiwrap/intent.json",
             "kw_live": "opens the project in a KiCad GUI (which saves .kicad_prl and whatever is edited there)",

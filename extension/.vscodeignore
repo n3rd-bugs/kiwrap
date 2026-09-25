@@ -8,3 +8,5 @@ tsconfig*.json
 **/*.map
 *.vsix
 .gitignore
+# the helper job's artifact carries kiwrap_live.pdb next to the exe; the VSIX needs only the exe
+bin/*.pdb

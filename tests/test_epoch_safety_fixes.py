@@ -1,9 +1,10 @@
 """Fixer findings on the D21 / D23 work, with fakes (no KiCad): kw_project create never overwrites a
 design (finding 1), sub-sheets in subdirectories are part of the project (finding 2), a failed
 upgrade or a rolled-back call leaves nothing behind and says what it undid (finding 5), the upgrade
-prompt names the files it converts and never a KiCad newer than the target (finding 6), kw_project's
-annotations are explained (finding 8) and E_FORMAT_UPGRADE_REQUIRED's example is the dry run
-(finding 9). The live counterparts are in tests/test_epoch_safety_fixes_live.py.
+prompt names the files it converts and never a KiCad newer than the target (finding 6), the tools'
+annotations are honest (finding 8; D24: kw_project is mutating, kw_project_upgrade destructive) and
+E_FORMAT_UPGRADE_REQUIRED's example is a placeholder kw_project_upgrade call (finding 9 as amended by
+D24). The live counterparts are in tests/test_epoch_safety_fixes_live.py.
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ from kiwrap.backends.cli.upgrade import copy_project
 from kiwrap.core.state import KiwrapError
 from kiwrap.core.state.project import Project, ProjectState, file_epoch
 from kiwrap.core.state.snapshots import _git
-from kiwrap.core.tools import help as help_tool
 from kiwrap.core.tools import project as project_tool
 from kiwrap.core.tools import templates
 from kiwrap.core.tools._base import consent_message, effective_target, mutation, resolve_target
@@ -38,6 +38,7 @@ from tests.test_epoch_safety import (
     backend,
     ctx_of,
     harness,
+    upgrade_args_of,
     write_project,
 )
 
@@ -200,15 +201,20 @@ def test_status_and_target_see_a_sub_sheet_in_another_format(tmp_path: Path):
 
 
 def test_upgrade_converts_sub_sheets_and_the_copy_keeps_the_hierarchy(tmp_path: Path):
-    """The review's e4: kw_project upgrade(confirm, to_kicad='10.0') on a 9.0 project whose sheets
-    live under sch/ replaced only the root and the board; now every sheet is converted, the
-    ERC/DRC copies carry sch/, status reports a uniform project and a second upgrade is a no-op."""
+    """The review's e4: the old upgrade(to_kicad='10.0') on a 9.0 project whose sheets live under
+    sch/ replaced only the root and the board; now every listed sheet is converted (a to_kicad given
+    as a version prefix resolving to the same formats is accepted, D24), the ERC/DRC copies carry
+    sch/, status reports a uniform project and a second call has nothing to convert."""
     h = harness(tmp_path, I1099, I1006)
     d = hier_project(h.work / "rb", root=SCH_9, child=SCH_9, pcb=PCB_9)
-    sc = h.ok("kw_project", action="upgrade", project=str(d), to_kicad="10.0", confirm=True)
-    up = sc["data"]["upgrade"]
+    args = upgrade_args_of(h, d)
+    assert args["to_kicad"] == "10.0.6" and args["from_kicad"] == "9.0"
+    assert args["files"] == ["demo.kicad_pcb", "demo.kicad_sch", "sch/child.kicad_sch"]
+    sc = h.ok("kw_project_upgrade", **{**args, "to_kicad": "10.0"})
+    up = sc["data"]
     assert sorted(up["replaced"]) == ["demo.kicad_pcb", "demo.kicad_sch", "sch/child.kicad_sch"]
-    assert up["from"]["sch/child.kicad_sch"] == SCH_9 and up["to"]["sch/child.kicad_sch"] == SCH_10
+    stamps = {f["path"]: (f["stamp_before"], f["stamp_after"]) for f in up["files"]}
+    assert stamps["sch/child.kicad_sch"] == (SCH_9, SCH_10)
     assert file_epoch(d / "sch" / "child.kicad_sch") == SCH_10 and file_epoch(d / "demo.kicad_sch") == SCH_10
     assert file_epoch(d / "demo.kicad_pcb") == PCB_10
     work = Path(up["work_dir"])
@@ -217,8 +223,8 @@ def test_upgrade_converts_sub_sheets_and_the_copy_keeps_the_hierarchy(tmp_path: 
     st = h.ok("kw_project", action="status", project=str(d))["data"]
     assert st["epoch_match"] is True and st["target_effective"] == "10.0.6"
     assert not any("mix" in w for w in st["warnings"])
-    again = h.ok("kw_project", action="upgrade", project=str(d), to_kicad="10.0", confirm=True)
-    assert again["data"]["upgraded"] is False
+    again = h.fail("kw_project_upgrade", "E_BAD_ARGS", **args)
+    assert "nothing to convert" in again["message"] and "retarget" in again["fix"]
 
 
 def test_copy_project_mirrors_relative_paths(tmp_path: Path):
@@ -263,8 +269,9 @@ def test_upgrade_failing_midway_puts_everything_back(tmp_path: Path, monkeypatch
             raise PermissionError(13, "Access is denied", str(target))
         return real_replace(self, target)
 
+    args = upgrade_args_of(h, d)
     monkeypatch.setattr(Path, "replace", replace)
-    sc = h.fail("kw_project", "E_FILE_LOCKED", action="upgrade", project=str(d), confirm=True)
+    sc = h.fail("kw_project_upgrade", "E_FILE_LOCKED", **args)
     monkeypatch.setattr(Path, "replace", real_replace)
     rollback = sc["data"]["upgrade_rollback"]
     assert sorted(rollback["restored"]) == ["child.kicad_sch", "demo.kicad_sch"]
@@ -275,8 +282,12 @@ def test_upgrade_failing_midway_puts_everything_back(tmp_path: Path, monkeypatch
     tracked = _git(d, "ls-tree", "-r", "--name-only", "HEAD").stdout.split()
     assert not [t for t in tracked if t.endswith(project_tool.REPLACE_TMP_SUFFIX)]
     assert "FAILED E_FILE_LOCKED" in _git(d, "log", "-1", "--format=%s").stdout
-    # the project is still in its own format and upgradable
-    assert h.ok("kw_project", action="upgrade", project=str(d), confirm=True)["data"]["upgraded"] is True
+    # the project is still in its own format and upgradable with the same arguments
+    assert sorted(h.ok("kw_project_upgrade", **args)["data"]["replaced"]) == [
+        "child.kicad_sch",
+        "demo.kicad_pcb",
+        "demo.kicad_sch",
+    ]
 
 
 def test_stamp_guard_rollback_removes_the_files_the_call_added(tmp_path: Path):
@@ -342,6 +353,9 @@ def test_mixed_project_prompt_names_the_files_it_converts(tmp_path: Path, kinds:
     assert (
         err.data["project_kicad"] is None and err.data["mixed"] is True and err.data["install_hint"] is None
     )
+    # D24: the arguments do not depend on the kinds the refused write touched
+    assert err.data["upgrade_args"]["from_kicad"] == f"format sch={SCH_99},pcb={PCB_10}"
+    assert err.data["upgrade_args"]["files"] == ["child.kicad_sch", "demo.kicad_pcb"]
     assert consent_message(project, choice, kinds).startswith(
         "Upgrade demo to the KiCad 10.99 format (KiCad 10.99.0)?"
     )
@@ -372,21 +386,27 @@ def test_uniform_prompt_keeps_the_contract_wording_with_the_next_major_in_the_ma
 # ---- findings 8 and 9 -------------------------------------------------------------------------------------
 
 
-def test_upgrade_error_example_is_the_dry_run_everywhere(tmp_path: Path):
-    """The stamp guard's error and the consent refusal both give the dry run as `example`."""
+def test_upgrade_error_example_is_a_placeholder_upgrade_call(tmp_path: Path):
+    """D24 (amends finding 9): the refusal's `example` is a placeholder kw_project_upgrade call, the
+    retired consent flag appears nowhere, and the preview is named in `fix`."""
     h = harness(tmp_path, I1099)
     d = write_project(h.work / "p")
     sc = h.fail("kw_pcb_drc", "E_FORMAT_UPGRADE_REQUIRED", project=str(d), save_board=True)
-    assert "dry_run=true" in sc["example"] and "confirm=true" not in sc["example"]
-    assert sc["fix"].index("if yes:") < sc["fix"].index("confirm=true")
-    dry = h.ok("kw_project", action="upgrade", project=str(d), dry_run=True)["data"]
-    assert dry["upgraded"] is False and dry["upgrade"]["checks"]["before"] is not None
+    assert sc["example"].startswith("kw_project_upgrade(") and "<data.upgrade_args.files>" in sc["example"]
+    for text in (sc["message"], sc["fix"], sc["example"]):
+        assert "confirm" not in text and "dry_run" not in text, text
+    assert "upgrade_preview" in sc["fix"] and sc["data"]["preview_call"].startswith("kw_project(")
+    pre = h.ok("kw_project", action="upgrade_preview", project=str(d))["data"]
+    assert pre["upgrade_args"] == sc["data"]["upgrade_args"] and pre["checks"]["before"] is not None
 
 
 def test_kw_project_annotations_are_explained():
-    """MCP annotations are per tool: kw_project stays destructive (upgrade replaces files), and the
-    description and kw_help(topic='readonly') say status and the dry run are read-only."""
+    """MCP annotations are per tool (finding 8): kw_project no longer replaces design files (D24), so
+    it is mutating, not destructive; kw_project_upgrade is destructive and flagged for the client's
+    permission prompt."""
     spec = project_tool.SPEC
-    assert spec.annotations.destructive_hint is True and spec.annotations.read_only_hint is False
+    assert spec.annotations.destructive_hint is False and spec.annotations.read_only_hint is False
     assert "status" in spec.description and "read-only" in spec.description
-    assert "destructive" in help_tool.READONLY_PAGE and "kw_project" in help_tool.READONLY_PAGE
+    up = project_tool.UPGRADE_SPEC
+    assert up.annotations.destructive_hint is True and up.annotations.read_only_hint is False
+    assert up.meta == {"anthropic/requiresUserInteraction": True} and up.common_persist is False

@@ -212,7 +212,13 @@ def _kill_tree(pid: int) -> None:
             )
         return
     with contextlib.suppress(OSError, ProcessLookupError):
-        os.killpg(os.getpgid(pid), signal.SIGKILL)
+        group = os.getpgid(pid)
+        if group == os.getpgrp():
+            # the child shares OUR process group (not started with start_new_session=True): a
+            # killpg would take this server down too - and under pytest the whole test session
+            os.kill(pid, signal.SIGKILL)
+        else:
+            os.killpg(group, signal.SIGKILL)
 
 
 # --- parent-death safety net ------------------------------------------------------------------------
@@ -322,11 +328,25 @@ def _pid_alive(pid: int) -> bool:
             kernel32.CloseHandle(handle)
     try:
         os.kill(pid, 0)
-    except ProcessLookupError:
+    except (ProcessLookupError, OverflowError):
+        # OverflowError: a pid beyond pid_t (a stale or foreign record) is no live process
         return False
     except PermissionError:
         return True
-    return True
+    return not _is_zombie(pid)
+
+
+def _is_zombie(pid: int) -> bool:
+    """A killed child its parent has not reaped yet still answers `kill(pid, 0)` on POSIX; it runs
+    nothing and holds nothing, so it is not alive (`/proc/<pid>/stat` state `Z`; False wherever
+    there is no procfs). Seen when the process that kills a GUI is also its parent (the ubuntu unit
+    leg's stand-in child in tests/test_live_remote_unit.py)."""
+    try:
+        stat_line = Path(f"/proc/{int(pid)}/stat").read_text(encoding="ascii", errors="replace")
+    except (OSError, ValueError):
+        return False
+    fields = stat_line.rpartition(")")[2].split()
+    return bool(fields) and fields[0] == "Z"
 
 
 def _command_line(pid: int) -> str:
@@ -1101,7 +1121,9 @@ class BoundStale(Unsupported):
     truth on disk, answers instead."""
 
     def __init__(self, session: Any, reason: str):
-        install = getattr(session, "install", None)
+        # a session without an install (a test double) still yields the error; typed Any because
+        # Unsupported.install is a KiCadInstallation (mypy; no behaviour change)
+        install: Any = getattr(session, "install", None)
         self.capability, self.install = "ipc.bound_document_in_sync", install
         self.oldest_kicad_with_it, self.fallback = None, "file"
         self.fix = (
@@ -1123,7 +1145,9 @@ class BoundElsewhere(Unsupported):
     unavailable" and the file engine answers (reviewer finding 9, 2026-09-20)."""
 
     def __init__(self, session: Any, kind: str, editor: str):
-        install = getattr(session, "install", None)
+        # a session without an install (a test double) still yields the error; typed Any because
+        # Unsupported.install is a KiCadInstallation (mypy; no behaviour change)
+        install: Any = getattr(session, "install", None)
         self.capability, self.install = f"ipc.bound_{editor}_session_serves_{kind}", install
         self.oldest_kicad_with_it, self.fallback = None, "file"
         names = {"pcb": "board", "sch": "schematic"}
@@ -1570,8 +1594,39 @@ def release_project(directory: str | Path, *, timeout_s: float = 60.0) -> dict[s
             # `ipc.headless`): only then do the mutating tools write THROUGH the GUI and may treat
             # its lock files as their own; on a 10.0.x the GUI holds the files and they stay refused
             "ipc11": _bound_writes_through(bound),
+            # which KiCad saves what the tools write through the GUI: the planner's ipc11 epoch
+            # precondition judges THESE formats (the pool hands the GUI out whatever install a
+            # call asked for - review finding 7)
+            "install": _bound_install_key(bound),
+            "kicad": getattr(getattr(bound, "install", None), "version", None),
+            "formats": _bound_formats(bound),
         }
     return info
+
+
+def _bound_install_key(session: Any) -> Any:
+    install = getattr(session, "install", None)
+    try:
+        return install.key() if install is not None else None
+    except Exception:  # noqa: BLE001 - a test double without key()
+        return None
+
+
+def _bound_formats(session: Any) -> dict[str, int] | None:
+    """`{sch, pcb}` format epochs of the bound GUI's KiCad (its capability record), None when the
+    record has none (test fakes, a failed probe) - the precondition then cannot judge it."""
+    caps = getattr(session, "capabilities", None)
+    if caps is None:
+        return None
+    out: dict[str, int] = {}
+    for kind in ("sch", "pcb"):
+        try:
+            value = caps[f"formats.{kind}"]
+        except Exception:  # noqa: BLE001 - a missing key or a broken record: not judged
+            continue
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            out[kind] = int(value)
+    return out or None
 
 
 _ATEXIT_REGISTERED = False

@@ -86,14 +86,32 @@ export interface McpClientOptions {
   onToolError?: ToolErrorHandler;
 }
 
+/**
+ * The tools this client sends only with `CallOptions.consent === MODAL_CONSENT` (D24): the server
+ * records a `kiwrap-vscode` call of `kw_project_upgrade` as consent `kiwrap_vscode_modal`, so only
+ * the consent modal's [Upgrade] (consent.ts `FormatConsent`) may send it. Review finding 6: the
+ * `kiwrap.core.callTool` command (and the extension's exported client) forwarded any tool name,
+ * so any caller could convert a project and have the server record a modal click that never happened.
+ */
+export const CONSENT_GATED_TOOLS: ReadonlySet<string> = new Set(['kw_project_upgrade']);
+
+/**
+ * The token only `FormatConsent` passes, after the user clicked [Upgrade]. Module-private in practice:
+ * it is not part of the extension's exported API, so another extension (or a VS Code command) cannot
+ * produce it.
+ */
+export const MODAL_CONSENT: unique symbol = Symbol('kiwrap.modalConsent');
+
 /** Per-call options of `McpClient.call`. */
 export interface CallOptions {
+  /** `MODAL_CONSENT`: the user clicked [Upgrade] in kiwrap's modal (required for `CONSENT_GATED_TOOLS`). */
+  consent?: typeof MODAL_CONSENT;
   /**
    * false for background calls (on-save checks, previews, the tree's status refresh): the error
    * handler must not open a modal for them (default true).
    */
   interactive?: boolean;
-  /** false skips `onToolError` entirely (the handler's own upgrade call and retry use it). */
+  /** false skips `onToolError` entirely (the consent handler's own kw_project_upgrade call and status reads use it: a failed upgrade never reopens the modal, D24). */
   handleErrors?: boolean;
   /** Set on the retry after an upgrade the user agreed to: never ask twice for one call. */
   afterConsent?: boolean;
@@ -105,7 +123,7 @@ export interface ToolErrorContext {
   error: KiwrapError;
   interactive: boolean;
   afterConsent: boolean;
-  /** Another tool call on the same client (the handler's kw_project upgrade). */
+  /** Another tool call on the same client (the handler's kw_project_upgrade / retarget / status). */
   call<T = Record<string, unknown>>(name: string, args: Record<string, unknown>, opts?: CallOptions): Promise<Receipt<T>>;
   /** The original call again (once, marked `afterConsent`). */
   retry(): Promise<Receipt<Record<string, unknown>>>;
@@ -309,6 +327,15 @@ export class McpClient {
     args: Record<string, unknown> = {},
     opts: CallOptions = {},
   ): Promise<Receipt<T>> {
+    if (CONSENT_GATED_TOOLS.has(name) && opts.consent !== MODAL_CONSENT) {
+      // never sent: the server would record the call as the user's modal click (D24, finding 6)
+      throw new KiwrapError({
+        code: 'E_CLIENT',
+        message: `${name} is sent only after the user clicks [Upgrade] in kiwrap's consent modal; nothing was sent`,
+        why: `the kiwrap server records a ${name} call from this extension as the user's modal consent (D24)`,
+        fix: 'run the command that needs the upgrade (kiwrap asks), or "kiwrap: Upgrade project file format"',
+      });
+    }
     try {
       return await this.callOnce<T>(name, args);
     } catch (err) {

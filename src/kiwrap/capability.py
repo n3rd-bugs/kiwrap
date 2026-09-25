@@ -15,7 +15,13 @@ Documented keys (all of these must exist for every supported version, see the JS
     cli.has_jobset                  bool        (>= 9.0)
     cli.has_sch_pcb_upgrade         bool        (>= 10.0)
     cli.drc_refill_flags            bool        `pcb drc --refill-zones --save-board` (>= 10.0)
-    cli.erc_json_pos_scale          number      100 on 8.0.1-10.0.x (ERC JSON positions are x100 too small)
+    cli.erc_json_pos_scale          number      100 on 8.0.1-10.0.6 and nightlies before master 407f6293 (ERC
+                                                JSON positions are x100 too small, claim 1); 1 from 10.0.7
+                                                (6d8e1fea) / 11.0.0. Not visible in `--help`: re-measured by
+                                                scripts/ci/refresh_matrix.py on every nightly bump (D16) and
+                                                checked per run by backends.cli.erc.check_erc_pos_scale, which
+                                                uses the plausible scale and tags `erc_pos_scale_corrected`
+                                                when this record is wrong for the install
     cli.gerbers_creates_outdir      bool        (>= 9.0)
     cli.writes_prl_on_read          bool        (>= 10.0)
     cli.help_exit_code              int         exit status of `--help` (non-zero on 7/8)

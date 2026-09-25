@@ -4,17 +4,17 @@
  * install, Upgrade project file format, Configure Claude Code, server restart / output / refresh,
  * open the preview.
  *
- * Errors the consent flow already showed (consent.ts: the D21 upgrade modal, E_FORMAT_NEWER,
- * E_READONLY) are `handled` and not shown again here.
+ * Errors the consent flow already showed (consent.ts: the D21/D24 upgrade modal and its
+ * kw_project_upgrade outcome, E_FORMAT_NEWER, E_READONLY) are `handled` and not shown again here.
  */
 import * as vscode from 'vscode';
 import type { DiagnosticsManager } from '../diagnostics/manager';
 import { PREVIEW_VIEW_TYPE } from '../editors/previewProvider';
 import { findProjects, isBoard, isSchematic, projectForFile, type KicadProject } from '../project';
 import type { KiwrapSession } from '../session';
-import { formatLabel, proactiveUpgradeInfo } from '../consent';
+import { UPGRADE_TOOL } from '../consent';
 import { kicadInstallSetting, locateServerProject, serverSpec, setKicadInstallSetting } from '../settings';
-import { effectiveTarget, installFormats, installSpec, MATCH_PROJECT_LABEL, matchesSpec, matchingInstalls, selectionArg } from '../status/installModel';
+import { effectiveTarget, installFormats, installSpec, MATCH_PROJECT_LABEL, matchingInstalls, selectionArg } from '../status/installModel';
 import type { KiwrapTree } from '../status/tree';
 import { KiwrapError, isHandledError, type LiveEditor } from '../types';
 import { configureClaudeCode, ProposedContentProvider, PROPOSED_SCHEME } from './configureClaude';
@@ -201,8 +201,12 @@ export function registerCommands(deps: Deps): void {
     void session.refreshProject();
   });
 
-  // D21: the proactive form of the consent modal (the tree's "file format" row offers it when no
+  // The proactive form of the consent modal (the tree's "file format" row offers it when no
   // installed KiCad writes the project's format); the reactive form is consent.ts on any call.
+  // D24: kw_project status (background) supplies upgrade_args, then the modal, then
+  // kw_project_upgrade(**upgrade_args) - FormatConsent.proactive; no error is built locally. The
+  // target is the one the project pins (upgrade_args.to_kicad): to upgrade to another install the
+  // user pins the project to it first (Select KiCad install).
   reg('kiwrap.upgradeProject', async (arg) => {
     const p = await resolveProject(session, arg instanceof vscode.Uri ? arg : undefined);
     if (!p) {
@@ -215,24 +219,13 @@ export function registerCommands(deps: Deps): void {
       showError(session, 'upgrade', err);
       return;
     }
-    const st = session.projectStatus ?? (await session.refreshProject());
     const rows = session.env?.installs ?? [];
-    const upgradeTo = kicadInstallSetting() ?? session.env?.default_install ?? undefined;
-    // the server's project_kicad / install_hint / file_epochs / candidates (fixer finding 3), and the
-    // installs that already write the files' format (a 9.0 project with 9.0.9 installed): the modal
-    // says so instead of claiming none can; upgrading to one of them is a no-op
-    const { info, writers } = proactiveUpgradeInfo(p.pro, st, rows, upgradeTo);
-    const target = upgradeTo ? rows.find((r) => matchesSpec(r, upgradeTo)) : undefined;
-    if (target && writers.includes(target.version)) {
-      void vscode.window.showInformationMessage(`kiwrap: ${p.name} is already in the KiCad ${target.version} file format.`);
-      return;
-    }
-    session.log(`upgrade requested for ${p.name} (${formatLabel(info)} -> ${upgradeTo ?? 'server default'})`);
     try {
-      await session.consent.decide(info, (n, a, o) => server.client.call(n, a, o));
+      await session.consent.proactive(p.pro, rows, (n, a, o) => server.client.call(n, a, o), server.hasTool(UPGRADE_TOOL));
     } catch (err) {
       showError(session, 'upgrade', err);
     }
+    void session.refreshProject();
   });
 
   reg('kiwrap.openLive', async (arg) => {
@@ -326,7 +319,11 @@ export function registerCommands(deps: Deps): void {
   });
 
   // loose coupling for the live module (src/shared/types.ts CORE_CALL_TOOL_COMMAND): any kw_* tool
-  // through this extension's MCP client; returns the Receipt, throws KiwrapError
+  // through this extension's MCP client; returns the Receipt, throws KiwrapError. kw_project_upgrade
+  // is NOT forwarded: the client sends it only with the consent modal's token (MODAL_CONSENT), which
+  // this command never has - any VS Code command caller could otherwise convert a project and the
+  // server would record a modal click that never happened (review finding 6). A call that needs the
+  // upgrade still gets the modal: its E_FORMAT_UPGRADE_REQUIRED goes through FormatConsent.
   reg('kiwrap.core.callTool', async (name, args) => {
     const server = await session.ready();
     return server.client.call(String(name), (args as Record<string, unknown>) ?? {});

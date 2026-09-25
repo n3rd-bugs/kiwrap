@@ -189,6 +189,36 @@ def drc_type_limit(vtype: str, caps: Any) -> int:
     return int(val) if isinstance(val, (int, float)) and val > 0 else default
 
 
+def erc_cli_notes(report: Any) -> tuple[list[str], list[str]]:
+    """(degraded tags, warnings) the ERC backend recorded in `report.raw['_cli']`.
+
+    `kiwrap.backends.cli.erc.run_erc` checks the recorded `cli.erc_json_pos_scale` against the
+    schematic's own anchors on every run; when the record is contradicted it uses the plausible
+    scale and records `degraded: ['erc_pos_scale_corrected']` plus a warning (upstream fixed the
+    x100 JSON positions in commits 6d8e1fea / 407f6293, KiCad #25582, so a build can carry the fix
+    while reporting a version the matrix records as affected). The receipt shows the tag on every
+    run until the version matrix is corrected, the same way `drc_capped_types` surfaces
+    `raw['_cli']['capped']`."""
+    raw = getattr(report, "raw", None)
+    cli = raw.get("_cli") if isinstance(raw, dict) else None
+    if not isinstance(cli, dict):
+        return [], []
+    degraded = [str(t) for t in cli.get("degraded") or [] if t]
+    warnings = [str(w) for w in cli.get("warnings") or [] if w]
+    return degraded, warnings
+
+
+def note_erc_cli(m: Any, report: Any) -> None:
+    """Copy `erc_cli_notes(report)` into the running mutation's receipt (no duplicates)."""
+    degraded, warnings = erc_cli_notes(report)
+    for tag in degraded:
+        if tag not in m.receipt.degraded:
+            m.receipt.degraded.append(tag)
+    for text in warnings:
+        if text not in m.receipt.warnings:
+            m.receipt.warnings.append(text)
+
+
 def drc_capped_types(report: Any, caps: Any) -> list[str]:
     """Violation types whose count reached KiCad's reporting limit (a lower bound, not a total).
     Prefers what the backend recorded (`report.raw['_cli']['capped']`, computed by
@@ -377,6 +407,7 @@ def sch_check(ctx: ToolContext, args: SchCheckArgs) -> Receipt:
                 units="mm",
                 out_json=folder / f"{project.root_sch.stem}.erc.json",
             )
+        note_erc_cli(m, report)
         violations = [violation_dict(v) for v in report.violations]
         errors, warnings = report.errors, report.warnings
         ok = report.ok

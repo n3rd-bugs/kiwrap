@@ -68,6 +68,7 @@ from kiwrap.core.tools.checks import (
     _table,
     _text,
     classify_drc,
+    note_erc_cli,
     violation_dict,
 )
 from kiwrap.core.tools.pcb_check import merge_off_board, norm_off_board, norm_overlap
@@ -165,7 +166,7 @@ def epoch_for(caps: Any, project: Project | None = None) -> dict[str, int]:
     """The format stamps a writer uses: the target KiCad's (`formats.*` capability keys - never a
     version number; docs/ARCHITECTURE.md §6), lowered to the project's own stamp per design kind
     when the files are older (review item 1 (d): a writer never re-stamps a file upward; only
-    `kw_project upgrade` does, with the user's consent - D21). `effective_target` already picks an
+    `kw_project_upgrade` does, with the user's consent - D21, D24). `effective_target` already picks an
     install writing the files' generation, so this only keeps an in-generation older stamp
     (the 10.0 demos' `(version 20260101)` schematics stay 20260101 instead of becoming 20260306)."""
     out: dict[str, int] = {}
@@ -560,6 +561,7 @@ def erc_validator(
         m.receipt.warnings.append(f"ERC skipped: {err.code}: {err.message}")
         downgrade_below(m.state, "erc_clean")
         return None
+    note_erc_cli(m, report)
     errors, warnings = int(report.errors), int(report.warnings)
     ok = bool(report.ok)
     m.validator_delta("erc", errors, {"warnings": warnings})

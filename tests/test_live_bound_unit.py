@@ -394,3 +394,26 @@ def test_helper_surface_id_resolves_kiwrap_ids_to_the_helpers():
         assert gui_sessions.helper_surface_id(ep, None, other) == "pcb", "no match: the first surface"
     finally:
         helper.close()
+
+
+def test_the_bound_record_names_the_guis_install_and_formats(tmp_path):
+    """Review finding 7: the mutation prologue's `bound` record carries the GUI's install key and
+    `formats.{sch,pcb}`, which the planner's ipc11 epoch precondition judges (the pool hands the
+    GUI out whatever install a call asked for); a record without formats is not judged (None)."""
+
+    @dataclass
+    class WithCaps(FakeSession):
+        capabilities: Any = None
+
+    install = _install(tmp_path / "kicad")
+    session = WithCaps(
+        install=install, project_dir=_project(tmp_path), capabilities={"formats.sch": 20260830}
+    )
+    session.capabilities["formats.pcb"] = 20260901
+    assert ipc_sessions._bound_install_key(session) == install.key()
+    assert ipc_sessions._bound_formats(session) == {"sch": 20260830, "pcb": 20260901}
+    assert ipc_sessions._bound_formats(WithCaps(install=install, project_dir=tmp_path)) is None
+    assert (
+        ipc_sessions._bound_formats(WithCaps(install=install, project_dir=tmp_path, capabilities={})) is None
+    )
+    assert ipc_sessions._bound_install_key(WithCaps(install=None, project_dir=tmp_path)) is None

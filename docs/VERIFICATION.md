@@ -1,11 +1,13 @@
 # Verification record
 
-Adversarial verification of the 12 load-bearing claims in [ARCHITECTURE.md](ARCHITECTURE.md). Each claim was given to two independent verifiers instructed to *refute* it: one empirical (run it on this machine against the installed KiCad 7.0.6 / 8.0.1 / 9.0.5 / 10.0.0) and one documentary (KiCad source at the exact tags, release notes, package docs). `refuted=true` includes "partially true"; the correction is the precise statement. Scripts referenced under `scratchpad/...` are preserved in [../spikes/](../spikes/).
+Adversarial verification of the 12 load-bearing claims in [ARCHITECTURE.md](ARCHITECTURE.md). Each claim was given to two independent verifiers instructed to *refute* it: one empirical (run it on this machine against the installed KiCad 7.0.6 / 8.0.1 / 9.0.5 / 10.0.0) and one documentary (KiCad source at the exact tags, release notes, package docs). `refuted=true` includes "partially true"; the correction is the precise statement. Scripts referenced under `scratchpad/...` are preserved in [../spikes/](../spikes/). Claim 13 was added on 2026-09-24/25 with the D24 decision (Claude Code's `anthropic/requiresUserInteraction` gate) and was verified statically, as its section says.
 
 Date: 2026-09-18. KiCad point releases current at that date: 10.0.6, Freerouting 2.4.1, kicad-python 0.8.0, mcp 2.2.0.
 
 
 ## Claim 1 — SURVIVED
+
+**Update 2026-09-25 (plan step S1).** Upstream fixed the bug on 2026-09-21: master 407f6293 and the 10.0 branch 6d8e1fea, both "Fixes #25582" (one line in `ERC_REPORT::WriteJsonReport`: `pcbIUScale` -> `schIUScale`); #25582 is closed with milestone 10.0.7. Neither commit is an ancestor of the nightly this machine runs (10.99.0-4083-g6dd893f7d1) or of the kiwrap bench builds on it. Re-measured sandboxed the same day: 10.0.6 on a copy of demos/video, JSON (3.8989, 1.0287) x100 = J4's anchor (389.89, 102.87); the nightly on demos/pic_programmer, JSON (1.5494, 0.1778) x100 = #PWR122's anchor (154.94, 17.78); report/JSON = 100.0 on both. So the claim still holds for 8.0.1-10.0.6 and that nightly. The matrix records `cli.erc_json_pos_scale` = 1 for 10.0.7 and 11.0.0 from the diff; `scripts/ci/refresh_matrix.py` re-probes it (D16), and `kiwrap.backends.cli.erc.run_erc` checks it against the schematic's anchors on every run.
 
 > On KiCad 8.0.1, 9.0.5 and 10.0.0, `kicad-cli sch erc --format json` reports item positions exactly 100 times smaller than the text report, while `kicad-cli pcb drc --format json` positions are correct in millimetres.
 
@@ -751,3 +753,40 @@ Sources:
 - https://www.kicad.org/blog/2022/04/Development-Highlight-April-Update/
 - https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps
 - https://msdl.microsoft.com/download/symbols
+
+
+## Claim 13 — SURVIVED (static; the panel card at run time is the manual E2E)
+
+*Added 2026-09-25 for [D24](DECISIONS.md) (claim numbering per [decisions/D24-D31.md](decisions/D24-D31.md) §9 "Gaps"). Unlike claims 1-12 it is about the Claude Code client, not KiCad.*
+
+> An MCP tool published with `_meta["anthropic/requiresUserInteraction"]: true` makes Claude Code (v2.1.199 or later) ask the user on every call: the flag is checked before bypass mode and allow rules, auto mode falls back to asking before its classifier, no hook can approve a flagged `mcp__` tool, `dontAsk` and headless sessions deny it, and the VS Code panel routes every such request to a permission card that only a click resolves (it auto-allows only `mcp__claude-in-chrome__*`). The panel declines every MCP elicitation.
+
+### Static verifier (installed bundles) — refuted=false
+
+Read with `mmap.find` / regex over the installed bundles under `~/.vscode/extensions/anthropic.claude-code-<v>-win32-x64/`: `resources/native-binary/claude.exe` (Bun single-file executable with the JS as plain ASCII) and the panel host `extension.js`. Checked in **2.1.280** (237,100,192 bytes; the running bundle, `CLAUDE_CODE_EXECPATH`), **2.1.281** (240,767,648 bytes) and **2.1.282** (242,171,040 bytes, installed 2026-09-25). Minified names differ per build; the structure and the literals below are identical in all three. The D24 proposer and both challengers read 2.1.280/2.1.281 independently before this re-read.
+
+1. **The flag is read strictly.** The MCP tool adapter sets `requiresUserInteraction(){return D}` and `suppressesAlwaysAllowRule:()=>D||...` with `D=W._meta?.["anthropic/requiresUserInteraction"]===!0` (2.1.281: `k=J._meta?...`, 2.1.282: `R=J._meta?...`). Only the JSON boolean `true` counts, and the "always allow" option is suppressed for a flagged tool. mcp 2.2.0 publishes kiwrap's `ToolSpec.meta` as `_meta` with a JSON boolean (D24 key evidence, `meta_probe.py`).
+2. **Gate order.** In the permission function (2.1.280 `kNt`): whole-tool deny rule -> input deny rule -> the tool's `checkPermissions` (a deny returns) -> input ask rule -> `if(e.requiresUserInteraction?.())return ...{behavior:"ask",...decisionReason:{type:"other",reason:"requiresUserInteraction"}}` -> `effectiveMaxPermission==="ask"` -> `he==="bypassPermissions"` -> `return{behavior:"allow",...decisionReason:{type:"mode",mode:he}}` -> allow rule (`eOe(...)` -> `{behavior:"allow",decisionReason:{type:"rule"...}}`). So bypass mode and allow rules are never reached for a flagged tool; deny rules still deny. The literal `reason:"requiresUserInteraction"` occurs twice (this function and its hook re-evaluation twin `iR`).
+3. **Auto mode.** `if(!$n&&e.requiresUserInteraction?.()&&_e.behavior==="ask")return i("tengu_auto_mode_fallback_to_ask",{reason:"requires_user_interaction",...}),_e` precedes the classifier call.
+4. **No hook can approve an `mcp__` tool.** A hook `allow` without `updatedInput` on a flagged tool returns `null` (the normal prompt follows: `if(!C.updatedInput&&e.requiresUserInteraction?.())return null`). With `updatedInput` the call is re-evaluated with `{hookUpdatedInput}`, where the exemption is `function Kwn(e,n){return n!==void 0&&!o_(e)}` and `o_(e)` is `e.name?.startsWith("mcp__")||e.isMcp===!0` (2.1.281 `pRn`/`Oh`, 2.1.282 `WPn`/`Xh`): for an MCP tool the gate answers `ask`, which the hook path turns into a deny (`decideLocation:"ask-path"`). The exemption exists for built-in interactive tools only.
+5. **Non-interactive paths deny.** String table: `tool requires user interaction; no prompt available in headless mode`, `no approval surface in this session; permission request denied automatically`, and, for `--permission-prompt-tool`, `if(Ie.behavior==="allow"&&o_(s)&&s.requiresUserInteraction?.())return{behavior:"deny",message:"MCP tool requires user interaction; not supported via --permission-prompt-tool"...}`.
+6. **SDK hosts are told.** The SDK permission request carries `suppress_always_allow_rule` and `requires_user_interaction:s.requiresUserInteraction?.()`; an Agent SDK host's `canUseTool` receives the call and may answer it (the docs say so too). This is why the D24 consent record says `client_permission_flow`, never "a human clicked". This session's own environment is such a host: `CLAUDE_AGENT_SDK_VERSION=0.3.280`, `CLAUDE_CODE_ENTRYPOINT=claude-vscode`, `CLAUDE_CODE_CHILD_SESSION=1`; the client still identifies as `name:"claude-code"` (5 occurrences).
+7. **The VS Code panel.** `extension.js` `async requestToolPermission(...)` returns `{behavior:"allow"}` only when `chromeMcpState.status==="connected"&&J.startsWith("mcp__claude-in-chrome__")`; every other request goes to `this.sendRequest($,{type:"tool_permission_request",toolName:J,inputs:Q,suggestions:X,...z})`, i.e. the webview card, and a `setMode: bypassPermissions` update in the answer is dropped unless `claudeCode.allowDangerouslySkipPermissions` is set. `spawnClaude` builds the SDK options `{cwd, resume, canUseTool, onUserDialog, supportedDialogKinds, permissionMode, ...}` with no `onElicitation`; the SDK's query class calls `this.onElicitation` only when it is set, so every elicitation is declined in the panel (`onElicitation` occurs 6 times, all inside the bundled SDK).
+8. **Version floor.** `2.1.199` is not in the bundle; the floor comes from the docs (below) and is `CLAUDE_CODE_MIN_CONSENT` in `kiwrap.core.tools._base`.
+
+### Documentary verifier — refuted=false
+
+code.claude.com/docs/en/mcp, section "Require approval for a specific tool" (downloaded 2026-09-24): the value "must be the JSON boolean `true`; any other value is ignored"; Claude Code "shows that tool's permission prompt on every call, even in `acceptEdits`, `auto`, and `bypassPermissions` permission modes, and doesn't offer a 'don't ask again' option"; allow rules do not skip it; `dontAsk` denies; `--permission-prompt-tool` allows are converted to the deny quoted in 5; "The Agent SDK's `canUseTool` callback does receive these calls and can approve them"; "requires Claude Code v2.1.199 or later. Earlier versions ignore it". The section on elicitation adds that an `Elicitation` hook can answer an elicitation without a dialog, which is why elicitation is not the D24 gate.
+
+### Not yet observed (qualification)
+
+The panel card itself (that it appears, shows the arguments and offers no always-allow) is verified only statically: the webview's rendering of `tool_permission_request` was not read, and nothing here ran Claude with a real login. `scripts/e2e_consent.py` is the run-time check; under D15 it spends only when the owner runs it. `tests/test_claude_code_bundle.py` (marker `claude_code`) re-checks the literal anchors `anthropic/requiresUserInteraction`, `reason:"requiresUserInteraction"`, the `--permission-prompt-tool` deny message and `name:"claude-code"` on every local run and fails when one disappears; the structural facts 7 (onElicitation, the chrome-only auto-allow) only warn and skip, because minified code moves.
+
+**Correction:** none; claim stands as stated for 2.1.280-2.1.282, with the static-only qualification above.
+
+Sources:
+- ~/.vscode/extensions/anthropic.claude-code-2.1.280-win32-x64/resources/native-binary/claude.exe, extension.js (and the 2.1.281 / 2.1.282 siblings)
+- https://code.claude.com/docs/en/mcp#require-approval-for-a-specific-tool
+- <scratchpad>/decide/upgrade-consent/mcp_docs.md (lines 1321-1347), meta_probe.py, perm_fn_281.txt, rui_281.txt
+- <scratchpad>/s123/docs/probe*.py (this re-read)
+- tests/test_claude_code_bundle.py

@@ -5,7 +5,7 @@ MCP tool handlers with an explicit install list (see tests/test_epoch_safety_liv
 - finding 1 (e9c / e9): `kw_project create` over pic_programmer whose sheets were re-saved by 10.0.6
   and whose `.kicad_pro` was deleted - same-format and default (newer) target;
 - finding 2 (e4 / e4b): royalblue54L_feather keeps four 9.0 sheets under `sch/`;
-  `kw_project upgrade(to_kicad='10.0')` must convert them too;
+  `kw_project_upgrade` (D24; `to_kicad='10.0'` as a version prefix) must convert them too;
 - finding 5 (e3): an upgrade whose board cannot be replaced (read-only) must leave nothing behind;
 - finding 6 (e7 / e7b): a mixed 10.99 / 10.0 project must not be called "KiCad 11.0 format".
 
@@ -164,8 +164,11 @@ def test_upgrade_converts_the_sheets_under_sch(
     assert (
         stamps["sch/Connectors.kicad_sch"] == SCH_9 and len([p for p in stamps if p.startswith("sch/")]) == 4
     )
-    sc = srv.ok("kw_project", action="upgrade", project=str(royalblue), to_kicad="10.0", confirm=True)
-    up = sc["data"]["upgrade"]
+    ua = st["upgrade_args"]
+    assert ua["to_kicad"] == stable.version and len(ua["files"]) == 6
+    call = {k: ua[k] for k in ("project", "from_kicad", "to_kicad", "files")}
+    sc = srv.ok("kw_project_upgrade", **{**call, "to_kicad": "10.0"})
+    up = sc["data"]
     subs = sorted(p for p in up["replaced"] if p.startswith("sch/"))
     assert subs == [
         "sch/Connectors.kicad_sch",
@@ -185,8 +188,8 @@ def test_upgrade_converts_the_sheets_under_sch(
     st = srv.ok("kw_project", action="status", project=str(royalblue))["data"]
     assert st["epoch_match"] is True and st["target_effective"] == stable.version
     assert not any("mix" in w for w in st["warnings"])
-    again = srv.ok("kw_project", action="upgrade", project=str(royalblue), to_kicad="10.0", confirm=True)
-    assert again["data"]["upgraded"] is False
+    again = srv.fail("kw_project_upgrade", "E_BAD_ARGS", **call)
+    assert "nothing to convert" in again["message"] and "retarget" in again["fix"]
     # a sub-sheet write is no longer refused as a mixed-era project, and keeps the 10.0 format
     sc = srv.ok(
         "kw_sch_edit",
@@ -206,12 +209,13 @@ def test_upgrade_with_a_read_only_board_leaves_nothing_behind(
     pic: Path, nightly: Any, storage_home: Path, user_config_untouched: None
 ):
     srv = Server(storage_home, [nightly])
-    srv.ok("kw_project", action="status", project=str(pic))
+    ua = srv.ok("kw_project", action="status", project=str(pic))["data"]["upgrade_args"]
+    call = {k: ua[k] for k in ("project", "from_kicad", "to_kicad", "files")}
     before = tree_digest(pic)
     board = pic / "pic_programmer.kicad_pcb"
     board.chmod(stat.S_IREAD)
     try:
-        err = srv.fail("kw_project", "E_FILE_LOCKED", action="upgrade", project=str(pic), confirm=True)
+        err = srv.fail("kw_project_upgrade", "E_FILE_LOCKED", **call)
     finally:
         board.chmod(stat.S_IREAD | stat.S_IWRITE)
     rollback = err["data"]["upgrade_rollback"]
@@ -222,9 +226,9 @@ def test_upgrade_with_a_read_only_board_leaves_nothing_behind(
     assert not list(pic.rglob(f"*{REPLACE_TMP_SUFFIX}"))
     tracked = _git(pic, "ls-tree", "-r", "--name-only", "HEAD").stdout.split()
     assert not [t for t in tracked if t.endswith(REPLACE_TMP_SUFFIX)]
-    # with the board writable again the upgrade goes through
-    sc = srv.ok("kw_project", action="upgrade", project=str(pic), confirm=True)
-    assert sorted(sc["data"]["upgrade"]["replaced"]) == [
+    # with the board writable again the upgrade goes through with the same arguments
+    sc = srv.ok("kw_project_upgrade", **call)
+    assert sorted(sc["data"]["replaced"]) == [
         "pic_programmer.kicad_pcb",
         "pic_programmer.kicad_sch",
         "pic_sockets.kicad_sch",
@@ -264,5 +268,6 @@ def test_mixed_project_prompt_names_files_not_kicad_11(
         assert "pic_sockets.kicad_sch (KiCad 10.0 format)" in err["message"]
         assert "pic_programmer.kicad_pcb (KiCad 10.0 format)" in err["message"]
         assert "install KiCad" not in err["fix"] and err["data"]["mixed"] is True
-        assert "dry_run=true" in err["example"] and "confirm=true" not in err["example"]
+        assert err["example"].startswith("kw_project_upgrade(") and "confirm" not in err["example"]
+        assert err["data"]["upgrade_args"]["files"]
     assert tree_digest(pic) == before

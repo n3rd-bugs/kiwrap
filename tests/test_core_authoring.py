@@ -962,6 +962,21 @@ def test_add_symbol_erc_errors_keep_sch_written_and_list_violations(tmp_path: Pa
     assert [c[0] for c in backend.calls if c[0] == "run_erc"] == ["run_erc"]
 
 
+def test_add_symbol_erc_validator_surfaces_a_corrected_position_scale(tmp_path: Path):
+    """The authoring ERC validator copies the ERC backend's `raw['_cli']` notes into the receipt,
+    like kw_sch_check (the scale check of `kiwrap.backends.cli.erc.run_erc`, S1)."""
+    import dataclasses
+
+    h, backend, project = harness(tmp_path)
+    note = "ERC JSON position scale corrected from 100 to 1"
+    backend.erc = dataclasses.replace(
+        erc_report(), raw={"_cli": {"degraded": ["erc_pos_scale_corrected"], "warnings": [note]}}
+    )
+    sc = add_r(h, project, "R1", [50, 50])
+    assert sc["degraded"] == ["erc_pos_scale_corrected"] and note in sc["warnings"]
+    assert sc["stage"] == "erc_clean"
+
+
 def test_add_symbol_without_erc_capability_degrades(tmp_path: Path):
     h, _, project = harness(tmp_path, caps={"10.0.0": {**CAPS_10, "cli.has_erc": False}})
     sc = add_r(h, project, "R1", [50, 50])

@@ -1,59 +1,78 @@
-"""kw_project: create a minimal valid project, report its status, pin its KiCad, upgrade its format.
+"""kw_project (create, status, retarget, upgrade_preview) and kw_project_upgrade.
 
-Actions (docs/DECISIONS.md D21, requests/kiwrap-feature-requests.review.md item 1 / B1, SAFETY
-contract (c)):
+Actions (docs/DECISIONS.md D21 as amended by D24, requests/kiwrap-feature-requests.review.md item
+1 / B1, SAFETY contract (c)):
 - `create(dir, name, target_kicad?, board_size_mm?)`: the files are written in the target's
   format and the project is pinned to it (`target_source: created`). A directory that already
   holds a `.kicad_sch` / `.kicad_pcb` is refused before anything is written, and the three files
   are written with exclusive create (fixer finding 1).
 - `status(project)`: stage, hashes, epochs, external edits, plus which KiCad the project runs on
-  (`target_effective`, `target_source`, `epoch_match`, `warnings`: `_base.effective_target`).
+  (`target_effective`, `target_source`, `epoch_match`, `warnings`: `_base.effective_target`) and,
+  whenever a write would need a format upgrade, `upgrade_args` (the exact `kw_project_upgrade`
+  arguments), `install_hint` and `retarget_candidates` (D24).
 - `retarget(project, target_kicad)`: pin an install (or `'auto'`: unpin, follow the files'
   format) without touching any design file. Pinning a KiCad that writes a newer format than the
-  files is allowed; every write then asks for the upgrade first.
-- `upgrade(project, to_kicad?, confirm, dry_run)`: the ONLY sanctioned up-conversion. The project
-  is copied under the storage home, every sheet and the board are upgraded there with
-  `kicad-cli sch/pcb upgrade --force` (per sheet: the root's upgrade leaves children alone,
-  `kiwrap.backends.cli.upgrade`), ERC/DRC run on the copy before and after, the pre-upgrade state
-  is a snapshot, then the files are replaced (all or nothing: a failed replacement puts the
-  replaced files back and removes its temp file, fixer finding 5) and the install is pinned.
-  Sub-sheets in subdirectories are part of it (fixer finding 2). `confirm=true` means the
-  user agreed; without it the user is asked (MCP elicitation) or the call explains what to ask.
-  `dry_run=true` does everything on the copy and reports, never replacing anything.
+  files is allowed; every write then needs the upgrade first.
+- `upgrade_preview(project)`: a READ (D24): converts a copy under `<storage>/tmp/upgrade`, runs
+  ERC/DRC on it before and after and reports; no lock, no state, no snapshot, nothing written in
+  the project (it also runs on a read-only server).
+
+`kw_project_upgrade(project, from_kicad, to_kicad, files)` is the ONLY sanctioned up-conversion
+(D24). It is published with `_meta["anthropic/requiresUserInteraction"]: true` and destructive
+annotations, and has no `persist` / `confirm` / `dry_run`: Claude Code asks the user before every
+call, in every permission mode, so the prompt is the consent (docs/DECISIONS.md D24: the gate order
+read in claude.exe 2.1.280/2.1.281). The server rebuilds the arguments with `upgrade_args()` under
+the project lock and refuses any difference (E_BAD_ARGS carrying the true ones), so the card the
+user approved shows exactly what gets converted. `run_upgrade` is the one conversion core (the
+tool, and the elicitation shortcut's accept): the listed files are upgraded on a copy with
+`kicad-cli sch/pcb upgrade --force` per file (the root's upgrade leaves children alone,
+`kiwrap.backends.cli.upgrade`), ERC/DRC run on the copy before and after, the pre-upgrade state is
+a snapshot, then only the files that changed are replaced (all or nothing: a failed replacement puts
+the replaced files back and removes its temp file, fixer finding 5) and the install is pinned.
+Sub-sheets in subdirectories keep their relative paths (fixer finding 2). `.kicad_pro`,
+`.kicad_prl`, `.kicad_dru`, the library tables and project libraries are never converted.
 """
 
 from __future__ import annotations
 
 import contextlib
 import hashlib
+import os
 import re
 import shutil
 import stat
+import uuid
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from kiwrap.core.state import STAGES, KiwrapError, Receipt
+from kiwrap.core.state import STAGES, KiwrapError, Receipt, ValidatorDelta, readonly
 from kiwrap.core.state.project import Project, ProjectState, file_epoch
 from kiwrap.core.state.snapshots import create as snapshot_create
 from kiwrap.core.state.snapshots import head, is_repo_root
 from kiwrap.core.state.stages import downgrade_below, record_stage, stage_at_least
 from kiwrap.core.tools import templates
 from kiwrap.core.tools._base import (
+    DESIGN_KINDS,
     DESTRUCTIVE,
+    MUTATING,
+    REQUIRES_USER_INTERACTION,
     SOURCE_CREATED,
     SOURCE_PINNED,
     Mutation,
     TargetChoice,
     ToolContext,
     ToolSpec,
-    ask_upgrade_consent,
-    consent_message,
+    _conversion_text,
+    _install_epochs,
+    bound_request,
+    consent_source,
     format_newer_error,
-    format_upgrade_error,
     mutation,
     read_state,
+    refuse_unsupported_client,
     resolve_target,
     suggest_next,
     to_kiwrap_error,
@@ -62,16 +81,31 @@ from kiwrap.core.tools._base import (
 _NAME_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$")
 #: `retarget` values that remove the pin (the project then follows its files' format)
 UNPIN = ("", "auto", "none", "file", "files")
+#: the tool that converts design files to a newer KiCad format (D24)
+UPGRADE_TOOL = "kw_project_upgrade"
+#: the `upgrade_args` keys that are `kw_project_upgrade` arguments (`to_format` is informational)
+UPGRADE_CALL_KEYS = ("project", "from_kicad", "to_kicad", "files")
 
-__all__ = ["ProjectArgs", "SPEC", "file_epoch", "perform_upgrade", "run", "status_data"]
+__all__ = [
+    "SPEC",
+    "UPGRADE_SPEC",
+    "ProjectArgs",
+    "UpgradeArgs",
+    "file_epoch",
+    "perform_upgrade",
+    "run",
+    "run_upgrade",
+    "status_data",
+    "upgrade_args",
+]
 
 
 class ProjectArgs(BaseModel):
-    action: Literal["create", "status", "retarget", "upgrade"] = Field(
-        description="create | status | retarget | upgrade"
+    action: Literal["create", "status", "retarget", "upgrade_preview"] = Field(
+        description="create | status | retarget | upgrade_preview (converting the files is kw_project_upgrade)"
     )
     project: str | None = Field(
-        default=None, description="status/retarget/upgrade: project directory or .kicad_pro path"
+        default=None, description="status/retarget/upgrade_preview: project directory or .kicad_pro path"
     )
     dir: str | None = Field(
         default=None, description="create: directory to create the project in (created if missing)"
@@ -89,20 +123,77 @@ class ProjectArgs(BaseModel):
         default=None,
         description="create: optional [width, height] in mm; writes a rectangular Edge.Cuts outline so DRC has a board",
     )
-    to_kicad: str | None = Field(
-        default=None,
-        description="upgrade: the installed KiCad whose format the files are converted to (default: the install the "
-        "project runs on when it reads but does not write the files' format)",
+
+
+class UpgradeArgs(BaseModel):
+    """`kw_project_upgrade`'s arguments (D24): all required, passed verbatim from `upgrade_args`."""
+
+    project: str = Field(
+        description="data.upgrade_args.project: the project's .kicad_pro path, exactly as given"
     )
-    confirm: bool = Field(
-        default=False,
-        description="upgrade: true = the user agreed to convert the files (the older KiCad can no longer open "
-        "them); without it the user is asked, or the call explains what to ask",
+    from_kicad: str = Field(
+        description="data.upgrade_args.from_kicad: the KiCad line the files are in ('N.M'), or "
+        "'format sch=<stamp>,pcb=<stamp>' when no single KiCad line wrote them"
     )
-    dry_run: bool = Field(
-        default=False,
-        description="upgrade: convert a copy and report ERC/DRC before/after; never replace files",
+    to_kicad: str = Field(
+        description="data.upgrade_args.to_kicad: the installed KiCad whose format the files move to (a version or "
+        "an install root, as kw_env lists it)"
     )
+    files: list[str] = Field(
+        description="data.upgrade_args.files: the design files to convert, project-relative posix paths, exactly "
+        "as given"
+    )
+
+
+# ---- the single source of the upgrade arguments (D24) --------------------------------------------------
+
+
+def _install_spec(version: str, root: str, formats: dict[str, int], candidates: list[dict[str, Any]]) -> str:
+    """How an install is named in `to_kicad` and in the pin: its version, or its root when another
+    install sharing that version writes different formats (nightly and bench builds all report the
+    plain semver, installation.py `version`; D24)."""
+    same = [c for c in candidates if str(c.get("version") or "") == version]
+    if root and any(dict(c.get("formats") or {}) != dict(formats) for c in same):
+        return root
+    return version
+
+
+def _from_kicad(choice: TargetChoice) -> str:
+    """The project's KiCad line, else `format sch=N,pcb=M` (its newest stamp per kind)."""
+    if choice.project_kicad:
+        return choice.project_kicad
+    parts = [f"{k}={choice.project_epoch[k]}" for k in DESIGN_KINDS if k in choice.project_epoch]
+    return "format " + ",".join(parts)
+
+
+def upgrade_args(choice: TargetChoice, project: Project) -> dict[str, Any]:
+    """The `kw_project_upgrade` arguments for `project` as `choice` resolves it (D24) - the single
+    source of the E_FORMAT_UPGRADE_REQUIRED refusal (`data.upgrade_args`), `kw_project status`,
+    `upgrade_preview` and the tool's own recompute under the project lock. Independent of which
+    kinds a refused write touched, so a board-only refusal on a mixed-generation project carries
+    arguments the tool accepts (D24: the kinds-dependent `from_kicad` loop).
+
+    `{project, from_kicad, to_kicad, to_format {sch, pcb}, files}`: `from_kicad` = the files' KiCad
+    line, else `format sch=N,pcb=M`; `to_kicad` = the install spec the target pins (version, or
+    root when installs sharing that version write different formats); `to_format` = that
+    install's formats; `files` = the sorted project-relative posix paths `choice.upgrade_files()`
+    lists (empty: no write needs an upgrade)."""
+    root = str(getattr(choice.install, "root", "") or "")
+    return {
+        "project": project.pro_path.as_posix(),
+        "from_kicad": _from_kicad(choice),
+        "to_kicad": _install_spec(choice.version, root, dict(choice.install_epoch), choice.candidates),
+        "to_format": {k: choice.install_epoch.get(k) for k in DESIGN_KINDS},
+        "files": sorted(f.path for f in choice.upgrade_files()),
+    }
+
+
+def _needs_upgrade(choice: TargetChoice) -> bool:
+    return bool(choice.readable and not choice.writable and choice.upgrade_files())
+
+
+def _call_args(args: dict[str, Any]) -> dict[str, Any]:
+    return {k: args[k] for k in UPGRADE_CALL_KEYS}
 
 
 def _refuse_unsafe_project_dir(directory: Path) -> None:
@@ -291,9 +382,15 @@ def _create(ctx: ToolContext, args: ProjectArgs) -> Receipt:
 # ---- status ------------------------------------------------------------------------------------------
 
 
+def _retarget_candidates(choice: TargetChoice) -> list[str]:
+    """The installed KiCads that write the files' own format (kw_project retarget keeps it)."""
+    return [str(c["version"]) for c in choice.candidates if c.get("matches")]
+
+
 def target_status(ctx: ToolContext, project: Project, state: ProjectState) -> dict[str, Any]:
     """The D21 fields of `kw_project status`: which KiCad this project runs on and whether that
-    KiCad writes the files' own format (`epoch_match`)."""
+    KiCad writes the files' own format (`epoch_match`); when a write would need an upgrade, the
+    D24 `upgrade_args` plus the alternatives (`install_hint`, `retarget_candidates`)."""
     try:
         choice = resolve_target(ctx, project, state)
     except KiwrapError as err:
@@ -303,16 +400,18 @@ def target_status(ctx: ToolContext, project: Project, state: ProjectState) -> di
             "target_source": None,
             "epoch_match": None,
             "target": None,
+            "upgrade_args": None,
             "target_warnings": [f"{err.code}: {err.message}"],
         }
     warnings = list(choice.notes)
+    needs = _needs_upgrade(choice)
     if state.target_kicad and not choice.writable and choice.readable:
-        matching = [c["version"] for c in choice.candidates if c.get("matches")]
+        matching = _retarget_candidates(choice)
         if matching:
             warnings.append(
                 f"the project is pinned to KiCad {choice.version}, which writes a newer format than its files; "
                 f"KiCad {matching[0]} writes theirs: kw_project(action='retarget', target_kicad='{matching[0]}') "
-                "keeps the format, kw_project(action='upgrade', confirm=true) converts the files"
+                "keeps the format; kw_project_upgrade with data.upgrade_args converts the files (the user is asked)"
             )
     return {
         "target_effective": choice.version,
@@ -326,17 +425,27 @@ def target_status(ctx: ToolContext, project: Project, state: ProjectState) -> di
         "install_hint": None if choice.writable else choice.install_hint,
         "candidates": choice.candidates,
         "target": choice.to_dict(),
+        "upgrade_args": upgrade_args(choice, project) if needs else None,
+        "retarget_candidates": _retarget_candidates(choice) if needs else [],
         "target_warnings": warnings,
         "_choice": choice,
     }
 
 
+def _target_installed(ctx: ToolContext, spec: str | None) -> bool | None:
+    """The pinned install (a version or a root) is still installed; None without a pin."""
+    if not spec:
+        return None
+    try:
+        ctx.services.install(spec)
+    except KiwrapError:
+        return False
+    return True
+
+
 def status_data(ctx: ToolContext, project: Project) -> dict[str, Any]:
     state, external = read_state(project)
-    installed = None
-    with contextlib.suppress(KiwrapError):
-        installed = [i.version for i in ctx.services.installs()]
-    target_ok = state.target_kicad in installed if (installed and state.target_kicad) else None
+    target_ok = _target_installed(ctx, state.target_kicad)
     target = target_status(ctx, project, state)
     choice = target.pop("_choice", None)
     warnings = target.pop("target_warnings")
@@ -377,6 +486,11 @@ def _status(ctx: ToolContext, args: ProjectArgs) -> Receipt:
     degraded = ["external_edit"] if data["external_edit"] else []
     warnings = [f"external_edit: {', '.join(data['external_edit']['files'])}"] if degraded else []
     warnings.extend(data.get("warnings") or [])
+    if data.get("upgrade_args"):
+        warnings.append(
+            "a write needs a file-format upgrade first: tell the user, then kw_project_upgrade with "
+            "data.upgrade_args (the client asks them); kw_project(action='upgrade_preview') previews it"
+        )
     return Receipt(
         provider_used="file",
         degraded=degraded,
@@ -403,15 +517,20 @@ def _retarget(ctx: ToolContext, args: ProjectArgs) -> Receipt:
             choice = resolve_target(ctx, project, m.state, prefer=spec)
             if not choice.readable:
                 raise format_newer_error(choice, project)
-            m.state.target_kicad, m.state.target_source = choice.version, SOURCE_PINNED
+            root = str(getattr(choice.install, "root", "") or "")
+            m.state.target_kicad = _install_spec(
+                choice.version, root, dict(choice.install_epoch), choice.candidates
+            )
+            m.state.target_source = SOURCE_PINNED
             choice.source = SOURCE_PINNED
             m.summary = f"retarget {choice.version}"
         m.target = choice
         warnings = list(choice.notes)
-        if choice.readable and not choice.writable:
+        needs = _needs_upgrade(choice)
+        if needs:
             warnings.append(
-                f"KiCad {choice.version} writes a newer format than the files: every write will ask to upgrade the "
-                "project first (kw_project(action='upgrade', confirm=true) does it now)"
+                f"KiCad {choice.version} writes a newer format than the files: every write needs the upgrade first "
+                "(tell the user; kw_project_upgrade with data.upgrade_args converts them once the user approves)"
             )
         m.receipt = Receipt(
             provider_used="file",
@@ -426,16 +545,17 @@ def _retarget(ctx: ToolContext, args: ProjectArgs) -> Receipt:
                 "epoch_match": choice.writable,
                 "project_epoch": dict(choice.project_epoch),
                 "install_epoch": dict(choice.install_epoch),
+                "upgrade_args": upgrade_args(choice, project) if needs else None,
             },
         )
         return m.receipt
 
 
-# ---- upgrade -----------------------------------------------------------------------------------------
+# ---- the conversion (shared by upgrade_preview and kw_project_upgrade) ------------------------------
 
 
 def _work_dir(ctx: ToolContext, project: Project) -> Path:
-    digest = hashlib.sha1(str(project.dir.resolve()).lower().encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha1(str(project.dir.resolve()).lower().encode("utf-8")).hexdigest()[:8]  # noqa: S324 - a name
     return Path(ctx.services.storage_home) / "tmp" / "upgrade" / f"{project.name}-{digest}"
 
 
@@ -562,96 +682,130 @@ def _replace_all(
     return [rel for _s, _k, rel in done]
 
 
+def _require_upgrade_capability(ctx: ToolContext, install: Any, caps: Any) -> None:
+    """E_UNSUPPORTED (with the installs that have it as candidates) when `install` has no
+    `kicad-cli sch/pcb upgrade` (`cli.has_sch_pcb_upgrade`)."""
+    if caps.has("cli.has_sch_pcb_upgrade"):
+        return
+    able: list[str] = []
+    with contextlib.suppress(KiwrapError):
+        able = [
+            i.version for i in ctx.services.installs() if ctx.services.caps(i).has("cli.has_sch_pcb_upgrade")
+        ]
+    raise KiwrapError(
+        "E_UNSUPPORTED",
+        f"KiCad {install.version} cannot upgrade schematics and boards (cli.has_sch_pcb_upgrade)",
+        why="kw_project_upgrade converts the files with kicad-cli sch/pcb upgrade",
+        fix=(
+            "pin an install that has it (kw_project(action='retarget', target_kicad=...)), then use the "
+            "upgrade_args kw_project(action='status') returns"
+            if able
+            else "install a KiCad with sch/pcb upgrade"
+        ),
+        candidates=able,
+        data={"capability": "cli.has_sch_pcb_upgrade", "kicad": install.version},
+    )
+
+
+def _convert_copy(
+    ctx: ToolContext,
+    project: Project,
+    install: Any,
+    caps: Any,
+    convert: list[str],
+    work: Path,
+    *,
+    checks: bool,
+) -> tuple[Any, dict[str, Any] | None, dict[str, Any] | None]:
+    """Copy the whole project (every design file, keeping relative paths) and upgrade exactly
+    `convert` (project-relative posix paths) in the copy; ERC/DRC on a plain copy before and on the
+    upgraded copy after when `checks`. Returns (the backend's `ProjectCopy`, before, after)."""
+    config = ctx.services.config_root(install)
+    files = project.design_files()
+    # the project's own order (root sheet, sub-sheets, board last): the replacement follows it
+    order = {os.path.normcase(project.relpath(p)): n for n, p in enumerate(files)}
+    convert = sorted(convert, key=lambda rel: (order.get(os.path.normcase(rel), len(order)), rel))
+    root_rel, board_rel = project.relpath(project.root_sch), project.relpath(project.board)
+    before_counts: dict[str, Any] | None = None
+    if checks:
+        before_dir = Path(ctx.services.copy_project(project.dir, files, work / "before"))
+        before_counts = _checks(ctx, install, caps, config, before_dir / root_rel, before_dir / board_rel)
+    result = ctx.services.upgrade_project(
+        install,
+        config,
+        project.dir,
+        files,
+        work / "after",
+        caps=caps,
+        convert=[project.dir / rel for rel in convert],
+    )
+    after_dir = Path(result.work_dir)
+    after_counts = (
+        _checks(ctx, install, caps, config, after_dir / root_rel, after_dir / board_rel) if checks else None
+    )
+    return result, before_counts, after_counts
+
+
+def _file_entry(project: Project, f: Any) -> dict[str, Any]:
+    return {
+        "path": _rel_of(project, f),
+        "kind": f.kind,
+        "stamp_before": f.stamp_before,
+        "stamp_after": f.stamp_after,
+        "changed": bool(f.changed),
+    }
+
+
 def perform_upgrade(
     ctx: ToolContext,
     m: Mutation,
     install: Any,
     *,
+    convert: Iterable[str],
     checks: bool = True,
     reason: str = "",
-    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Convert every design file of `m.project` to `install`'s format (the caller holds the
-    project lock inside `mutation()` and has the user's consent). Converted on a copy under the
-    storage home; ERC/DRC counts before and after when `checks`; the pre-upgrade state is a
-    snapshot; then the files are replaced, the install is pinned and the stages re-hashed (a
-    check that got worse drops the stage it backed). Returns the report."""
+    """Convert exactly `convert` (project-relative posix paths of design files) of `m.project` to
+    `install`'s format (the caller holds the project lock inside `mutation()` and has the user's
+    consent: `run_upgrade`, D24). Converted on a copy under the storage home; ERC/DRC counts before
+    and after when `checks`; the pre-upgrade state is a snapshot; then the files that changed are
+    replaced, the install is pinned and the stages re-hashed (a check that got worse drops the
+    stage it backed). Returns the report."""
     project = m.project
     caps = ctx.services.caps(install)
-    if not caps.has("cli.has_sch_pcb_upgrade"):
-        able = []
-        with contextlib.suppress(KiwrapError):
-            able = [
-                i.version
-                for i in ctx.services.installs()
-                if ctx.services.caps(i).has("cli.has_sch_pcb_upgrade")
-            ]
+    _require_upgrade_capability(ctx, install, caps)
+    rels = sorted(set(convert))
+    if not rels:
         raise KiwrapError(
-            "E_UNSUPPORTED",
-            f"KiCad {install.version} cannot upgrade schematics and boards (cli.has_sch_pcb_upgrade)",
-            why="kw_project upgrade converts the files with kicad-cli sch/pcb upgrade",
-            fix="pass to_kicad naming an install that has it"
-            if able
-            else "install a KiCad with sch/pcb upgrade",
-            candidates=able,
-            data={"capability": "cli.has_sch_pcb_upgrade", "kicad": install.version},
+            "E_BAD_ARGS",
+            f"nothing to convert in {project.name}",
+            fix="kw_project(action='status') says whether a write needs an upgrade (upgrade_args)",
         )
-    config = ctx.services.config_root(install)
-    files = project.design_files()
-    if not files:
-        raise KiwrapError(
-            "E_PROJECT_NOT_FOUND",
-            f"{project.name} has no .kicad_sch / .kicad_pcb to upgrade",
-            fix="kw_project create writes them",
-        )
+    # the undo point comes first: nothing is converted without one (D24 "snapshots the project first";
+    # review finding 4 - a failed snapshot used to be swallowed and the files replaced anyway)
+    snapshot_before = m.baseline or _snapshot_before_upgrade(project, install)
     work = _work_dir(ctx, project)
-    before_counts: dict[str, Any] | None = None
-    if checks:
-        before_dir = ctx.services.copy_project(project.dir, files, work / "before")
-        before_counts = _checks(
-            ctx,
-            install,
-            caps,
-            config,
-            Path(before_dir) / project.root_sch.name,
-            Path(before_dir) / project.board.name,
-        )
-    result = ctx.services.upgrade_project(install, config, project.dir, files, work / "after", caps=caps)
-    after_counts = (
-        _checks(
-            ctx,
-            install,
-            caps,
-            config,
-            Path(result.work_dir) / project.root_sch.name,
-            Path(result.work_dir) / project.board.name,
-        )
-        if checks
-        else None
+    result, before_counts, after_counts = _convert_copy(
+        ctx, project, install, caps, rels, work, checks=checks
     )
     report: dict[str, Any] = {
         "kicad": install.version,
         "reason": reason,
-        "files": [f.to_dict() for f in result.files],
-        "from": {_rel_of(project, f): f.stamp_before for f in result.files},
-        "to": {_rel_of(project, f): f.stamp_after for f in result.files},
+        "files": [_file_entry(project, f) for f in result.files],
         "checks": {"before": before_counts, "after": after_counts} if checks else None,
-        "dry_run": dry_run,
         "work_dir": Path(result.work_dir).as_posix(),
     }
-    if dry_run:
-        return report
-    snapshot_before = m.baseline
-    if snapshot_before is None:
-        with contextlib.suppress(KiwrapError):
-            snapshot_before = snapshot_create(project.dir, f"[kiwrap] pre-upgrade to KiCad {install.version}")
     report["snapshot_before"] = snapshot_before
     replaced = _replace_all(project, list(result.files), work / "originals", snapshot_before)
     report["replaced"] = replaced
-    m.state.target_kicad, m.state.target_source = install.version, SOURCE_PINNED
+    root = str(getattr(install, "root", "") or "")
+    candidates = [{"version": i.version, "formats": _install_epochs(ctx, i)} for i in ctx.services.installs()]
+    m.state.target_kicad = _install_spec(install.version, root, _install_epochs(ctx, install), candidates)
+    m.state.target_source = SOURCE_PINNED
     for s in STAGES:
         if s in m.state.hashes:
             record_stage(project, m.state, s, advance=False)
+    stage_dropped: list[str] = []
     if checks and before_counts and after_counts:
         for kind, gate_stage in (("erc", "erc_clean"), ("drc", "drc_clean")):
             b, a = before_counts.get(kind) or {}, after_counts.get(kind) or {}
@@ -661,7 +815,8 @@ def perform_upgrade(
                 and stage_at_least(m.state.stage, gate_stage)
             ):
                 downgrade_below(m.state, gate_stage)
-                report.setdefault("stage_dropped", []).append(gate_stage)
+                stage_dropped.append(gate_stage)
+    report["stage_dropped"] = stage_dropped
     # the stamp guard compares against the upgraded stamps from now on (it stays armed for the
     # rest of the call: only this sanctioned conversion may raise them)
     report["epochs"] = {"before": dict(m.stamps_before), "after": _stamps(project)}
@@ -670,6 +825,44 @@ def perform_upgrade(
         if name not in m.receipt.changed["updated"]:
             m.receipt.changed["updated"].append(name)
     return report
+
+
+def _snapshot_before_upgrade(project: Project, install: Any) -> str:
+    """The pre-upgrade snapshot when the call's prologue could not take one, else E_INTERNAL before
+    any file is replaced: an irreversible conversion never runs without an undo point (review
+    finding 4 - a git failure such as `Filename too long` was swallowed, and the receipt said
+    'kw_snapshot restore  undoes it' with an empty ref)."""
+    try:
+        sha = snapshot_create(project.dir, f"[kiwrap] pre-upgrade to KiCad {install.version}")
+    except KiwrapError as exc:
+        raise _no_undo_point(project, exc) from exc
+    if not sha:
+        raise _no_undo_point(project, None)
+    return sha
+
+
+def _no_undo_point(project: Project, cause: KiwrapError | None) -> KiwrapError:
+    detail = cause.message if cause is not None else "the snapshot store returned no commit"
+    fix = (
+        "fix the snapshot store first - the git error above says what failed (git missing from PATH: install "
+        "git; a disk or permission problem: free space / make the project writable); kw_snapshot(action='create', "
+        f"project='{project.pro_path.as_posix()}') shows when it works again, then call kw_project_upgrade again"
+    )
+    if "too long" in detail.lower():
+        fix = (
+            "the project path is too long for git on this machine: move the project to a shorter path, or enable "
+            "long paths (git config --global core.longpaths true, and the Windows LongPathsEnabled policy); then "
+            "call kw_project_upgrade again"
+        )
+    return KiwrapError(
+        "E_INTERNAL",
+        f"no undo point for {project.name}: the pre-upgrade snapshot failed ({detail}); nothing was converted",
+        why="kw_project_upgrade replaces the design files with a format the older KiCad cannot open; it runs only "
+        "when kw_snapshot restore can undo it (D24)",
+        fix=fix,
+        candidates=["kw_snapshot(action='create')"],
+        data={"snapshot_error": detail, **({"git": cause.data} if cause is not None and cause.data else {})},
+    )
 
 
 def _stamps(project: Project) -> dict[str, int | None]:
@@ -682,86 +875,394 @@ def _rel_of(project: Project, f: Any) -> str:
     return rel or project.relpath(Path(f.source))
 
 
-def _upgrade_target(
-    ctx: ToolContext, project: Project, m: Mutation, to_kicad: str | None
-) -> tuple[Any, TargetChoice]:
-    """(install to convert to, the resolution with that install): `to_kicad`, else the install
-    the project runs on (pinned, or the nearest newer reader)."""
-    choice = resolve_target(ctx, project, m.state, prefer=to_kicad or None)
+#: never converted by kw_project_upgrade (D24): project settings, per-user state, rules, library
+#: tables and project libraries
+_NEVER_CONVERTED_SUFFIXES = (".kicad_pro", ".kicad_prl", ".kicad_dru", ".kicad_sym", ".pretty")
+_LIB_TABLES = ("sym-lib-table", "fp-lib-table", "design-block-lib-table")
+_SKIP_DIRS = frozenset({".kiwrap", ".git", ".history", "node_modules", "__pycache__"})
+
+
+def _not_converted(project: Project, converted: Iterable[str]) -> list[str]:
+    """What a conversion leaves alone, as project-relative posix paths: the design files not in
+    `converted`, plus the project file, its per-user state, the rules, the library tables and the
+    project libraries (`.kicad_sym` files, `.pretty` folders) - D24."""
+    done = {os.path.normcase(c) for c in converted}
+    out = [
+        rel
+        for rel in (project.relpath(p) for p in project.design_files())
+        if os.path.normcase(rel) not in done
+    ]
+    for dirpath, dirnames, filenames in os.walk(project.dir):
+        base = Path(dirpath)
+        dirnames[:] = sorted(
+            d
+            for d in dirnames
+            if d not in _SKIP_DIRS and not d.endswith("-backups") and not d.startswith(".")
+        )
+        names = list(filenames) + [d for d in dirnames if d.lower().endswith(".pretty")]
+        for name in names:
+            if name.lower().endswith(_NEVER_CONVERTED_SUFFIXES) or name in _LIB_TABLES:
+                out.append((base / name).relative_to(project.dir).as_posix())
+        dirnames[:] = [d for d in dirnames if not d.lower().endswith(".pretty")]
+        if len(out) > 500:
+            break
+    return sorted(set(out))
+
+
+def _check_changes(checks: dict[str, Any] | None) -> list[str]:
+    """Warnings for ERC/DRC counts that changed with the conversion (counted on copies)."""
+    out: list[str] = []
+    for kind in ("erc", "drc"):
+        b = ((checks or {}).get("before") or {}).get(kind) or {}
+        a = ((checks or {}).get("after") or {}).get(kind) or {}
+        if "errors" in a and "errors" in b and (a["errors"], a["warnings"]) != (b["errors"], b["warnings"]):
+            out.append(
+                f"{kind.upper()} changed with the conversion: errors {b['errors']} -> {a['errors']}, "
+                f"warnings {b['warnings']} -> {a['warnings']} (counted on copies)"
+            )
+    return out
+
+
+def _check_validators(checks: dict[str, Any] | None) -> list[ValidatorDelta]:
+    """The receipt's validators `erc` and `drc`: error counts on the copy before and after (D24)."""
+    out: list[ValidatorDelta] = []
+    for kind in ("erc", "drc"):
+        b = ((checks or {}).get("before") or {}).get(kind)
+        a = ((checks or {}).get("after") or {}).get(kind)
+        if b is None and a is None:
+            continue
+        b, a = b or {}, a or {}
+        detail: dict[str, Any] = {"counted_on": "copies", "before": b, "after": a}
+        out.append(
+            ValidatorDelta(
+                name=kind,
+                before=int(b["errors"]) if "errors" in b else None,
+                after=int(a["errors"]) if "errors" in a else None,
+                detail=detail,
+            )
+        )
+    return out
+
+
+def _files_text(files: list[str], limit: int = 6) -> str:
+    shown = files[:limit] + ([f"{len(files) - limit} more"] if len(files) > limit else [])
+    return ", ".join(shown)
+
+
+# ---- upgrade_preview (a read, D24) ---------------------------------------------------------------------
+
+
+def _alternatives(choice: TargetChoice, project: Project) -> list[str]:
+    """What the user can do instead of converting (the preview's and the refusal's alternatives)."""
+    pro = project.pro_path.as_posix()
+    out = [
+        f"kw_project(action='retarget', project='{pro}', target_kicad='{v}') - KiCad {v} writes the files' own "
+        "format"
+        for v in _retarget_candidates(choice)
+    ]
+    line, hint = choice.release_for()
+    if not out and line:
+        out.append(
+            f"install KiCad {line}" + (f" ({hint})" if hint else "") + " - it writes the files' own format"
+        )
+    if choice.mixed:
+        out.append("kw_snapshot(action='restore', ref=...) a snapshot from before the formats were mixed")
+    return out
+
+
+def _upgrade_preview(ctx: ToolContext, args: ProjectArgs) -> Receipt:
+    """`kw_project(action='upgrade_preview')` (D24): the conversion `kw_project_upgrade` would do,
+    run on a copy under `<storage>/tmp/upgrade` - outside `mutation()`: no lock, no state written,
+    no snapshot, nothing in the project changes (also on a read-only server, D23)."""
+    project = _need_project(args)
+    state = readonly.load_state(project)
+    choice = resolve_target(ctx, project, state)
     if not choice.readable:
         raise format_newer_error(choice, project)
-    return choice.install, choice
-
-
-def _upgrade(ctx: ToolContext, args: ProjectArgs) -> Receipt:
-    project = _need_project(args)
-    with mutation(ctx, project, "kw_project", gate=False) as m:
-        install, choice = _upgrade_target(ctx, project, m, args.to_kicad)
-        m.target = choice
-        base = {
-            "ok": True,
-            "project": project.pro_path.as_posix(),
-            "to_kicad": install.version,
-            "project_epoch": dict(choice.project_epoch),
-            "install_epoch": dict(choice.install_epoch),
-            "project_kicad": choice.project_kicad,
-        }
-        if choice.writable and not args.dry_run:
-            # nothing to convert: the install already writes the files' format - pin it
-            m.state.target_kicad, m.state.target_source = install.version, SOURCE_PINNED
-            m.summary = f"upgrade: already KiCad {install.version} format (pinned)"
-            m.receipt = Receipt(
-                provider_used="file",
-                warnings=[
-                    f"the files are already in the format KiCad {install.version} writes; nothing converted"
-                ],
-                data={**base, "upgraded": False, "target_kicad": install.version},
-            )
-            return m.receipt
-        if not args.dry_run and not args.confirm:
-            answer = ask_upgrade_consent(consent_message(project, choice))
-            if answer != "accept":
-                raise format_upgrade_error(choice, project, answer=answer)
-        report = perform_upgrade(
-            ctx, m, install, checks=True, reason="kw_project upgrade", dry_run=args.dry_run
+    base: dict[str, Any] = {
+        "ok": True,
+        "project": project.pro_path.as_posix(),
+        "target_effective": choice.version,
+        "target_source": choice.source,
+        "epoch_match": choice.writable,
+        "project_kicad": choice.project_kicad,
+    }
+    if not _needs_upgrade(choice):
+        return Receipt(
+            provider_used="file",
+            warnings=[
+                f"nothing to convert: KiCad {choice.version} (the KiCad {project.name} runs on) writes its files' "
+                "own format; to move the project to a newer KiCad, pin it first (kw_project(action='retarget'))"
+            ],
+            data={**base, "upgrade_args": None, "files": [], "checks": None, "alternatives": []},
         )
-        warnings: list[str] = []
-        checks = report.get("checks") or {}
-        for kind in ("erc", "drc"):
-            b = (checks.get("before") or {}).get(kind) or {}
-            a = (checks.get("after") or {}).get(kind) or {}
-            if (
-                "errors" in a
-                and "errors" in b
-                and (a["errors"], a["warnings"]) != (b["errors"], b["warnings"])
-            ):
-                warnings.append(
-                    f"{kind.upper()} changed with the conversion: errors {b['errors']} -> {a['errors']}, "
-                    f"warnings {b['warnings']} -> {a['warnings']} (counted on copies)"
-                )
-        if args.dry_run:
-            m.summary = f"upgrade dry run to KiCad {install.version}"
-            warnings.append(
-                "dry run: nothing in the project was changed; pass confirm=true to convert the files"
+    ua = upgrade_args(choice, project)
+    install = choice.install
+    caps = ctx.services.caps(install)
+    _require_upgrade_capability(ctx, install, caps)
+    work = _work_dir(ctx, project).with_name(f"{_work_dir(ctx, project).name}-preview-{uuid.uuid4().hex[:8]}")
+    try:
+        result, before, after = _convert_copy(
+            ctx, project, install, caps, list(ua["files"]), work, checks=True
+        )
+        files = [_file_entry(project, f) for f in result.files]
+    finally:
+        _clear_dir(work)
+    checks = {"before": before, "after": after}
+    warnings = [
+        "preview: nothing in the project was changed; converting needs the user's approval - tell the user "
+        f"(from {ua['from_kicad']} to KiCad {choice.version}: {_files_text(ua['files'])}), then kw_project_upgrade "
+        "with data.upgrade_args",
+        *_check_changes(checks),
+    ]
+    return Receipt(
+        provider_used=ctx.services.provider(install),
+        next_suggested=UPGRADE_TOOL,
+        warnings=warnings,
+        data={
+            **base,
+            "upgrade_args": ua,
+            "files": files,
+            "checks": checks,
+            "not_converted": _not_converted(project, ua["files"]),
+            "alternatives": _alternatives(choice, project),
+            "install_hint": choice.install_hint,
+            "retarget_candidates": _retarget_candidates(choice),
+        },
+    )
+
+
+# ---- kw_project_upgrade: the one conversion core (D24) ----------------------------------------------------
+
+
+def _mismatch(ctx: ToolContext, args: UpgradeArgs, truth: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
+    """(the install `args.to_kicad` resolves to or None, the differences from `truth`). `to_kicad`
+    may be a version prefix or an install root as kw_env lists it (`find(probe_paths=False)` via
+    `services.install`); what is compared is the resolved install's formats, because every 10.99
+    nightly and bench build reports the same version string (D24). Files are compared as a set
+    after normcase."""
+    mismatch: dict[str, Any] = {}
+    if (args.from_kicad or "").strip() != truth["from_kicad"]:
+        mismatch["from_kicad"] = {"given": args.from_kicad, "expected": truth["from_kicad"]}
+    install: Any = None
+    spec = (args.to_kicad or "").strip()
+    if spec:
+        with contextlib.suppress(KiwrapError):
+            install = ctx.services.install(spec)
+    formats = _install_epochs(ctx, install) if install is not None else None
+    resolved = {k: formats.get(k) for k in DESIGN_KINDS} if formats is not None else None
+    if resolved is None or resolved != truth["to_format"]:
+        mismatch["to_kicad"] = {
+            "given": args.to_kicad,
+            "expected": truth["to_kicad"],
+            "resolved": getattr(install, "version", None),
+            "resolved_format": resolved,
+            "expected_format": truth["to_format"],
+        }
+
+    def key(path: str) -> str:
+        return os.path.normcase(path.strip().replace("\\", "/").removeprefix("./"))
+
+    given = {key(f): f for f in args.files}
+    want = {key(f): f for f in truth["files"]}
+    missing = [want[k] for k in sorted(want.keys() - given.keys())]
+    extra = [given[k] for k in sorted(given.keys() - want.keys())]
+    if missing or extra:
+        mismatch["files"] = {"missing": missing, "extra": extra}
+    return install, mismatch
+
+
+def _mismatch_error(project: Project, truth: dict[str, Any], mismatch: dict[str, Any]) -> KiwrapError:
+    return KiwrapError(
+        "E_BAD_ARGS",
+        f"kw_project_upgrade: {', '.join(mismatch)} do not match {project.name} as it is now; nothing was converted",
+        why=(
+            "the server rebuilds the arguments under the project lock and converts only what the user approved: "
+            "the call's arguments must equal data.upgrade_args (D24)"
+        ),
+        fix=(
+            "tell the user the project changed (or the arguments were not passed verbatim); if they still want the "
+            "upgrade, call kw_project_upgrade with data.upgrade_args exactly as given - they will be asked again"
+        ),
+        candidates=[UPGRADE_TOOL, "kw_project(action='status')"],
+        example=f"kw_project_upgrade(project={truth['project']!r}, from_kicad={truth['from_kicad']!r}, "
+        f"to_kicad={truth['to_kicad']!r}, files={truth['files']!r})",
+        data={"mismatch": mismatch, "upgrade_args": truth},
+    )
+
+
+def _nothing_to_convert(
+    project: Project, choice: TargetChoice, truth: dict[str, Any], mismatch: dict[str, Any]
+) -> KiwrapError:
+    pro = project.pro_path.as_posix()
+    return KiwrapError(
+        "E_BAD_ARGS",
+        f"nothing to convert: every design file of {project.name} is in the format KiCad {choice.version} "
+        "(the KiCad it runs on) writes",
+        why="kw_project_upgrade only moves files to the format of the KiCad the project runs on (D24)",
+        fix=(
+            "no upgrade is needed. To move the project to a newer installed KiCad's format, pin that KiCad first: "
+            f"kw_project(action='retarget', project='{pro}', target_kicad=...); kw_project(action='status') then "
+            "returns the upgrade_args to show the user"
+        ),
+        candidates=["kw_project(action='retarget')", "kw_project(action='status')"],
+        example=f'kw_project(action="retarget", project="{pro}", target_kicad="<version>")',
+        data={"upgrade_args": truth, "mismatch": mismatch or None},
+    )
+
+
+def _bound_refusal(project: Project, bound: dict[str, Any]) -> KiwrapError:
+    pro = project.pro_path.as_posix()
+    return KiwrapError(
+        "E_FILE_LOCKED",
+        f"a live KiCad session (kw_live) holds {project.name}; kw_project_upgrade replaces its files on disk",
+        why="the GUI keeps the old files in memory and would write them back (or save over the converted ones)",
+        fix=f"kw_live(action='detach', project='{pro}') first, then call kw_project_upgrade again with the same "
+        "arguments (the user is asked again)",
+        candidates=["kw_live(action='detach')"],
+        example=f'kw_live(action="detach", project="{pro}")',
+        data={"live_session": {k: bound.get(k) for k in ("session_id", "pid") if k in bound}},
+    )
+
+
+def _upgrade_under(
+    ctx: ToolContext,
+    m: Mutation,
+    project: Project,
+    args: UpgradeArgs,
+    consent: dict[str, Any],
+    *,
+    prefer: str | None,
+) -> tuple[dict[str, Any], Any]:
+    """Inside the project lock: the kw_live refusal, the recompute, the mismatch / nothing-to-convert
+    / capability refusals, then `perform_upgrade(convert=files, checks=True)`. Returns (the report
+    with the D24 receipt fields, the install converted to)."""
+    if m.bound is not None:
+        raise _bound_refusal(project, m.bound)
+    choice = resolve_target(ctx, project, m.state, prefer=prefer)
+    if not choice.readable:
+        raise format_newer_error(choice, project)
+    truth = upgrade_args(choice, project)
+    # the KiCad line(s) that open the listed files now and no longer will (the receipt's warning)
+    olds = _conversion_text(choice)[1]
+    install, mismatch = _mismatch(ctx, args, truth)
+    if not truth["files"]:
+        raise _nothing_to_convert(project, choice, truth, mismatch)
+    if mismatch:
+        raise _mismatch_error(project, truth, mismatch)
+    _require_upgrade_capability(ctx, install, ctx.services.caps(install))
+    m.target = choice
+    report = perform_upgrade(
+        ctx, m, install, convert=truth["files"], checks=True, reason=f"{UPGRADE_TOOL} ({consent.get('via')})"
+    )
+    m.history_extra["consent"] = dict(consent)
+    report.update(
+        {
+            "from_kicad": truth["from_kicad"],
+            "to_kicad": m.state.target_kicad,
+            "to_format": truth["to_format"],
+            "not_converted": _not_converted(project, truth["files"]),
+            "consent": dict(consent),
+            "older_kicads": olds,
+        }
+    )
+    return report, install
+
+
+def run_upgrade(
+    ctx: ToolContext,
+    args: UpgradeArgs,
+    consent: dict[str, Any] | None = None,
+    *,
+    running: Mutation | None = None,
+    prefer: str | None = None,
+) -> Receipt:
+    """The ONE conversion core (D24): `kw_project_upgrade`'s handler, and the elicitation
+    shortcut's accept (`_base.effective_target`, `consent` gate/via 'elicitation').
+
+    Order: the client gate (a Claude Code older than 2.1.199 does not ask the user: E_UNSUPPORTED);
+    then under `mutation(ctx, project, 'kw_project_upgrade', gate=False)` - or inside `running`, the
+    mutation of the call whose write needed the upgrade (its lock is held) - the kw_live bound
+    refusal, the recompute of `upgrade_args` and the comparison (E_BAD_ARGS with `data.mismatch` and
+    the true `data.upgrade_args`), nothing to convert (E_BAD_ARGS naming kw_project retarget), the
+    `cli.has_sch_pcb_upgrade` check (E_UNSUPPORTED with candidates), then `perform_upgrade` on
+    exactly the listed files with ERC/DRC before and after. The receipt names the consent record
+    (`consent_source`), never a human click. `prefer` is the elicitation's per-call target
+    (kw_live's `target_kicad`), never a tool argument."""
+    if consent is None:
+        consent = consent_source(bound_request())
+        refuse_unsupported_client(consent)
+    project = Project.from_path(args.project)
+    if running is not None:
+        report, install = _upgrade_under(ctx, running, project, args, consent, prefer=prefer)
+        commit = None
+        with contextlib.suppress(KiwrapError):
+            commit = snapshot_create(
+                project.dir,
+                f"[kiwrap] {running.tool}: upgrade to KiCad {install.version} format ({consent.get('via')})",
             )
-        else:
-            m.summary = f"upgrade to KiCad {install.version} format"
-            m.target = resolve_target(ctx, project, m.state)
-            if choice.project_kicad:
-                warnings.append(
-                    f"KiCad {choice.project_kicad} can no longer open the upgraded files; the pre-upgrade state is "
-                    f"snapshot {str(report.get('snapshot_before') or '')[:12]} (kw_snapshot restore)"
-                )
+        report["snapshot_after"] = commit
+        running.receipt.warnings.append(
+            f"the project was upgraded to KiCad {install.version} format ({consent.get('via')}) before this change "
+            f"(snapshot {str(commit or '')[:12]}; kw_snapshot restore {str(report.get('snapshot_before') or '')[:12]} "
+            "undoes it)"
+        )
+        running.upgrade_report = report
+        return Receipt(provider_used=ctx.services.provider(install), data={"ok": True, **report})
+    with mutation(ctx, project, UPGRADE_TOOL, gate=False) as m:
+        report, install = _upgrade_under(ctx, m, project, args, consent, prefer=prefer)
+        m.target = resolve_target(ctx, project, m.state)
+        m.summary = f"to KiCad {install.version} format ({len(report['replaced'])} files)"
+        snapshot_before = str(report.get("snapshot_before") or "")
+        converted = [f["path"] for f in report["files"]]
+        warnings = [
+            f"{report['older_kicads']} can no longer open {_files_text(converted)}; kw_snapshot restore "
+            f"{snapshot_before[:12]} undoes it"
+        ]
+        warnings.extend(_check_changes(report.get("checks")))
+        if report.get("stage_dropped"):
+            warnings.append(
+                "stage dropped below "
+                + ", ".join(report["stage_dropped"])
+                + ": an error count rose with the conversion"
+            )
+        if consent.get("via") == "unknown_client":
+            client = consent.get("client") or {}
+            warnings.append(
+                f"the MCP client ({client.get('name') or 'unnamed'} {client.get('version') or ''}".rstrip()
+                + ") is not known to ask the user before kw_project_upgrade runs; kiwrap cannot tell whether "
+                "the user approved this conversion"
+            )
         m.receipt.provider_used = ctx.services.provider(install)
         m.receipt.warnings.extend(warnings)
-        m.receipt.next_suggested = "kw_sch_check" if not args.dry_run else None
+        m.receipt.validators.extend(_check_validators(report.get("checks")))
+        m.receipt.next_suggested = "kw_sch_check"
         m.receipt.data = {
-            **base,
-            "upgraded": not args.dry_run,
-            "target_kicad": m.state.target_kicad,
-            "upgrade": report,
+            "ok": True,
+            "project": project.pro_path.as_posix(),
+            "from_kicad": report["from_kicad"],
+            "to_kicad": report["to_kicad"],
+            "to_format": report["to_format"],
+            "files": report["files"],
+            "replaced": report["replaced"],
+            "not_converted": report["not_converted"],
+            "checks": report["checks"],
+            "snapshot_before": report.get("snapshot_before"),
+            "stage_dropped": report["stage_dropped"],
+            "target": {
+                "kicad": m.target.version,
+                "source": m.target.source,
+                "epoch_match": m.target.writable,
+            },
+            "consent": report["consent"],
+            "epochs": report["epochs"],
+            "work_dir": report["work_dir"],
         }
         return m.receipt
+
+
+def _upgrade_tool(ctx: ToolContext, args: UpgradeArgs) -> Receipt:
+    return run_upgrade(ctx, args)
 
 
 def run(ctx: ToolContext, args: ProjectArgs) -> Receipt:
@@ -771,7 +1272,7 @@ def run(ctx: ToolContext, args: ProjectArgs) -> Receipt:
         return _status(ctx, args)
     if args.action == "retarget":
         return _retarget(ctx, args)
-    return _upgrade(ctx, args)
+    return _upgrade_preview(ctx, args)
 
 
 SPEC = ToolSpec(
@@ -780,18 +1281,47 @@ SPEC = ToolSpec(
     description=(
         "create: write a minimal valid .kicad_pro + empty root .kicad_sch + .kicad_pcb in the target KiCad's format "
         "(optionally with a rectangular outline) and start the snapshot history; refused in a directory that already "
-        "holds .kicad_sch / .kicad_pcb files. status: stage, hashes, epochs, "
-        "external edits, the KiCad the project runs on (target_effective, target_source, epoch_match), next "
-        "suggested tool. retarget: pin an installed KiCad (or 'auto') without touching the files. upgrade: convert "
-        "every sheet (sub-sheets in subdirectories too) and the board to a newer KiCad's format - only with the "
-        "user's consent (confirm=true), on a copy first, ERC/DRC before/after, snapshot; dry_run=true only reports. "
-        "The tool is annotated destructive because upgrade replaces files; status and upgrade(dry_run=true) are "
-        "read-only (they also run on a read-only server)."
+        "holds .kicad_sch / .kicad_pcb files. status: stage, hashes, epochs, external edits, the KiCad the project "
+        "runs on (target_effective, target_source, epoch_match), next suggested tool, and - whenever a write would "
+        "need a file-format upgrade - upgrade_args (the exact kw_project_upgrade arguments), install_hint and "
+        "retarget_candidates. retarget: pin an installed KiCad (or 'auto') without touching the files. "
+        "upgrade_preview: convert a copy under kiwrap's storage home and report the ERC/DRC counts before/after; "
+        "writes nothing in the project (it also runs on a read-only server). Converting the project's files is "
+        "kw_project_upgrade, a separate tool the user approves call by call."
     ),
     input_model=ProjectArgs,
     handler=run,
-    # `upgrade` replaces the design files (with consent, after a snapshot): review theme T8, honest hints.
-    # MCP annotations are per tool, so status / dry_run share the hint; the description and
-    # kw_help(topic='readonly') say they are read-only (fixer finding 8)
+    # D24: kw_project no longer replaces design files (that is kw_project_upgrade); create and
+    # retarget write the project (new files, the pin), status and upgrade_preview are reads
+    annotations=MUTATING,
+)
+
+UPGRADE_DESCRIPTION = (
+    "Convert a project's design files to a newer KiCad file format - the only way kiwrap does it. The older KiCad "
+    "can no longer open the converted files. The client's permission prompt for this call is the user's consent: "
+    "call it only after telling the user what changes (from_kicad -> to_kicad, the files) and the alternatives "
+    "(install the matching KiCad, or kw_project retarget); never call it to try something, and never convert files "
+    "with kicad-cli yourself. Pass data.upgrade_args of E_FORMAT_UPGRADE_REQUIRED (or of kw_project(action="
+    "'status')) verbatim: the server rebuilds them under the project lock and refuses any difference with "
+    "E_BAD_ARGS (data.upgrade_args = the true ones) - after the prompt, so a mismatch costs the user a second one. "
+    "It snapshots the project, converts exactly `files` on a copy with kicad-cli, runs ERC/DRC on the copy before "
+    "and after, replaces the changed files, pins to_kicad and drops erc_clean/drc_clean if an error count rose. "
+    ".kicad_pro, .kicad_prl, .kicad_dru, library tables and project libraries are never converted. The receipt "
+    "lists files (stamps before/after), checks, snapshot_before (kw_snapshot restore undoes it) and the consent "
+    "record (the client flow that approved the call). kw_project(action='upgrade_preview') previews without "
+    "changing anything. Not available on a read-only server."
+)
+
+UPGRADE_SPEC = ToolSpec(
+    name=UPGRADE_TOOL,
+    title="Upgrade project file format",
+    description=UPGRADE_DESCRIPTION,
+    input_model=UpgradeArgs,
+    handler=_upgrade_tool,
+    # replaces design files with a newer format the older KiCad cannot open (review theme T8)
     annotations=DESTRUCTIVE,
+    # Claude Code >= 2.1.199 asks the user before every call, in every permission mode (D24)
+    meta={REQUIRES_USER_INTERACTION: True},
+    # no `persist`: a prompted call must never be one that can only fail (D24)
+    common_persist=False,
 )

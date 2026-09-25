@@ -3,17 +3,25 @@
 # Jobs
 #   kicad-python-wheel  builds the pinned kicad-python wheel ONCE (shallow + sparse clone, repaired,
 #                       verified; scripts/ci/build_kicad_python_wheel.py), cached on the pin; every
-#                       other job installs that wheel instead of building from git (3.5 GB clone)
-#   lint           ruff + import-linter + mypy (all blocking)                    ubuntu
+#                       job that imports kipy installs that wheel instead of building from git (3.5 GB
+#                       clone). `--check` validates the wheelhouse (fresh or cache-restored) against
+#                       pyproject.toml's pin and uv.lock's version before it is uploaded.
+#   lint           ruff check + ruff format --check + import-linter (blocking; NO dependency on the wheel
+#                  job: none of them imports kipy, so a wheel failure can never skip them again - CI run
+#                  36013216332 skipped all lint)
+#   typecheck      mypy --platform win32 (blocking; needs the wheel: the kipy stubs type the IPC backend)
 #   scripts-lint   bash -n + shellcheck on the bootstrap/CI shell scripts, PowerShell parse
-#   unit           pytest tests/ + scripts/ci/tests_ci (no KiCad; kicad-marked tests auto-skip)   windows + ubuntu
+#   unit           pytest tests/ + scripts/ci/tests_ci (no KiCad; kicad-marked tests auto-skip; needs the
+#                  wheel: the IPC unit tests and tests/test_kipy_packaging.py import kipy)  windows + ubuntu
 #   (kicad-linux removed 2026-09-20: Windows only, decision D18)
 #   kicad-windows  KiCad 10.0.6 NSIS installer (cached), `pytest -m kicad`, capability JSON artifact
 #   helper         the Live KiCad helper (helper/, Rust, kiwrap-live.exe): cargo build --release + cargo test;
 #                  the exe is an artifact for the vsix job                                          windows
 #   extension      the VS Code extension (extension/, TypeScript): npm ci, esbuild, npm test (mocha unit) and
-#                  npm run test:integration (@vscode/test-electron downloads a VS Code build into
-#                  extension/.vscode-test, cached)                                                  windows
+#                  npm run test:integration, which compiles the integration suite and then SKIPS it with a
+#                  warning annotation (KIWRAP_IT_SKIP_WITHOUT_KICAD=1): the hosted runner has no KiCad and
+#                  the suite needs the kiwrap server plus a 10.99 nightly next to 10.0.6, so it is a bench
+#                  gate (extension/test/integration/runTest.ts); on a machine with KiCad it always runs  windows
 #   vsix           scripts/build_extension.ps1 -SkipHelper with the helper artifact in extension/bin ->
 #                  dist/kiwrap-<version>.vsix as a workflow artifact (docs/EXTENSION.md). No marketplace
 #                  publish step: everything stays private (decision D19).
@@ -45,6 +53,9 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # uv must build and sync with the Python setup-python installed (same value as PYTHON_VERSION; an env
+  # entry cannot reference another), not whatever interpreter it would discover first.
+  UV_PYTHON: "3.11"
   # The kicad-python pin (pyproject.toml direct reference); the wheelhouse cache is keyed on it.
   KICAD_PYTHON_PIN: "f79cebd1c09f6ef1d16e74d538da521e68c2d9f1"
   # `uv run` must never re-sync the environment after scripts/ci/sync_with_wheelhouse.sh replaced
@@ -81,18 +92,45 @@ jobs:
       - name: Build + repair + verify (cache miss; shallow/sparse clone, no 3.5 GB submodule)
         if: steps.wheel-cache.outputs.cache-hit != 'true'
         run: python scripts/ci/build_kicad_python_wheel.py --out wheelhouse
-      - name: Pin check (the wheel must match pyproject.toml's commit)
+      - name: Pin check (the wheel must match pyproject.toml's commit and uv.lock's version; cache hits too)
         run: |
           grep -q "kicad-python @ git+https://gitlab.com/kicad/code/kicad-python.git@$KICAD_PYTHON_PIN" pyproject.toml
-          ls -l wheelhouse && cat wheelhouse/*.sha256
+          python scripts/ci/build_kicad_python_wheel.py --check wheelhouse --expect-pin "$KICAD_PYTHON_PIN"
+          ls -l wheelhouse && cat wheelhouse/*.sha256 wheelhouse/kicad_python.pin
       - uses: actions/upload-artifact@v7
         with:
           name: kicad-python-wheel
-          path: wheelhouse/kicad_python-*.whl
+          path: |
+            wheelhouse/kicad_python-*.whl
+            wheelhouse/kicad_python-*.whl.sha256
+            wheelhouse/kicad_python.pin
           if-no-files-found: error
 
   lint:
-    name: lint (ruff, import-linter, mypy)
+    name: lint (ruff check, ruff format, import-linter)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # deliberately no `needs`: ruff and import-linter never import kipy (import-linter parses kiwrap's own
+    # modules only), so they run even when the wheel job fails
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - name: Sync without kicad-python (neither tool imports it; never built from git here)
+        run: uv sync --all-extras --frozen --no-install-package kicad-python
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check (the tree is formatted; verified 2026-09-25, 336 files)
+        run: uv run ruff format --check .
+      - name: import-linter (architectural contracts)
+        run: uv run lint-imports
+
+  typecheck:
+    name: typecheck (mypy)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: kicad-python-wheel
@@ -110,12 +148,11 @@ jobs:
           path: wheelhouse
       - name: Sync (kicad-python from the wheelhouse, never built from git here)
         run: bash scripts/ci/sync_with_wheelhouse.sh
-      - name: ruff check
-        run: uv run ruff check .
-      - name: import-linter (architectural contracts)
-        run: uv run lint-imports
+      # --platform win32: the product is Windows-only (decision D18) and kiwrap.platform.windows /
+      # backends.ipc.gui_sessions use winreg / ctypes.WINFUNCTYPE, which typeshed hides on a linux
+      # platform (12 attr-defined errors on ubuntu, 0 on the Windows bench; verified 2026-09-25)
       - name: "mypy (blocking since 2026-09-19: src/kiwrap is clean)"
-        run: uv run mypy
+        run: uv run mypy --platform win32
 
   scripts-lint:
     name: scripts (bash -n, shellcheck, PowerShell parse)
@@ -190,9 +227,11 @@ jobs:
         with:
           name: kicad-python-wheel
           path: wheelhouse
-      - name: Storage home for this job (kiwrap.platform honours KIWRAP_HOME)
-        shell: pwsh
-        run: Add-Content -Path $env:GITHUB_ENV -Value "KIWRAP_HOME=$env:RUNNER_TEMP\kiwrap-home"
+      # No KIWRAP_HOME for this job: bootstrap.ps1 installs the engines into the runner's (ephemeral)
+      # %LOCALAPPDATA%\kiwrap, the one place every engine lookup of the tests lands (conftest.py
+      # replaces KIWRAP_HOME with a pytest temp dir; discover_engines falls back to the default storage
+      # home; test_router_live / test_cli_specctra read %LOCALAPPDATA%\kiwrap). With KIWRAP_HOME set,
+      # every Freerouting test skipped silently (review finding 13).
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -235,7 +274,7 @@ jobs:
       - name: Snapshot %APPDATA%\kicad (must stay untouched)
         shell: pwsh
         run: uv run python scripts/ci/user_config_hash.py --write "$env:RUNNER_TEMP\user-config-before.txt"
-      - name: Bootstrap engines (JRE 25 + Freerouting 2.4.1 into KIWRAP_HOME, verified hashes)
+      - name: Bootstrap engines (JRE 25 + Freerouting 2.4.1 into %LOCALAPPDATA%\kiwrap, verified hashes)
         shell: pwsh
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -SkipSync
@@ -335,19 +374,20 @@ jobs:
         if: steps.layout.outputs.present == 'true'
         working-directory: extension
         run: npm run build
-      - name: Cache the VS Code build @vscode/test-electron downloads
-        if: steps.layout.outputs.present == 'true'
-        uses: actions/cache@v6
-        with:
-          path: extension/.vscode-test
-          key: vscode-test-${{ runner.os }}-${{ hashFiles('extension/package-lock.json') }}
+      # (no extension/.vscode-test cache: the integration step below skips before @vscode/test-electron
+      # downloads VS Code, so a cache step would only warn "path does not exist" on every run)
       - name: npm test (unit, mocha)
         if: steps.layout.outputs.present == 'true'
         working-directory: extension
         run: npm test
-      - name: npm run test:integration (@vscode/test-electron; the Windows runner has a desktop, no xvfb)
+      # Compiles the integration suite (tsc + esbuild) and then skips it with a warning annotation: no KiCad
+      # on this runner, and the suite needs the kiwrap server plus a 10.99 nightly and 10.0.6 (bench gate;
+      # runTest.ts). The skip is opt-in via this variable only, so a machine with KiCad always runs it.
+      - name: npm run test:integration (compile; skipped explicitly without KiCad)
         if: steps.layout.outputs.present == 'true'
         working-directory: extension
+        env:
+          KIWRAP_IT_SKIP_WITHOUT_KICAD: "1"
         run: npm run test:integration --if-present
       - uses: actions/upload-artifact@v7
         if: steps.layout.outputs.present == 'true'

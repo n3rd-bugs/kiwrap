@@ -876,7 +876,7 @@ def test_e2e_blinker_on_the_kicad_11_preview_over_stdio(tmp_path: Path, storage_
         str(r["provider_used"]).startswith("cli:10.99")
         for r in by_tool["kw_sch_check"] + by_tool["kw_pcb_drc"]
     )
-    _no_api_server_left()
+    _no_api_server_left(tmp_path)
 
 
 @pytest.mark.kicad_version("9.0")
@@ -951,7 +951,7 @@ def test_e2e_blinker_autorouted_on_the_kicad_11_preview_over_stdio(tmp_path: Pat
         str(r["provider_used"]).startswith("cli:10.99")
         for r in by_tool["kw_sch_check"] + by_tool["kw_pcb_drc"]
     )
-    _no_api_server_left()
+    _no_api_server_left(tmp_path)
     _no_jvm_left()
 
 
@@ -989,10 +989,12 @@ def _no_jvm_left() -> None:
     assert not ours, ours
 
 
-def _no_api_server_left() -> None:
+def _no_api_server_left(root: Path) -> None:
     """PROCESS HYGIENE: no `kicad-cli api-server` on the e2e project survives the conversation
     (every mutation closes its session before kicad-cli validates). Other kicad-cli processes may
-    belong to concurrent tests, so only command lines naming this project count (Windows, D18)."""
+    belong to concurrent tests - or to another pytest session whose own `blinky` project lives under
+    ITS base temp - so only command lines naming this test's `root` (its tmp_path) count (Windows,
+    D18)."""
     import subprocess
 
     ps = subprocess.run(
@@ -1007,5 +1009,10 @@ def _no_api_server_left() -> None:
         text=True,
         check=False,
     )
-    servers = [ln for ln in ps.stdout.splitlines() if "api-server" in ln and "blinky" in ln]
+    mine = str(root).replace("/", "\\").lower()
+    servers = [
+        ln
+        for ln in ps.stdout.splitlines()
+        if "api-server" in ln and "blinky" in ln and mine in ln.replace("/", "\\").lower()
+    ]
     assert not servers, servers

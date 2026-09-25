@@ -114,6 +114,7 @@ def test_catalog_is_deterministic_and_annotated():
     assert TOOL_NAMES == (
         "kw_env",
         "kw_project",
+        "kw_project_upgrade",
         "kw_snapshot",
         "kw_job",
         "kw_help",
@@ -175,6 +176,17 @@ def test_list_tools_schemas(h: Harness):
     assert snapshot.input_schema["properties"]["limit"]["maximum"] == 500
     sch = next(t for t in tools if t.name == "kw_sch_check")
     assert sch.input_schema["properties"]["severity"]["enum"] == ["all", "error", "warning", "exclusions"]
+    # D24: kw_project reads and pins; converting is kw_project_upgrade; no tool publishes `confirm`
+    project = next(t for t in tools if t.name == "kw_project")
+    assert project.input_schema["properties"]["action"]["enum"] == [
+        "create",
+        "status",
+        "retarget",
+        "upgrade_preview",
+    ]
+    assert project.annotations is not None and project.annotations.destructive_hint is False
+    for t in tools:
+        assert "confirm" not in t.input_schema["properties"], t.name
 
 
 # ---- kw_env / kw_help ---------------------------------------------------------------------------------
@@ -267,9 +279,23 @@ def test_project_create_status_and_upgrade(h: Harness):
     assert (
         st["target_effective"] == "10.0.0" and st["target_source"] == "created" and st["epoch_match"] is True
     )
-    # upgrading to the KiCad that already writes the files' format converts nothing (it pins it)
-    up = h.ok("kw_project", action="upgrade", project=str(proj), to_kicad="10")["data"]
-    assert up["upgraded"] is False and up["target_kicad"] == "10.0.0"
+    # D24: no write needs an upgrade - status has no upgrade_args, the preview converts nothing and
+    # kw_project_upgrade refuses with a teaching error naming retarget (nothing is written)
+    assert st["upgrade_args"] is None and st["retarget_candidates"] == []
+    pre = h.ok("kw_project", action="upgrade_preview", project=str(proj))
+    assert pre["data"]["upgrade_args"] is None and "nothing to convert" in pre["warnings"][0]
+    design_before = {f.name: f.read_bytes() for f in proj.glob("demo.kicad_*")}
+    sc = h.fail(
+        "kw_project_upgrade",
+        "E_BAD_ARGS",
+        project=str(proj / "demo.kicad_pro"),
+        from_kicad="10.0",
+        to_kicad="10",
+        files=["demo.kicad_sch"],
+    )
+    assert "nothing to convert" in sc["message"] and "kw_project(action='retarget')" in sc["candidates"]
+    assert sc["data"]["upgrade_args"]["files"] == []
+    assert {f.name: f.read_bytes() for f in proj.glob("demo.kicad_*")} == design_before
 
 
 def test_project_create_old_dialect(tmp_path: Path):
@@ -333,6 +359,31 @@ def test_sch_check_ok_advances_to_erc_clean(h: Harness):
     assert sc["next_suggested"] == "kw_pcb_sync" and sc["snapshot"]
     run = next(c for c in h.backend.calls if c[0] == "run_erc")
     assert run[1]["units"] == "mm" and run[1]["schematic"].endswith("demo.kicad_sch")
+
+
+def test_sch_check_surfaces_a_corrected_erc_position_scale(h: Harness):
+    """`kiwrap.backends.cli.erc.run_erc` records `degraded: ['erc_pos_scale_corrected']` and a
+    warning in `report.raw['_cli']` when the schematic's anchors contradict the matrix's
+    `cli.erc_json_pos_scale` (upstream fixed the x100 in 10.0 6d8e1fea / master 407f6293, #25582);
+    kw_sch_check's receipt carries both, once, on every run until the matrix is corrected."""
+    import dataclasses
+
+    proj = h.create()
+    note = "ERC JSON position scale: the matrix says 100, the schematic anchors say 1 (3/3 items)"
+    rep = erc_report(violation("pin_not_connected", "error", 12.7, 25.4))
+    h.backend.erc = dataclasses.replace(
+        rep,
+        raw={
+            "_cli": {"degraded": ["erc_pos_scale_corrected", "erc_pos_scale_corrected"], "warnings": [note]}
+        },
+    )
+    for _ in range(2):
+        sc = h.ok("kw_sch_check", project=proj)
+        assert sc["degraded"].count("erc_pos_scale_corrected") == 1 and sc["warnings"].count(note) == 1
+    # a report without the backend's notes (or a malformed one) adds nothing
+    h.backend.erc = dataclasses.replace(rep, raw={"_cli": "not a dict"})
+    sc = h.ok("kw_sch_check", project=proj)
+    assert "erc_pos_scale_corrected" not in sc["degraded"] and note not in sc["warnings"]
 
 
 def test_sch_check_errors_and_warnings(h: Harness):

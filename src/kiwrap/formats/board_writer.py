@@ -1002,7 +1002,7 @@ class BoardWriter:
     An existing board keeps its own stamp and dialect whatever `epoch` says: the writer never
     re-stamps a board upward (docs/DECISIONS.md D21, requests/kiwrap-feature-requests.review.md
     item 1 (d) - verified there: "the board writer keeps the file's dialect"); converting a board
-    to a newer format is `kw_project upgrade`'s job (`kicad-cli pcb upgrade` on a copy).
+    to a newer format is `kw_project_upgrade`'s job (D24: `kicad-cli pcb upgrade` on a copy).
     """
 
     def __init__(

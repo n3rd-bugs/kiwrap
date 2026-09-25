@@ -9,7 +9,7 @@ spikes/fmt-compat + spikes/verify-format-compat):
 - `sym upgrade` / `fp upgrade` exist on 7.0-10.0; without `-o` they rewrite the input in place,
   which is what kiwrap wants because the input is already the copy.
 - Files upgraded by KiCad 10 (stamps 20260306 sch / 20260206 pcb) are rejected by 7/8/9
-  (exit 3, or -1/127 for boards on 7/8), which is why `kw_project upgrade` semantic-diffs and
+  (exit 3, or -1/127 for boards on 7/8), which is why `kw_project_upgrade` (D24) semantic-diffs and
   re-runs ERC/DRC on the copy before replacing anything (§6 emit policy).
 - `sch upgrade --force <root>` re-saves the ROOT sheet only: a child sheet keeps its old stamp
   (verified 2026-09-24 on a copy of the 10.0 pic_programmer demo with 10.99.0: root 20260101 ->
@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import os
 import re
 import shutil
 import stat
@@ -139,7 +140,7 @@ def upgrade_copy(
 
 
 # --------------------------------------------------------------------------------------------
-# whole-project upgrade on a copy (kw_project upgrade, docs/DECISIONS.md D21)
+# project upgrade on a copy (kw_project_upgrade / upgrade_preview, docs/DECISIONS.md D21, D24)
 # --------------------------------------------------------------------------------------------
 
 
@@ -205,13 +206,22 @@ def relative_design_path(project_dir: Path, path: Path) -> Path:
         return Path(Path(path).name)
 
 
+def _norm_key(path: Path) -> str:
+    """A comparison key for one file path (resolved, case-folded on Windows)."""
+    try:
+        resolved = Path(path).resolve()
+    except OSError:
+        resolved = Path(path)
+    return os.path.normcase(str(resolved))
+
+
 def copy_project(project_dir: Path, design_files: Iterable[Path], work_dir: Path) -> Path:
     """Copy the design files plus the project's sidecars (`.kicad_pro`, `.kicad_dru`, local
     `.kicad_sym`, the lib tables) into `work_dir` (emptied first); `.kicad_prl` is never copied.
     Each design file keeps its path relative to the project directory, so a hierarchy with sheets
     in subdirectories (KiCad's 10.0 royalblue54L_feather demo: `sch/*.kicad_sch`) loads from the
     copy exactly as from the project (fixer finding 2: the copy used to flatten them away, so the
-    ERC before/after of `kw_project upgrade` ran without the sub-sheets)."""
+    ERC before/after of the upgrade ran without the sub-sheets)."""
     project_dir, work_dir = Path(project_dir), Path(work_dir)
     _remove_tree(work_dir)
     work_dir.mkdir(parents=True)
@@ -253,12 +263,17 @@ def upgrade_project_copy(
     *,
     caps: Capabilities | None = None,
     timeout_s: float = 300,
+    convert: Iterable[Path] | None = None,
 ) -> ProjectCopy:
-    """Copy the project into `work_dir` and upgrade EVERY `.kicad_sch` / `.kicad_pcb` of the copy
-    to this install's format (`sch upgrade --force` per sheet: the root's upgrade leaves the
+    """Copy the project into `work_dir` and upgrade the `.kicad_sch` / `.kicad_pcb` files of the
+    copy to this install's format (`sch upgrade --force` per sheet: the root's upgrade leaves the
     children alone, see the module docstring). Sheets in subdirectories are upgraded at their
     mirrored relative path (`UpgradedFile.rel`). The project directory is never written; the
-    caller replaces its files from `ProjectCopy.files` once it has checked the copy."""
+    caller replaces its files from `ProjectCopy.files` once it has checked the copy.
+
+    `convert` (docs/DECISIONS.md D24: `kw_project_upgrade` converts exactly its `files`): the design
+    files to upgrade; every design file is still copied, so the hierarchy loads for ERC, but only
+    these are re-saved and listed in `ProjectCopy.files`. None upgrades every design file."""
     caps = resolve_caps(install, caps)
     if not caps.has("cli.has_sch_pcb_upgrade"):
         raise Unsupported(
@@ -267,8 +282,11 @@ def upgrade_project_copy(
             oldest_kicad_with_it=OLDEST_KICAD_WITH_SCH_PCB_UPGRADE,
             fallback=None,
         )
-    sources = [Path(p) for p in design_files]
-    work = copy_project(project_dir, sources, work_dir)
+    copied = [Path(p) for p in design_files]
+    sources = copied if convert is None else [Path(p) for p in convert]
+    known = {_norm_key(p) for p in copied}
+    copied.extend(p for p in sources if _norm_key(p) not in known)
+    work = copy_project(project_dir, copied, work_dir)
     out = ProjectCopy(work_dir=work)
     for src in sources:
         kind = upgrade_kind(src)

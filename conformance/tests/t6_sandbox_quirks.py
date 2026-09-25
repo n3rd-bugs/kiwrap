@@ -226,7 +226,9 @@ def test_t6_merged_pcm_row_resolves_through_3rd_party_var(
     proj.mkdir()
     sch = proj / sources[0].name
     sch.write_text(
-        sources[0].read_text(encoding="utf-8").replace("Resistor_SMD:R_0603_1608Metric", "PCMLib:R_0603_1608Metric"),
+        sources[0]
+        .read_text(encoding="utf-8")
+        .replace("Resistor_SMD:R_0603_1608Metric", "PCMLib:R_0603_1608Metric"),
         encoding="utf-8",
     )
     shutil.copy(sources[0].with_suffix(".kicad_pro"), proj)

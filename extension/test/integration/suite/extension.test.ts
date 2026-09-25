@@ -173,35 +173,47 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
     assert.equal(cfg(), '');
   });
 
-  it('Upgrade project file format asks with the D21 modal first (Cancel changes nothing)', async function () {
-    const st = await api.session.refreshProject();
-    const newest = api.session.env?.installs[0];
-    assert.ok(st && newest);
-    if (st.epochs.sch === newest.capabilities?.['formats.sch'] && st.epochs.pcb === newest.capabilities?.['formats.pcb']) {
-      this.skip(); // the demo copy is already in the newest format: the command only says so
-    }
-    const asked: { message: string; buttons: string[] }[] = [];
+  it('Upgrade project file format reads kw_project status first; a modal only when a write needs an upgrade (D24; Cancel changes nothing)', async () => {
+    const server = await api.session.ready();
+    const pro = path.join(projectDir, 'ecc83-pp.kicad_pro');
+    const st = (await server.projectStatus(pro)).data;
+    const asked: { message: string; detail: string; buttons: string[] }[] = [];
+    const infos: string[] = [];
     const saved = api.session.consentUi;
     const pcb = path.join(projectDir, 'ecc83-pp.kicad_pcb');
     const stamp = fs.statSync(pcb).mtimeMs;
     api.session.consentUi = {
       ...saved,
-      modal: async (message, _detail, buttons) => {
-        asked.push({ message, buttons });
+      modal: async (message, detail, buttons) => {
+        asked.push({ message, detail, buttons });
         return undefined; // Cancel
+      },
+      info: async (message) => {
+        infos.push(message);
+        return undefined;
       },
     };
     try {
-      await vscode.commands.executeCommand('kiwrap.upgradeProject');
+      await vscode.commands.executeCommand('kiwrap.upgradeProject', vscode.Uri.file(pro));
     } finally {
       api.session.consentUi = saved;
     }
-    assert.equal(asked.length, 1);
-    assert.match(asked[0].message, /^ecc83-pp is in KiCad .* format and .*(can|still) writes? it\. Upgrade the project files to KiCad .* format\? .* will no longer open them\.$/);
-    assert.equal(asked[0].buttons[0], 'Upgrade');
-    assert.match(asked[0].buttons[1], /^(Install|Use) KiCad/);
-    assert.equal(asked[0].buttons[2], 'Cancel');
-    assert.equal(fs.statSync(pcb).mtimeMs, stamp, 'Cancel wrote nothing');
+    if (st.upgrade_args) {
+      // a write would need an upgrade: the modal lists from, to and exactly the status's files
+      assert.equal(asked.length, 1, `modals: ${asked.length}; infos: ${infos.join(' | ')}`);
+      assert.match(asked[0].message, /^ecc83-pp is in KiCad .* format and .*(can|still) writes? it\. Upgrade the project files to KiCad .* format\? .* will no longer open them\.$/);
+      assert.deepEqual([asked[0].buttons[0], asked[0].buttons[2]], ['Upgrade', 'Cancel']);
+      assert.match(asked[0].buttons[1], /^(Install|Use) KiCad/);
+      assert.match(asked[0].detail, /^From: .*\nTo: KiCad /);
+      for (const f of st.upgrade_args.files) {
+        assert.ok(asked[0].detail.includes(`  ${f}`), `${f} missing from the modal: ${asked[0].detail}`);
+      }
+    } else {
+      // the demo copy is in the format its KiCad writes: nothing to convert, so no modal
+      assert.equal(asked.length, 0, asked.map((a) => a.message).join(' | '));
+      assert.ok(infos.some((m) => /nothing to upgrade/.test(m)), infos.join(' | '));
+    }
+    assert.equal(fs.statSync(pcb).mtimeMs, stamp, 'nothing was written');
   });
 
   it('review item 1 live: a 10.0 project pinned to 10.99 asks before a saving DRC; "Use KiCad 10.0.6" keeps its format', async function () {
@@ -230,12 +242,12 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
       this.skip();
     }
     const saved = api.session.consentUi;
-    const asked: { message: string; buttons: string[] }[] = [];
+    const asked: { message: string; detail: string; buttons: string[] }[] = [];
     let answer: (buttons: string[]) => string | undefined = () => undefined;
     api.session.consentUi = {
       ...saved,
-      modal: async (message, _detail, buttons) => {
-        asked.push({ message, buttons });
+      modal: async (message, detail, buttons) => {
+        asked.push({ message, detail, buttons });
         return answer(buttons);
       },
     };
@@ -250,18 +262,123 @@ describe('kiwrap extension (real server, ecc83 demo)', function () {
       assert.equal(asked.length, 1);
       assert.match(asked[0].message, /^pic_programmer is in KiCad 10\.0 format and installed KiCad 10\.0\.6 still writes it\. Upgrade the project files to KiCad 10\.99 format\? KiCad 10\.0 will no longer open them\.$/);
       assert.deepEqual(asked[0].buttons, ['Upgrade', 'Use KiCad 10.0.6', 'Cancel']);
+      // D24: the modal lists from, to and the upgrade_args files (the board among them)
+      assert.match(asked[0].detail, /^From: KiCad 10\.0\nTo: KiCad 10\.99/);
+      assert.match(asked[0].detail, /^ {2}pic_programmer\.kicad_pcb\b/m);
       assert.ok(fs.readFileSync(pcb).equals(before), 'Cancel left the board byte-identical');
+      // the proactive command asks the same question from kw_project status (Cancel again)
+      await vscode.commands.executeCommand('kiwrap.upgradeProject', vscode.Uri.file(pro));
+      assert.equal(asked.length, 2);
+      assert.equal(asked[1].detail.split('\n').slice(0, 2).join('\n'), asked[0].detail.split('\n').slice(0, 2).join('\n'));
+      assert.ok(fs.readFileSync(pcb).equals(before), 'the proactive Cancel left the board byte-identical');
       // "Use KiCad 10.0.6": pinned back, the DRC is retried on 10.0.6 and the format stays 10.0
       answer = (buttons) => buttons.find((b) => b.startsWith('Use KiCad'));
       const r = await server.pcbDrc(pro, { save_board: true });
       assert.equal(typeof r.data.must_fix, 'number');
-      assert.equal(asked.length, 2);
+      assert.equal(asked.length, 3);
       assert.match(fs.readFileSync(pcb, 'utf8').slice(0, 200), /\(version 20260206\)/, 'the board keeps the KiCad 10.0 format');
       const st = await server.projectStatus(pro);
       assert.equal(st.data.target_kicad, '10.0.6');
     } finally {
       api.session.consentUi = saved;
     }
+  });
+
+  it('D24 live: [Upgrade] calls kw_project_upgrade with the refusal\'s upgrade_args, then the saving DRC is retried once', async function () {
+    // a second copy of KiCad's 10.0 demo, pinned to the nightly: the click is the consent
+    // (kiwrap-vscode, consent via kiwrap_vscode_modal); only the listed files change
+    const stable = api.session.env?.installs.find((i) => i.version === '10.0.6');
+    const nightly = api.session.env?.installs.find((i) => i.version.startsWith('10.99'));
+    if (!stable || !nightly) {
+      this.skip();
+    }
+    const demo = path.join(stable!.share, 'demos', 'pic_programmer');
+    if (!fs.existsSync(path.join(demo, 'pic_programmer.kicad_pro'))) {
+      this.skip();
+    }
+    const dir = path.join(workspace, 'pic_upgrade');
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.cpSync(demo, dir, { recursive: true });
+    const pro = path.join(dir, 'pic_programmer.kicad_pro');
+    const proBytes = fs.readFileSync(pro);
+    const server = await api.session.ready();
+    if (!server.hasTool('kw_project_upgrade')) {
+      assert.fail('the kiwrap server does not publish kw_project_upgrade (D24)');
+    }
+    await server.projectRetarget(pro, nightly!.root);
+    const saved = api.session.consentUi;
+    const asked: string[] = [];
+    const infos: string[] = [];
+    const errors: string[] = [];
+    api.session.consentUi = {
+      ...saved,
+      modal: async (_message, detail, buttons) => {
+        asked.push(detail);
+        return buttons[0] === 'Upgrade' ? 'Upgrade' : undefined;
+      },
+      info: async (m) => {
+        infos.push(m);
+        return undefined;
+      },
+      error: async (m) => {
+        errors.push(m);
+        return undefined;
+      },
+    };
+    try {
+      const r = await server.pcbDrc(pro, { save_board: true });
+      assert.equal(typeof r.data.must_fix, 'number', 'the retried DRC returns its result');
+    } finally {
+      api.session.consentUi = saved;
+    }
+    assert.equal(asked.length, 1, 'one modal');
+    assert.deepEqual(errors, []);
+    assert.ok(infos.some((m) => /^kiwrap: upgraded pic_programmer to KiCad 10\.99 format .*kw_snapshot restore \S+ undoes it\.$/.test(m)), infos.join(' | '));
+    const pcbFormat = nightly!.capabilities?.['formats.pcb'];
+    assert.match(fs.readFileSync(path.join(dir, 'pic_programmer.kicad_pcb'), 'utf8').slice(0, 200), new RegExp(`\\(version ${String(pcbFormat)}\\)`));
+    assert.ok(fs.readFileSync(pro).equals(proBytes), '.kicad_pro is never converted');
+    const st = await server.projectStatus(pro);
+    assert.equal(st.data.upgrade_args ?? null, null, 'no write needs an upgrade any more');
+    // the history entry of the upgrade records the modal as the consent (when status lists history)
+    const entry = (st.data.history as { consent?: { via?: string; client?: { name?: string } } }[]).find((h) => h && h.consent);
+    if (entry?.consent) {
+      assert.equal(entry.consent.via, 'kiwrap_vscode_modal');
+      assert.equal(entry.consent.client?.name, 'kiwrap-vscode');
+    }
+  });
+
+  it('kiwrap.core.callTool never forwards kw_project_upgrade: nothing is sent, nothing converted (review finding 6)', async function () {
+    // any VS Code command caller could otherwise convert a project, and the server would record
+    // consent via kiwrap_vscode_modal for a modal click that never happened
+    const stable = api.session.env?.installs.find((i) => i.version === '10.0.6');
+    const nightly = api.session.env?.installs.find((i) => i.version.startsWith('10.99'));
+    if (!stable || !nightly) {
+      this.skip();
+    }
+    const demo = path.join(stable!.share, 'demos', 'pic_programmer');
+    if (!fs.existsSync(path.join(demo, 'pic_programmer.kicad_pro'))) {
+      this.skip();
+    }
+    const dir = path.join(workspace, 'pic_calltool');
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.cpSync(demo, dir, { recursive: true });
+    const pro = path.join(dir, 'pic_programmer.kicad_pro');
+    const pcb = path.join(dir, 'pic_programmer.kicad_pcb');
+    const before = fs.readFileSync(pcb);
+    const server = await api.session.ready();
+    await server.projectRetarget(pro, nightly!.root);
+    const ua = await server.upgradeArgs(pro);
+    assert.ok(ua && ua.files.length, 'a write needs an upgrade: status has upgrade_args');
+    const args = { project: ua!.project, from_kicad: ua!.from_kicad, to_kicad: ua!.to_kicad, files: ua!.files };
+    await assert.rejects(
+      Promise.resolve(vscode.commands.executeCommand('kiwrap.core.callTool', 'kw_project_upgrade', args)),
+      (err: unknown) => {
+        assert.match(String((err as Error).message ?? err), /only after the user clicks \[Upgrade\] in kiwrap's consent modal; nothing was sent/);
+        return true;
+      },
+    );
+    assert.ok(fs.readFileSync(pcb).equals(before), 'the board is byte-identical');
+    assert.deepEqual(await server.upgradeArgs(pro), ua, 'still pending: nothing reached the server');
   });
 
   it('opens the read-only preview editor for the board', async () => {

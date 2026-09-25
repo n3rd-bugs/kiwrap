@@ -25,8 +25,9 @@ contract modules named below (the integrator reconciles names if the real module
     export_stats / export_stackup / export_ratsnest (install, config, board) and sch_diff
     (install, config, a, b) -> kiwrap.backends.cli.structured (parsed JSON dicts)
     copy_project(project_dir, design_files, work_dir) / upgrade_project(install, config,
-    project_dir, design_files, work_dir, caps=) / format_releases() ->
-    kiwrap.backends.cli.upgrade (kw_project upgrade and the D21 target resolution)
+    project_dir, design_files, work_dir, caps=, convert=) / format_releases() ->
+    kiwrap.backends.cli.upgrade (kw_project_upgrade and upgrade_preview, D24: `convert` = the
+    design files to upgrade, None = every one; and the D21 target resolution)
 
 The installs are listed newest first (`installation.discover`); `install(spec)` finds one by
 spec, but which install a PROJECT runs on is `kiwrap.core.tools._base.effective_target`'s answer
@@ -137,8 +138,9 @@ DATA_BACKENDS: dict[str, tuple[str, str, str]] = {
     # kiwrap fork patch ratsnest-export (docs/UPSTREAM.md G1): KiCad's airwires as JSON
     "export_ratsnest": ("kiwrap.backends.cli.structured", "export_ratsnest", "kicad-cli pcb export ratsnest"),
     "sch_diff": ("kiwrap.backends.cli.structured", "sch_diff", "kicad-cli sch diff"),
-    # D21 (review item 1): kw_project upgrade converts a COPY of the project (every sheet and the
-    # board, `sch/pcb upgrade --force`) and the core names KiCad lines from the version matrix
+    # D21 (review item 1) / D24: kw_project_upgrade converts a COPY of the project (exactly the
+    # listed design files, `sch/pcb upgrade --force` each) and the core names KiCad lines from the
+    # version matrix
     "copy_project": ("kiwrap.backends.cli.upgrade", "copy_project", "the project copy for upgrades"),
     "upgrade_project": ("kiwrap.backends.cli.upgrade", "upgrade_project_copy", "kicad-cli sch/pcb upgrade"),
     "format_releases": ("kiwrap.backends.cli.upgrade", "format_releases", "the KiCad release table"),

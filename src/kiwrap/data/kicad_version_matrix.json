@@ -732,7 +732,8 @@
    "cli.has_specctra_export": "docs",
    "cli.has_specctra_import": "docs",
    "ipc.has_get_ratsnest": "verified",
-   "formats.pro": "verified"
+   "formats.pro": "verified",
+   "cli.erc_json_pos_scale": "verified"
   },
   "9.0.9": {
    "cli.flags.pcb export drill": "verified",
@@ -3208,7 +3209,7 @@
   },
   "10.0.6": {
    "inherits": "10.0.0",
-   "note": "probed live on windows 10.0.6",
+   "note": "probed live on windows 10.0.6 | cli.erc_json_pos_scale=100 re-verified 2026-09-25 (sandboxed `sch erc --format json` on a copy of demos/video: JSON item pos x100 == the symbol anchors; text report / JSON = 100).",
    "values": {
     "cli.flags.pcb export odb": [
      "--help",
@@ -3286,15 +3287,16 @@
   },
   "10.0.7": {
    "inherits": "10.0.6",
-   "note": "unreleased 10.0 branch HEAD as of 2026-09-18: commits 6545d4a2 (#24966 fix) and f3105844 (`document` field on BeginCommit/EndCommit, rejects document-less commits with >1 editor open) — docs/VERIFICATION.md claim 4.",
+   "note": "unreleased 10.0 branch HEAD as of 2026-09-18: commits 6545d4a2 (#24966 fix) and f3105844 (`document` field on BeginCommit/EndCommit, rejects document-less commits with >1 editor open) — docs/VERIFICATION.md claim 4. | cli.erc_json_pos_scale=1 (docs): upstream 6d8e1fea on the 10.0 branch (2026-09-21, cherry-pick of master 407f6293, work item #25582, milestone 10.0.7) changes ERC_REPORT::WriteJsonReport (eeschema/erc/erc_report.cpp) from UNITS_PROVIDER(pcbIUScale) to UNITS_PROVIDER(schIUScale), so the ERC JSON item positions and the dimensions in its description strings are real units; read from the diff 2026-09-25, not run. 10.0 branch builds between the 10.0.6 tag and the 10.0.7 bump still call themselves 10.0.6(-unknown) and seed 100: kiwrap.backends.cli.erc's plausibility check corrects them per run (degraded erc_pos_scale_corrected).",
    "values": {
     "ipc.commit_needs_document": true,
-    "ipc.schematic_write_crashes": false
+    "ipc.schematic_write_crashes": false,
+    "cli.erc_json_pos_scale": 1
    }
   },
   "10.99.0": {
    "inherits": "11.0.0",
-   "note": "probed live on windows 10.99.0 — nightly; re-run refresh_matrix.py after every nightly bump | ipc.* verified 2026-09-19 by tests/test_ipc_live.py + conformance/tests/t5_ipc_handlers.py (build 10.99.0-4083-g6dd893f7d1, kicad-python f79cebd) ipc.headless_jobs=true re-verified 2026-09-19: RunBoardJobExportSvg and RunSchematicJobExportNetlist answer JS_SUCCESS on the headless api-server when job_settings.document names the open document; the earlier false came from the T5 minimal instance, which left the nested document empty (validateDocument -> AS_UNHANDLED -> 'no handler available'). Probe fixed the same day (handlers._minimal_instance fills RunJobSettings.document): the regenerated 10.99.0.json shows all 22 job rows handled / bad_request on their own document type; live proof tests/test_ipc_patch_g6.py + backends.ipc.jobs.probe_headless_jobs. | cli.has_ratsnest_export / ipc.has_get_ratsnest verified false on the stock nightly 2026-09-19 (no `pcb export ratsnest`; GetRatsnest answers 'no handler available'); both true only on kiwrap fork builds carrying patch ratsnest-export (docs/UPSTREAM.md G1), by presence probe. | formats.pro=4 verified 2026-09-19 from common/project/project_file.cpp (projectFileSchemaVersion) at 6dd893f7d1; the shipped demos still carry meta.version 3",
+   "note": "probed live on windows 10.99.0 — nightly; re-run refresh_matrix.py after every nightly bump | ipc.* verified 2026-09-19 by tests/test_ipc_live.py + conformance/tests/t5_ipc_handlers.py (build 10.99.0-4083-g6dd893f7d1, kicad-python f79cebd) ipc.headless_jobs=true re-verified 2026-09-19: RunBoardJobExportSvg and RunSchematicJobExportNetlist answer JS_SUCCESS on the headless api-server when job_settings.document names the open document; the earlier false came from the T5 minimal instance, which left the nested document empty (validateDocument -> AS_UNHANDLED -> 'no handler available'). Probe fixed the same day (handlers._minimal_instance fills RunJobSettings.document): the regenerated 10.99.0.json shows all 22 job rows handled / bad_request on their own document type; live proof tests/test_ipc_patch_g6.py + backends.ipc.jobs.probe_headless_jobs. | cli.has_ratsnest_export / ipc.has_get_ratsnest verified false on the stock nightly 2026-09-19 (no `pcb export ratsnest`; GetRatsnest answers 'no handler available'); both true only on kiwrap fork builds carrying patch ratsnest-export (docs/UPSTREAM.md G1), by presence probe. | formats.pro=4 verified 2026-09-19 from common/project/project_file.cpp (projectFileSchemaVersion) at 6dd893f7d1; the shipped demos still carry meta.version 3 | cli.erc_json_pos_scale=100 verified 2026-09-25 on 10.99.0-4083-g6dd893f7d1 (sandboxed `sch erc --format json` on a copy of demos/pic_programmer: JSON item pos x100 == the anchor of the item its uuid names; text report / JSON = 100). base 6dd893f7d1 (2026-09-17) predates master's fix 407f6293 (2026-09-21; not an ancestor), so the stock nightly and every kiwrap-build/6dd893f7d1-* bench build keep 100; a nightly built after 407f6293 reads 1 (refresh_matrix.py re-probes the key on every bump, D16; the runtime plausibility check corrects a stale record meanwhile).",
    "values": {
     "cli.subcommands": [
      "api-server",
@@ -3832,12 +3834,13 @@
     "ipc.headless_jobs": true,
     "ipc.schematic_update_shared_lib_symbol_hangs": true,
     "ipc.footprint_update_rotation_noise": true,
-    "formats.pro": 4
+    "formats.pro": 4,
+    "cli.erc_json_pos_scale": 100
    }
   },
   "11.0.0": {
    "inherits": "10.0.0",
-   "note": "master / 10.99 nightly (not installed): SWIG removed, headless `kicad-cli api-server`, schematic IPC handlers, sch/sym 20260830, pcb/mod 20260901, .kicad_pro meta 4 — docs/ARCHITECTURE.md §2, docs/research/07-versioning-strategy.md, 01-ipc-api.md. kicad-cli flags copied from 10.0.0 pending a nightly probe.",
+   "note": "master / 10.99 nightly (not installed): SWIG removed, headless `kicad-cli api-server`, schematic IPC handlers, sch/sym 20260830, pcb/mod 20260901, .kicad_pro meta 4 — docs/ARCHITECTURE.md §2, docs/research/07-versioning-strategy.md, 01-ipc-api.md. kicad-cli flags copied from 10.0.0 pending a nightly probe. | cli.erc_json_pos_scale=1 (docs): master 407f6293 (2026-09-21, #25582: pcbIUScale -> schIUScale in ERC_REPORT::WriteJsonReport); 11.0 branches from master after it.",
    "values": {
     "cli.flags.api-server": [
      "--help",
@@ -3924,7 +3927,8 @@
     "cli.has_ratsnest_export": false,
     "cli.has_specctra_export": false,
     "cli.has_specctra_import": false,
-    "ipc.has_get_ratsnest": false
+    "ipc.has_get_ratsnest": false,
+    "cli.erc_json_pos_scale": 1
    }
   }
  }

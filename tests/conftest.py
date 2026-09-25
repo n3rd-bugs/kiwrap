@@ -8,4 +8,17 @@ install is discovered.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
+import pytest
+
 from tests._fakes import cli_envs, cli_scratch, user_config_untouched  # noqa: F401 - session fixtures
+
+
+@pytest.fixture(autouse=True)
+def _no_claude_code_entrypoint(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """pytest started from a shell of the Claude Code VS Code panel inherits
+    `CLAUDE_CODE_ENTRYPOINT=claude-vscode`, which switches kiwrap's elicitation shortcut off
+    (docs/DECISIONS.md D24); every test starts without it and sets it when it tests that rule."""
+    monkeypatch.delenv("CLAUDE_CODE_ENTRYPOINT", raising=False)
+    yield

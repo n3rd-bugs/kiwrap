@@ -159,9 +159,96 @@ export interface ProjectStatusData {
   file_epochs?: { path: string; kind: string; stamp: number | null }[];
   /** Every installed KiCad the server considered: `matches` = it writes the files' own format. */
   candidates?: { version: string; root?: string; formats?: Record<string, number>; reads?: boolean; matches?: boolean }[];
+  /**
+   * D24: present whenever a write would need a format upgrade - exactly the arguments of
+   * `kw_project_upgrade` (the same `upgrade_args()` the E_FORMAT_UPGRADE_REQUIRED refusal carries as
+   * `data.upgrade_args`). Absent when no write needs an upgrade, and on servers older than D24.
+   */
+  upgrade_args?: UpgradeArgs | null;
+}
+
+// ---- kw_project_upgrade (D24) ---------------------------------------------------------------------
+
+/**
+ * `upgrade_args(choice, project)` (D24): the single source of the `kw_project_upgrade` arguments.
+ * The server rebuilds them under the project lock and refuses any difference with E_BAD_ARGS
+ * (`data.mismatch`, `data.upgrade_args` = the true ones), so callers pass them verbatim.
+ */
+export interface UpgradeArgs {
+  /** The project's `.kicad_pro` path. */
+  project: string;
+  /** The project's KiCad line ("10.0"), else `format sch=N,pcb=M`. */
+  from_kicad: string;
+  /** The install spec the target pins (a version, or an install root when installs sharing that version write different formats). */
+  to_kicad: string;
+  /** The formats `to_kicad` writes (informational: not a `kw_project_upgrade` argument). */
+  to_format?: { sch?: number | null; pcb?: number | null };
+  /** The design files that move to the newer format: sorted project-relative posix paths. */
+  files: string[];
+}
+
+/** The arguments `kw_project_upgrade` takes: `to_format` is informational and not sent. */
+export type UpgradeCallArgs = Pick<UpgradeArgs, 'project' | 'from_kicad' | 'to_kicad' | 'files'>;
+
+/** The consent record of a `kw_project_upgrade` receipt (D24; it never claims a human click). */
+export interface UpgradeConsentRecord {
+  gate: 'anthropic/requiresUserInteraction' | 'elicitation' | 'kiwrap_vscode_modal' | 'none' | (string & {});
+  via: 'client_permission_flow' | 'kiwrap_vscode_modal' | 'elicitation' | 'in_process' | 'unknown_client' | (string & {});
+  client?: { name?: string | null; version?: string | null };
+  entrypoint?: string | null;
+}
+
+/** The data of a successful `kw_project_upgrade` receipt (D24). */
+export interface UpgradeData {
+  files?: { path: string; kind: string; stamp_before: number | null; stamp_after: number | null; changed: boolean }[];
+  replaced?: string[];
+  /** `.kicad_pro`, `.kicad_prl`, `.kicad_dru`, lib tables and project libraries are never converted. */
+  not_converted?: string[];
+  /** ERC / DRC counts on the copy before and after the conversion. */
+  checks?: { before?: Record<string, unknown> | null; after?: Record<string, unknown> | null };
+  /** The snapshot taken first: `kw_snapshot restore <snapshot_before>` undoes the upgrade. */
+  snapshot_before?: string | null;
+  /** Stage gates dropped because an error count rose (`erc_clean`, `drc_clean`). */
+  stage_dropped?: string[];
+  target?: { kicad?: string | null; source?: string | null; epoch_match?: boolean | null };
+  consent?: UpgradeConsentRecord;
+  [key: string]: unknown;
 }
 
 export type TargetSource = 'pinned' | 'file_epoch' | 'file_epoch_newer_readonly' | 'created' | (string & {});
+
+/**
+ * A well-formed `upgrade_args` object (D24), or null. Tolerant of an older or partial server: the
+ * four `kw_project_upgrade` arguments must be present; `to_format` is kept when it is an object.
+ * An empty `files` list is null too: the server refuses it as "nothing to convert", so the modal
+ * must not offer an [Upgrade] that can only fail (review finding 8).
+ */
+export function asUpgradeArgs(value: unknown): UpgradeArgs | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const v = value as Record<string, unknown>;
+  if (
+    typeof v.project !== 'string' ||
+    typeof v.from_kicad !== 'string' ||
+    typeof v.to_kicad !== 'string' ||
+    !Array.isArray(v.files) ||
+    v.files.length === 0 ||
+    !v.files.every((f) => typeof f === 'string')
+  ) {
+    return null;
+  }
+  const out: UpgradeArgs = { project: v.project, from_kicad: v.from_kicad, to_kicad: v.to_kicad, files: [...(v.files as string[])] };
+  if (v.to_format && typeof v.to_format === 'object') {
+    out.to_format = v.to_format as UpgradeArgs['to_format'];
+  }
+  return out;
+}
+
+/** Exactly the four `kw_project_upgrade` arguments, verbatim (D24: the server compares them to its own). */
+export function upgradeCallArgs(args: UpgradeArgs | UpgradeCallArgs): Record<string, unknown> {
+  return { project: args.project, from_kicad: args.from_kicad, to_kicad: args.to_kicad, files: [...args.files] };
+}
 
 // ---- kw_sch_check / kw_pcb_drc -------------------------------------------------------------------
 
