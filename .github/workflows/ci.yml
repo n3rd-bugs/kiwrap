@@ -14,7 +14,10 @@
 #   unit           pytest tests/ + scripts/ci/tests_ci (no KiCad; kicad-marked tests auto-skip; needs the
 #                  wheel: the IPC unit tests and tests/test_kipy_packaging.py import kipy)  windows + ubuntu
 #   (kicad-linux removed 2026-09-20: Windows only, decision D18)
-#   kicad-windows  KiCad 10.0.6 NSIS installer (cached), `pytest -m kicad`, capability JSON artifact
+#   kicad-windows  KiCad 10.0.6 NSIS installer (cached), `pytest -m kicad`, capability JSON artifact.
+#                  ON DEMAND ONLY (owner, 2026-09-26): it runs only from the Actions UI / `gh workflow run
+#                  ci -f run_kicad=true`, never on push or pull_request - one run is ~80 min of Windows
+#                  minutes (billed 2x on a private repo; run 36170817311 took 1 h 18 min)
 #   helper         the Live KiCad helper (helper/, Rust, kiwrap-live.exe): cargo build --release + cargo test;
 #                  the exe is an artifact for the vsix job                                          windows
 #   extension      the VS Code extension (extension/, TypeScript): npm ci, esbuild, npm test (mocha unit) and
@@ -27,7 +30,7 @@
 #                  publish step: everything stays private (decision D19).
 #   The three extension jobs skip themselves on checkouts that predate extension/ or helper/.
 #
-# The KiCad jobs can be skipped from the Actions UI (workflow_dispatch input `skip_kicad`).
+# The KiCad job runs only on a manual dispatch with `run_kicad` true (the default for a manual run).
 # Every KiCad process runs with KICAD_CONFIG_HOME/DOCUMENTS/CACHE under $RUNNER_TEMP; the user config
 # dir of the runner is fingerprinted before and after and must be unchanged (CLAUDE.md hard rule).
 
@@ -39,10 +42,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      skip_kicad:
-        description: "Skip the kicad-windows job"
+      run_kicad:
+        description: "Run the kicad-windows job (installs KiCad 10.0.6; ~80 min of Windows minutes)"
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
@@ -217,9 +220,10 @@ jobs:
 
   kicad-windows:
     name: kicad-windows (KiCad 10.0.6 NSIS installer)
-    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_kicad) }}
+    # on demand only: push and pull_request never run it (see the header)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_kicad }}
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     needs: kicad-python-wheel
     steps:
       - uses: actions/checkout@v7
